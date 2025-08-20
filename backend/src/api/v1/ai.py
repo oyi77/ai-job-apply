@@ -7,7 +7,6 @@ from ...models.resume import Resume, ResumeOptimizationRequest, ResumeOptimizati
 from ...models.cover_letter import CoverLetterRequest, CoverLetter
 from ...utils.logger import get_logger
 from ...services.service_registry import service_registry
-from ...services.database_service_registry import database_service_registry
 
 logger = get_logger(__name__)
 
@@ -28,12 +27,8 @@ async def optimize_resume(request: ResumeOptimizationRequest) -> ResumeOptimizat
     try:
         logger.info(f"Resume optimization request for {request.target_role} at {request.company_name}")
         
-        # Get AI service from registry
-        # Try database service registry first, fallback to in-memory
-        try:
-            ai_service = database_service_registry.get_ai_service()
-        except RuntimeError:
-            ai_service = service_registry.get_ai_service()
+        # Get AI service from unified registry
+        ai_service = service_registry.get_ai_service()
         
         # Use the real AI service for optimization
         response = await ai_service.optimize_resume(request)
@@ -60,12 +55,8 @@ async def generate_cover_letter(request: CoverLetterRequest) -> CoverLetter:
     try:
         logger.info(f"Cover letter generation request for {request.job_title} at {request.company_name}")
         
-        # Get AI service from registry
-        # Try database service registry first, fallback to in-memory
-        try:
-            ai_service = database_service_registry.get_ai_service()
-        except RuntimeError:
-            ai_service = service_registry.get_ai_service()
+        # Get AI service from unified registry
+        ai_service = service_registry.get_ai_service()
         
         # Use the real AI service for cover letter generation
         response = await ai_service.generate_cover_letter(request)
@@ -96,12 +87,8 @@ async def analyze_job_match(
     try:
         logger.info("Job match analysis request received")
         
-        # Get AI service from registry
-        # Try database service registry first, fallback to in-memory
-        try:
-            ai_service = database_service_registry.get_ai_service()
-        except RuntimeError:
-            ai_service = service_registry.get_ai_service()
+        # Get AI service from unified registry
+        ai_service = service_registry.get_ai_service()
         
         # Use the real AI service for job match analysis
         analysis = await ai_service.analyze_job_match(resume_content, job_description)
@@ -123,23 +110,21 @@ async def extract_resume_skills(resume_content: str) -> Dict[str, Any]:
         resume_content: Resume text content
         
     Returns:
-        Extracted skills and analysis
+        Extracted skills and confidence scores
     """
     try:
         logger.info("Skills extraction request received")
         
-        # Get AI service from registry
-        # Try database service registry first, fallback to in-memory
-        try:
-            ai_service = database_service_registry.get_ai_service()
-        except RuntimeError:
-            ai_service = service_registry.get_ai_service()
+        # Get AI service from unified registry
+        ai_service = service_registry.get_ai_service()
         
         # Use the real AI service for skills extraction
         skills = await ai_service.extract_resume_skills(resume_content)
         
+        logger.info("Skills extraction completed successfully")
+        
         # Return in expected format
-        skills_analysis = {
+        return {
             "technical_skills": [s for s in skills if s.lower() in ['python', 'javascript', 'java', 'sql', 'git', 'docker', 'aws', 'react', 'node.js']],
             "soft_skills": [s for s in skills if s.lower() in ['leadership', 'communication', 'problem solving', 'teamwork']],
             "tools": [s for s in skills if s.lower() in ['vs code', 'docker', 'aws', 'git', 'jenkins']],
@@ -147,95 +132,94 @@ async def extract_resume_skills(resume_content: str) -> Dict[str, Any]:
             "confidence": 0.89
         }
         
-        logger.info("Skills extraction completed successfully")
-        return skills_analysis
-        
     except Exception as e:
         logger.error(f"Error extracting skills: {e}", exc_info=True)
         raise HTTPException(status_code=500, detail=f"Skills extraction failed: {str(e)}")
 
 
-@router.post("/suggest-improvements")
-async def suggest_resume_improvements(
-    resume_content: str,
-    job_description: str
-) -> Dict[str, Any]:
+@router.post("/improve-resume")
+async def improve_resume_suggestions(resume_content: str) -> Dict[str, Any]:
     """
-    Suggest improvements for a resume based on job description.
+    Get suggestions for improving a resume.
     
     Args:
         resume_content: Resume text content
-        job_description: Job description text
         
     Returns:
-        Improvement suggestions
+        Improvement suggestions and recommendations
     """
     try:
         logger.info("Resume improvement suggestions request received")
         
-        # Get AI service from registry
-        # Try database service registry first, fallback to in-memory
-        try:
-            ai_service = database_service_registry.get_ai_service()
-        except RuntimeError:
-            ai_service = service_registry.get_ai_service()
+        # Get AI service from unified registry
+        ai_service = service_registry.get_ai_service()
         
         # Use the real AI service for improvement suggestions
-        improvements = await ai_service.suggest_resume_improvements(resume_content, job_description)
+        suggestions = await ai_service.suggest_resume_improvements(resume_content, "")
+        
+        logger.info("Resume improvement suggestions completed successfully")
         
         # Return in expected format
-        suggestions = {
-            "content_improvements": improvements[:3] if len(improvements) > 3 else improvements,
+        return {
+            "content_improvements": suggestions[:3] if len(suggestions) > 3 else suggestions,
             "format_improvements": [
                 "Use consistent bullet point formatting",
                 "Improve section organization",
                 "Add a professional summary section"
             ],
-            "keyword_optimization": improvements[3:6] if len(improvements) > 6 else improvements[3:],
-            "all_suggestions": improvements,
+            "keyword_optimization": suggestions[3:6] if len(suggestions) > 6 else suggestions[3:],
+            "all_suggestions": suggestions,
             "priority": "high",
             "estimated_impact": 0.25
         }
         
-        logger.info("Improvement suggestions generated successfully")
-        return suggestions
-        
     except Exception as e:
-        logger.error(f"Error generating improvement suggestions: {e}", exc_info=True)
-        raise HTTPException(status_code=500, detail=f"Improvement suggestions failed: {str(e)}")
+        logger.error(f"Error getting improvement suggestions: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail=f"Failed to get improvement suggestions: {str(e)}")
 
 
 @router.get("/health")
 async def ai_service_health() -> Dict[str, Any]:
     """
-    Check AI service health status.
+    Check AI service health and availability.
     
     Returns:
-        Service health information
+        AI service health status
     """
     try:
-        # Get AI service from registry
-        # Try database service registry first, fallback to in-memory
-        try:
-            ai_service = database_service_registry.get_ai_service()
-        except RuntimeError:
-            ai_service = service_registry.get_ai_service()
+        # Get AI service from unified registry
+        ai_service = service_registry.get_ai_service()
         
-        # Check if AI service is available
+        # Check service availability
         is_available = await ai_service.is_available()
         
         health_status = {
-            "status": "healthy" if is_available else "degraded",
-            "service": "AI Job Application Assistant",
-            "ai_provider": "Google Gemini",
-            "model": "gemini-1.5-flash",
+            "status": "healthy" if is_available else "unavailable",
+            "service": "AI Service (Gemini)",
             "available": is_available,
-            "response_time": "fast",
-            "last_check": datetime.utcnow().isoformat()
+            "timestamp": datetime.utcnow().isoformat(),
+            "features": [
+                "resume_optimization",
+                "cover_letter_generation", 
+                "job_match_analysis",
+                "skills_extraction",
+                "resume_improvement"
+            ]
         }
         
+        if not is_available:
+            health_status["message"] = "AI service not available - running with mock responses"
+            health_status["status"] = "degraded"
+        
+        logger.info(f"AI service health check: {health_status['status']}")
         return health_status
         
     except Exception as e:
         logger.error(f"Error checking AI service health: {e}", exc_info=True)
-        raise HTTPException(status_code=500, detail=f"Health check failed: {str(e)}")
+        return {
+            "status": "error",
+            "service": "AI Service",
+            "available": False,
+            "error": str(e),
+            "timestamp": datetime.utcnow().isoformat()
+        }

@@ -10,7 +10,7 @@ from datetime import datetime
 
 from ..core.file_service import FileService
 from ..config import config
-from ..utils.logger import get_logger
+from loguru import logger
 from ..utils.file_helpers import (
     get_file_extension, get_file_size, is_valid_file, 
     sanitize_filename, ensure_directory_exists
@@ -22,7 +22,7 @@ class LocalFileService(FileService):
     
     def __init__(self):
         """Initialize the local file service."""
-        self.logger = get_logger(__name__)
+        self.logger = logger.bind(module="LocalFileService")
         self._ensure_directories()
     
     def _ensure_directories(self) -> None:

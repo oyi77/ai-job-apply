@@ -3,11 +3,8 @@
 from fastapi import APIRouter, HTTPException, Depends
 from typing import List, Dict, Any, Optional
 from ...models.application import JobApplication, ApplicationUpdateRequest, ApplicationStatus
-from ...utils.logger import get_logger
 from ...services.service_registry import service_registry
-from ...services.database_service_registry import database_service_registry
-
-logger = get_logger(__name__)
+from loguru import logger
 
 router = APIRouter()
 
@@ -29,13 +26,9 @@ async def create_application(
     """
     try:
         # Get application service from registry
-        # Try database service registry first, fallback to in-memory
-        try:
-            application_service = database_service_registry.get_application_service()
-        except RuntimeError:
-            application_service = service_registry.get_application_service()
+        application_service = service_registry.get_application_service()
         
-        # Use the real application service
+        # Use the application service
         application = await application_service.create_application(job_info, resume_path)
         
         logger.info(f"Application created for {application.job_title} at {application.company}")
@@ -46,7 +39,7 @@ async def create_application(
         raise HTTPException(status_code=500, detail=f"Application creation failed: {str(e)}")
 
 
-@router.get("/", response_model=List[JobApplication])
+@router.get("", response_model=List[JobApplication])
 async def get_all_applications(
     status: Optional[ApplicationStatus] = None
 ) -> List[JobApplication]:
@@ -61,13 +54,9 @@ async def get_all_applications(
     """
     try:
         # Get application service from registry
-        # Try database service registry first, fallback to in-memory
-        try:
-            application_service = database_service_registry.get_application_service()
-        except RuntimeError:
-            application_service = service_registry.get_application_service()
+        application_service = service_registry.get_application_service()
         
-        # Use the real application service
+        # Use the application service
         if status:
             applications = await application_service.get_applications_by_status(status)
         else:
@@ -80,7 +69,7 @@ async def get_all_applications(
         raise HTTPException(status_code=500, detail=f"Failed to get applications: {str(e)}")
 
 
-@router.get("/stats/summary")
+@router.get("/stats")
 async def get_application_stats() -> Dict[str, Any]:
     """
     Get application statistics and summary.
@@ -90,11 +79,7 @@ async def get_application_stats() -> Dict[str, Any]:
     """
     try:
         # Get application service from registry
-        # Try database service registry first, fallback to in-memory
-        try:
-            application_service = database_service_registry.get_application_service()
-        except RuntimeError:
-            application_service = service_registry.get_application_service()
+        application_service = service_registry.get_application_service()
         
         # Get statistics from service
         stats = await application_service.get_application_stats()
@@ -103,6 +88,17 @@ async def get_application_stats() -> Dict[str, Any]:
     except Exception as e:
         logger.error(f"Error getting application stats: {e}", exc_info=True)
         raise HTTPException(status_code=500, detail=f"Failed to get application statistics: {str(e)}")
+
+
+@router.get("/stats/summary")
+async def get_application_stats_summary() -> Dict[str, Any]:
+    """
+    Get application statistics summary (legacy endpoint).
+    
+    Returns:
+        Application statistics
+    """
+    return await get_application_stats()
 
 
 @router.get("/{application_id}", response_model=JobApplication)
@@ -118,11 +114,7 @@ async def get_application(application_id: str) -> JobApplication:
     """
     try:
         # Get application service from registry
-        # Try database service registry first, fallback to in-memory
-        try:
-            application_service = database_service_registry.get_application_service()
-        except RuntimeError:
-            application_service = service_registry.get_application_service()
+        application_service = service_registry.get_application_service()
         
         # Get application by ID
         application = await application_service.get_application(application_id)
@@ -145,22 +137,18 @@ async def update_application(
     updates: ApplicationUpdateRequest
 ) -> JobApplication:
     """
-    Update application status and information.
+    Update an application.
     
     Args:
         application_id: Application identifier
-        updates: Update request data
+        updates: Update request object
         
     Returns:
         Updated application object
     """
     try:
         # Get application service from registry
-        # Try database service registry first, fallback to in-memory
-        try:
-            application_service = database_service_registry.get_application_service()
-        except RuntimeError:
-            application_service = service_registry.get_application_service()
+        application_service = service_registry.get_application_service()
         
         # Update application
         updated_application = await application_service.update_application(application_id, updates)
@@ -168,6 +156,7 @@ async def update_application(
         if not updated_application:
             raise HTTPException(status_code=404, detail=f"Application {application_id} not found")
         
+        logger.info(f"Application {application_id} updated successfully")
         return updated_application
         
     except HTTPException:
@@ -190,11 +179,7 @@ async def delete_application(application_id: str) -> Dict[str, str]:
     """
     try:
         # Get application service from registry
-        # Try database service registry first, fallback to in-memory
-        try:
-            application_service = database_service_registry.get_application_service()
-        except RuntimeError:
-            application_service = service_registry.get_application_service()
+        application_service = service_registry.get_application_service()
         
         # Delete application
         success = await application_service.delete_application(application_id)
@@ -202,6 +187,7 @@ async def delete_application(application_id: str) -> Dict[str, str]:
         if not success:
             raise HTTPException(status_code=404, detail=f"Application {application_id} not found")
         
+        logger.info(f"Application {application_id} deleted successfully")
         return {"message": f"Application {application_id} deleted successfully"}
         
     except HTTPException:
@@ -209,3 +195,131 @@ async def delete_application(application_id: str) -> Dict[str, str]:
     except Exception as e:
         logger.error(f"Error deleting application {application_id}: {e}", exc_info=True)
         raise HTTPException(status_code=500, detail=f"Failed to delete application: {str(e)}")
+
+
+@router.post("/{application_id}/follow-up")
+async def schedule_follow_up(
+    application_id: str,
+    follow_up_date: str
+) -> Dict[str, str]:
+    """
+    Schedule a follow-up for an application.
+    
+    Args:
+        application_id: Application identifier
+        follow_up_date: Follow-up date (ISO format)
+        
+    Returns:
+        Success message
+    """
+    try:
+        # Get application service from registry
+        application_service = service_registry.get_application_service()
+        
+        # Schedule follow-up
+        success = await application_service.schedule_follow_up(application_id, follow_up_date)
+        
+        if not success:
+            raise HTTPException(status_code=404, detail=f"Application {application_id} not found")
+        
+        logger.info(f"Follow-up scheduled for application {application_id} on {follow_up_date}")
+        return {"message": f"Follow-up scheduled for {follow_up_date}"}
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error scheduling follow-up for {application_id}: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail=f"Failed to schedule follow-up: {str(e)}")
+
+
+@router.get("/follow-ups/upcoming")
+async def get_upcoming_follow_ups() -> List[JobApplication]:
+    """
+    Get applications with upcoming follow-ups.
+    
+    Returns:
+        List of applications needing follow-up
+    """
+    try:
+        # Get application service from registry
+        application_service = service_registry.get_application_service()
+        
+        # Get upcoming follow-ups
+        follow_ups = await application_service.get_upcoming_follow_ups()
+        return follow_ups
+        
+    except Exception as e:
+        logger.error(f"Error getting upcoming follow-ups: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail=f"Failed to get upcoming follow-ups: {str(e)}")
+
+
+@router.get("/company/{company}")
+async def get_applications_by_company(company: str) -> List[JobApplication]:
+    """
+    Get all applications for a specific company.
+    
+    Args:
+        company: Company name
+        
+    Returns:
+        List of applications for the company
+    """
+    try:
+        # Get application service from registry
+        application_service = service_registry.get_application_service()
+        
+        # Get applications by company
+        applications = await application_service.get_applications_by_company(company)
+        return applications
+        
+    except Exception as e:
+        logger.error(f"Error getting applications for company {company}: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail=f"Failed to get applications for company: {str(e)}")
+
+
+@router.get("/search/{query}")
+async def search_applications(query: str) -> List[JobApplication]:
+    """
+    Search applications by query.
+    
+    Args:
+        query: Search query
+        
+    Returns:
+        List of matching applications
+    """
+    try:
+        # Get application service from registry
+        application_service = service_registry.get_application_service()
+        
+        # Search applications
+        applications = await application_service.search_applications(query)
+        return applications
+        
+    except Exception as e:
+        logger.error(f"Error searching applications with query '{query}': {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail=f"Failed to search applications: {str(e)}")
+
+
+@router.get("/{application_id}/timeline")
+async def get_application_timeline(application_id: str) -> List[Dict[str, Any]]:
+    """
+    Get timeline of events for an application.
+    
+    Args:
+        application_id: Application identifier
+        
+    Returns:
+        List of timeline events
+    """
+    try:
+        # Get application service from registry
+        application_service = service_registry.get_application_service()
+        
+        # Get application timeline
+        timeline = await application_service.get_application_timeline(application_id)
+        return timeline
+        
+    except Exception as e:
+        logger.error(f"Error getting timeline for application {application_id}: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail=f"Failed to get application timeline: {str(e)}")

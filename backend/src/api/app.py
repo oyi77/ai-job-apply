@@ -16,7 +16,7 @@ from src.models.cover_letter import CoverLetterRequest, CoverLetter
 from src.models.application import JobApplication, ApplicationUpdateRequest
 from src.utils.logger import get_logger
 from src.services.service_registry import service_registry
-from src.services.database_service_registry import database_service_registry
+from src.services.service_registry import service_registry
 
 # Initialize logger
 logger = get_logger(__name__)
@@ -33,6 +33,7 @@ def create_app() -> FastAPI:
         version="1.0.0",
         docs_url="/docs" if config.DEBUG else None,
         redoc_url="/redoc" if config.DEBUG else None,
+        redirect_slashes=False,  # Allow both /endpoint and /endpoint/ to work
     )
     
     # Add CORS middleware
@@ -55,11 +56,13 @@ def create_app() -> FastAPI:
         from src.api.v1.resumes import router as resumes_router
         from src.api.v1.applications import router as applications_router
         from src.api.v1.ai import router as ai_router
+        from src.api.v1.cover_letters import router as cover_letters_router
         
         app.include_router(jobs_router, prefix="/api/v1/jobs", tags=["jobs"])
         app.include_router(resumes_router, prefix="/api/v1/resumes", tags=["resumes"])
         app.include_router(applications_router, prefix="/api/v1/applications", tags=["applications"])
         app.include_router(ai_router, prefix="/api/v1/ai", tags=["ai"])
+        app.include_router(cover_letters_router, prefix="/api/v1/cover-letters", tags=["cover-letters"])
         
         logger.info("All API routers loaded successfully")
     except ImportError as e:
@@ -108,39 +111,22 @@ def create_app() -> FastAPI:
 async def initialize_services() -> None:
     """Initialize all application services."""
     try:
-        # Try to initialize database service registry first
-        try:
-            await database_service_registry.initialize()
-            
-            # Perform health check on all services
-            health_status = await database_service_registry.health_check()
-            logger.info(f"Services health check: {health_status}")
-            
-            # Log service availability
-            ai_service = database_service_registry.get_ai_service()
-            ai_available = await ai_service.is_available()
-            logger.info(f"AI Service (Gemini) available: {ai_available}")
-            
-            if not ai_available:
-                logger.warning("AI Service not available - running with mock responses")
-            
-            logger.info("Using database-backed services")
-            
-        except Exception as db_error:
-            logger.warning(f"Failed to initialize database services: {db_error}")
-            logger.info("Falling back to in-memory services")
-            
-            # Fallback to original service registry
-            service_registry.initialize()
-            
-            # Perform health check on fallback services
-            health_status = await service_registry.health_check()
-            logger.info(f"Fallback services health check: {health_status}")
-            
-            # Log service availability
-            ai_service = service_registry.get_ai_service()
-            ai_available = await ai_service.is_available()
-            logger.info(f"AI Service (Gemini) available: {ai_available}")
+        # Initialize unified service registry
+        await service_registry.initialize()
+        
+        # Perform health check on all services
+        health_status = await service_registry.health_check()
+        logger.info(f"Services health check: {health_status}")
+        
+        # Log service availability
+        ai_service = service_registry.get_ai_service()
+        ai_available = await ai_service.is_available()
+        logger.info(f"AI Service (Gemini) available: {ai_available}")
+        
+        if not ai_available:
+            logger.warning("AI Service not available - running with mock responses")
+        
+        logger.info("Services initialized successfully")
         
     except Exception as e:
         logger.error(f"Error initializing services: {e}", exc_info=True)

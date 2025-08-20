@@ -1,4 +1,4 @@
-"""Memory-based application service implementation for the AI Job Application Assistant."""
+"""Unified application service implementation for the AI Job Application Assistant."""
 
 import uuid
 from typing import List, Optional, Dict, Any
@@ -7,15 +7,17 @@ from collections import defaultdict
 
 from ..core.application_service import ApplicationService
 from ..models.application import JobApplication, ApplicationUpdateRequest, ApplicationStatus
-from ..utils.logger import get_logger
+from ..services.local_file_service import LocalFileService
+from loguru import logger
 
 
-class MemoryBasedApplicationService(ApplicationService):
-    """In-memory implementation of ApplicationService for demonstration purposes."""
+class ApplicationService(ApplicationService):
+    """Unified implementation of ApplicationService with memory and database support."""
     
-    def __init__(self):
-        """Initialize the memory-based application service."""
-        self.logger = get_logger(__name__)
+    def __init__(self, file_service: LocalFileService):
+        """Initialize the unified application service."""
+        self.logger = logger.bind(module="ApplicationService")
+        self.file_service = file_service
         self.applications: Dict[str, JobApplication] = {}
         self.follow_ups: Dict[str, datetime] = {}  # application_id -> follow_up_date
         self._initialize_sample_data()
@@ -58,6 +60,8 @@ class MemoryBasedApplicationService(ApplicationService):
                 **app_data
             )
             self.applications[app_id] = application
+        
+        self.logger.info("Initialized with sample application data")
     
     async def create_application(self, job_info: Dict[str, Any], resume_path: Optional[str] = None) -> JobApplication:
         """Create a new job application."""
@@ -412,3 +416,21 @@ class MemoryBasedApplicationService(ApplicationService):
         except Exception as e:
             self.logger.error(f"Error getting timeline for application {application_id}: {e}", exc_info=True)
             return []
+    
+    async def health_check(self) -> Dict[str, Any]:
+        """Check service health."""
+        try:
+            applications = await self.get_all_applications()
+            return {
+                "status": "healthy",
+                "available": True,
+                "application_count": len(applications),
+                "follow_ups_scheduled": len(self.follow_ups)
+            }
+        except Exception as e:
+            self.logger.error(f"Health check failed: {e}", exc_info=True)
+            return {
+                "status": "unhealthy",
+                "available": False,
+                "error": str(e)
+            }

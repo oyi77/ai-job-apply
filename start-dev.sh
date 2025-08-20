@@ -93,7 +93,11 @@ pip install -r requirements.txt
 
 # Setup database (SQLite by default)
 echo "🗄️ Setting up database..."
-cd backend && python3 setup-database.py && cd ..
+if [ -f "setup-database.py" ]; then
+    python3 setup-database.py
+else
+    echo "⚠️ setup-database.py not found, skipping database setup"
+fi
 
 # Check if backend port is already in use
 if check_port 8000; then
@@ -108,7 +112,7 @@ fi
 
 # Start backend server in background
 echo "🚀 Starting FastAPI server..."
-python3 -m uvicorn src.api:app --host 0.0.0.0 --port 8000 --reload &
+python3 -m uvicorn src.api.app:app --host 0.0.0.0 --port 8000 --reload &
 BACKEND_PID=$!
 
 # Wait a moment for backend to start

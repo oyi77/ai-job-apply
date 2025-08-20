@@ -10,7 +10,7 @@ from ..core.ai_service import AIService
 from ..models.resume import ResumeOptimizationRequest, ResumeOptimizationResponse, Resume
 from ..models.cover_letter import CoverLetterRequest, CoverLetter
 from ..config import config
-from ..utils.logger import get_logger
+from loguru import logger
 
 
 class GeminiAIService(AIService):
@@ -18,19 +18,32 @@ class GeminiAIService(AIService):
     
     def __init__(self):
         """Initialize the Gemini AI service."""
-        self.logger = get_logger(__name__)
+        self.logger = logger.bind(module="GeminiAIService")
         self.model = None
+        
+        # Use main configuration
+        self.api_key = config.GEMINI_API_KEY
+        self.model_name = "gemini-1.5-flash"
+        self.temperature = 0.7
+        self.max_tokens = 2048
+        
         self._initialize_client()
     
     def _initialize_client(self) -> None:
         """Initialize the Gemini client."""
         try:
-            if config.GEMINI_API_KEY:
-                genai.configure(api_key=config.GEMINI_API_KEY)
-                self.model = genai.GenerativeModel(config.GEMINI_MODEL)
-                self.logger.info("Gemini AI service initialized successfully")
+            if self.api_key:
+                genai.configure(api_key=self.api_key)
+                self.model = genai.GenerativeModel(
+                    self.model_name,
+                    generation_config=genai.types.GenerationConfig(
+                        temperature=self.temperature,
+                        max_output_tokens=self.max_tokens,
+                    )
+                )
+                self.logger.info(f"Gemini AI service initialized: {self.model_name}")
             else:
-                self.logger.warning("GEMINI_API_KEY not found, running in mock mode")
+                self.logger.warning("Gemini API key not configured, running in mock mode")
                 self.model = None
         except Exception as e:
             self.logger.error(f"Failed to initialize Gemini AI service: {e}")
@@ -208,7 +221,7 @@ class GeminiAIService(AIService):
     
     async def is_available(self) -> bool:
         """Check if the Gemini AI service is available."""
-        return self.model is not None and config.GEMINI_API_KEY is not None
+        return self.model is not None and self.api_key is not None
     
     async def _generate_content(self, prompt: str) -> Optional[str]:
         """Generate content using Gemini AI."""

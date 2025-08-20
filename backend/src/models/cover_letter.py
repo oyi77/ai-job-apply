@@ -30,6 +30,48 @@ class CoverLetterRequest(BaseModel):
     }
 
 
+class CoverLetterCreate(BaseModel):
+    """Cover letter creation model."""
+    job_title: str = Field(..., description="Target job title")
+    company_name: str = Field(..., description="Target company name")
+    content: str = Field(..., description="Cover letter content")
+    file_path: Optional[str] = Field(None, description="Path to saved cover letter file")
+    tone: str = Field(default="professional", description="Tone used in generation")
+    word_count: int = Field(..., description="Number of words in cover letter")
+    generated_at: Optional[datetime] = Field(None, description="When cover letter was generated")
+    
+    model_config = {
+        "json_schema_extra": {
+            "example": {
+                "job_title": "Senior Python Developer",
+                "company_name": "TechCorp Inc.",
+                "content": "Dear Hiring Manager, I am writing to express...",
+                "tone": "professional",
+                "word_count": 250
+            }
+        }
+    }
+
+
+class CoverLetterUpdate(BaseModel):
+    """Cover letter update model."""
+    job_title: Optional[str] = Field(None, description="Target job title")
+    company_name: Optional[str] = Field(None, description="Target company name")
+    content: Optional[str] = Field(None, description="Cover letter content")
+    file_path: Optional[str] = Field(None, description="Path to saved cover letter file")
+    tone: Optional[str] = Field(None, description="Tone used in generation")
+    word_count: Optional[int] = Field(None, description="Number of words in cover letter")
+    
+    model_config = {
+        "json_schema_extra": {
+            "example": {
+                "content": "Updated cover letter content...",
+                "tone": "confident"
+            }
+        }
+    }
+
+
 class CoverLetter(BaseModel):
     """Cover letter model."""
     id: Optional[str] = None

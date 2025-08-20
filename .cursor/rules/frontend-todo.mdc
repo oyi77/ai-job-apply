@@ -1,3 +1,17 @@
+---
+description: >
+  Frontend development TODO and progress tracking for the AI Job Application Assistant.
+  Documents the complete frontend development process from core setup to production polish.
+  All phases have been completed successfully with comprehensive component library and testing.
+globs:
+  - "frontend/**/*"
+  - "**/*.tsx"
+  - "**/*.ts"
+  - "**/*.jsx"
+  - "**/*.js"
+alwaysApply: true
+---
+
 # 🎯 **Frontend Development TODO - AI Job Application Assistant**
 
 ## 📋 **Project Status: FRONTEND DEVELOPMENT COMPLETE - ALL PHASES FINISHED!**

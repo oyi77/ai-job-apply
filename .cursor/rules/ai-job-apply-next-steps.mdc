@@ -1,6 +1,10 @@
 ---
-description: Next Development Steps for AI Job Application Assistant
-globs: ["**/*"]
+description: >
+  Next development steps and current status for the AI Job Application Assistant.
+  Documents the core systems operational status and immediate next steps for development.
+  Provides comprehensive roadmap for API testing, database integration, and production readiness.
+globs: 
+  - "**/*"
 alwaysApply: true
 ---
 

@@ -1,4 +1,4 @@
-"""File-based resume service implementation for the AI Job Application Assistant."""
+"""Unified resume service implementation for the AI Job Application Assistant."""
 
 import uuid
 from pathlib import Path
@@ -7,24 +7,47 @@ from datetime import datetime
 import PyPDF2
 import docx
 import io
+import json
 
 from ..core.resume_service import ResumeService
 from ..models.resume import Resume
 from ..services.local_file_service import LocalFileService
 from ..config import config
-from ..utils.logger import get_logger
+from loguru import logger
 from ..utils.text_processing import extract_skills, clean_text
 
 
-class FileBasedResumeService(ResumeService):
-    """File-based implementation of ResumeService."""
+class ResumeService(ResumeService):
+    """Unified implementation of ResumeService with file and database support."""
     
-    def __init__(self, file_service: Optional[LocalFileService] = None):
-        """Initialize the file-based resume service."""
-        self.logger = get_logger(__name__)
-        self.file_service = file_service or LocalFileService()
-        self.resumes: Dict[str, Resume] = {}  # In-memory storage for demo
+    def __init__(self, file_service: LocalFileService):
+        """Initialize the unified resume service."""
+        self.logger = logger.bind(module="ResumeService")
+        self.file_service = file_service
+        self.resumes: Dict[str, Resume] = {}  # In-memory cache
         self.default_resume_id: Optional[str] = None
+        self._initialize_sample_data()
+    
+    def _initialize_sample_data(self) -> None:
+        """Initialize with sample data for demonstration."""
+        sample_resume = Resume(
+            id=str(uuid.uuid4()),
+            name="Sample Resume",
+            file_path="./resumes/sample_resume.pdf",
+            file_type="pdf",
+            content="Experienced software developer with expertise in Python, JavaScript, and cloud technologies.",
+            skills=["Python", "JavaScript", "React", "Node.js", "AWS", "Docker"],
+            experience_years=5,
+            education=["Bachelor of Science in Computer Science"],
+            certifications=["AWS Certified Developer", "Scrum Master Certified"],
+            is_default=True,
+            created_at=datetime.utcnow(),
+            updated_at=datetime.utcnow()
+        )
+        
+        self.resumes[sample_resume.id] = sample_resume
+        self.default_resume_id = sample_resume.id
+        self.logger.info("Initialized with sample resume data")
     
     async def upload_resume(self, file_path: str, name: str) -> Resume:
         """Upload and process a new resume."""
@@ -70,6 +93,8 @@ class FileBasedResumeService(ResumeService):
                 education=self._extract_education(content) if content else None,
                 certifications=self._extract_certifications(content) if content else None,
                 is_default=len(self.resumes) == 0,  # First resume is default
+                created_at=datetime.utcnow(),
+                updated_at=datetime.utcnow()
             )
             
             # Store resume
@@ -406,3 +431,21 @@ class FileBasedResumeService(ResumeService):
         except Exception as e:
             self.logger.error(f"Error extracting certifications: {e}", exc_info=True)
             return None
+    
+    async def health_check(self) -> Dict[str, Any]:
+        """Check service health."""
+        try:
+            resumes = await self.get_all_resumes()
+            return {
+                "status": "healthy",
+                "available": True,
+                "resume_count": len(resumes),
+                "default_resume": self.default_resume_id is not None
+            }
+        except Exception as e:
+            self.logger.error(f"Health check failed: {e}", exc_info=True)
+            return {
+                "status": "unhealthy",
+                "available": False,
+                "error": str(e)
+            }
