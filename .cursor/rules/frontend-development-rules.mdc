@@ -1,0 +1,268 @@
+---
+description: Frontend development rules and standards for AI Job Application Assistant using Vite + React
+globs: frontend/**/*
+alwaysApply: true
+---
+
+# 🎨 **Frontend Development Rules - AI Job Application Assistant**
+
+## 🏗️ **Technology Stack**
+
+### **Core Framework**
+- **Vite**: Fast build tool and development server
+- **React 18**: Modern React with hooks and functional components
+- **TypeScript**: Full type safety and better development experience
+- **Tailwind CSS**: Utility-first CSS framework for rapid UI development
+
+### **State Management**
+- **React Query**: Server state management and caching
+- **Zustand**: Lightweight client state management
+- **React Hook Form**: Form handling with validation
+
+### **UI Components**
+- **Headless UI**: Unstyled, accessible UI components
+- **Heroicons**: Beautiful SVG icons
+- **React Router**: Client-side routing
+
+## 📁 **Project Structure**
+
+### **Directory Organization**
+```
+frontend/
+├── public/                 # Static assets
+├── src/
+│   ├── components/        # Reusable UI components
+│   │   ├── ui/           # Base UI components (Button, Input, etc.)
+│   │   ├── forms/        # Form components
+│   │   ├── layout/       # Layout components (Header, Sidebar, etc.)
+│   │   └── features/     # Feature-specific components
+│   ├── hooks/            # Custom React hooks
+│   ├── lib/              # Utility libraries and configurations
+│   ├── pages/            # Page components
+│   ├── services/         # API service functions
+│   ├── stores/           # Zustand stores
+│   ├── types/            # TypeScript type definitions
+│   └── utils/            # Utility functions
+├── index.html             # Entry HTML file
+├── package.json           # Dependencies and scripts
+├── tailwind.config.js     # Tailwind configuration
+├── tsconfig.json          # TypeScript configuration
+└── vite.config.ts         # Vite configuration
+```
+
+## 🎯 **Component Architecture**
+
+### **Component Design Principles**
+- **Single Responsibility**: Each component has one clear purpose
+- **Composition Over Inheritance**: Use composition for component reuse
+- **Props Interface**: Define clear prop interfaces with TypeScript
+- **Default Props**: Provide sensible defaults for optional props
+- **Error Boundaries**: Implement error boundaries for graceful error handling
+
+### **Component Categories**
+1. **UI Components**: Reusable base components (Button, Input, Card, etc.)
+2. **Form Components**: Form-specific components with validation
+3. **Layout Components**: Page structure and navigation
+4. **Feature Components**: Business logic specific components
+
+## 🔧 **Development Standards**
+
+### **Code Quality**
+- **ESLint**: Code linting with strict rules
+- **Prettier**: Code formatting
+- **TypeScript**: Strict type checking enabled
+- **Husky**: Pre-commit hooks for code quality
+
+### **Performance**
+- **Code Splitting**: Lazy load routes and components
+- **Memoization**: Use React.memo and useMemo appropriately
+- **Bundle Analysis**: Regular bundle size monitoring
+- **Image Optimization**: Optimize images and use modern formats
+
+### **Accessibility**
+- **ARIA Labels**: Proper accessibility attributes
+- **Keyboard Navigation**: Full keyboard support
+- **Screen Reader**: Screen reader friendly markup
+- **Color Contrast**: WCAG AA compliance
+
+## 📱 **Responsive Design**
+
+### **Breakpoints**
+- **Mobile**: 320px - 768px
+- **Tablet**: 768px - 1024px
+- **Desktop**: 1024px+
+- **Large Desktop**: 1440px+
+
+### **Mobile First**
+- Start with mobile design
+- Progressive enhancement for larger screens
+- Touch-friendly interactions
+- Optimized for mobile performance
+
+## 🎨 **UI/UX Guidelines**
+
+### **Design System**
+- **Color Palette**: Consistent color scheme
+- **Typography**: Clear hierarchy and readability
+- **Spacing**: Consistent spacing scale
+- **Shadows**: Subtle depth and elevation
+- **Animations**: Smooth, purposeful animations
+
+### **User Experience**
+- **Loading States**: Clear loading indicators
+- **Error Handling**: User-friendly error messages
+- **Success Feedback**: Positive confirmation messages
+- **Progressive Disclosure**: Show information progressively
+
+## 🔌 **API Integration**
+
+### **Service Layer**
+- **Axios**: HTTP client with interceptors
+- **React Query**: Data fetching and caching
+- **Error Handling**: Consistent error handling patterns
+- **Loading States**: Loading state management
+
+### **Data Flow**
+- **Server State**: Managed by React Query
+- **Client State**: Managed by Zustand
+- **Form State**: Managed by React Hook Form
+- **URL State**: Managed by React Router
+
+## 🧪 **Testing Strategy**
+
+### **Testing Tools**
+- **Vitest**: Fast unit testing
+- **React Testing Library**: Component testing
+- **MSW**: API mocking for tests
+- **Playwright**: End-to-end testing
+
+### **Test Coverage**
+- **Unit Tests**: 90%+ coverage for business logic
+- **Integration Tests**: Component interaction testing
+- **E2E Tests**: Critical user journey testing
+
+## 🚀 **Build & Deployment**
+
+### **Build Process**
+- **Vite**: Fast development and optimized builds
+- **Environment Variables**: Proper environment configuration
+- **Bundle Optimization**: Tree shaking and code splitting
+- **Asset Optimization**: Image and font optimization
+
+### **Deployment**
+- **Static Hosting**: Netlify, Vercel, or similar
+- **Environment Configuration**: Production environment setup
+- **Performance Monitoring**: Core Web Vitals tracking
+- **Error Tracking**: Sentry or similar error monitoring
+
+## 📊 **State Management**
+
+### **Zustand Stores**
+```typescript
+// Example store structure
+interface AppState {
+  user: User | null;
+  theme: 'light' | 'dark';
+  notifications: Notification[];
+  
+  // Actions
+  setUser: (user: User | null) => void;
+  toggleTheme: () => void;
+  addNotification: (notification: Notification) => void;
+}
+```
+
+### **React Query Configuration**
+```typescript
+// Query client configuration
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      staleTime: 5 * 60 * 1000, // 5 minutes
+      cacheTime: 10 * 60 * 1000, // 10 minutes
+      retry: 3,
+      refetchOnWindowFocus: false,
+    },
+  },
+});
+```
+
+## 🔒 **Security Considerations**
+
+### **Input Validation**
+- **Client-side Validation**: Immediate user feedback
+- **Server-side Validation**: Always validate on server
+- **XSS Prevention**: Sanitize user inputs
+- **CSRF Protection**: Implement CSRF tokens
+
+### **Authentication**
+- **JWT Storage**: Secure token storage
+- **Token Refresh**: Automatic token refresh
+- **Logout**: Proper session cleanup
+- **Route Protection**: Protected route implementation
+
+## 📈 **Performance Metrics**
+
+### **Core Web Vitals**
+- **LCP**: Largest Contentful Paint < 2.5s
+- **FID**: First Input Delay < 100ms
+- **CLS**: Cumulative Layout Shift < 0.1
+
+### **Bundle Metrics**
+- **Initial Bundle**: < 200KB gzipped
+- **Total Bundle**: < 500KB gzipped
+- **Lazy Loading**: Route-based code splitting
+
+## 🎯 **Implementation Priorities**
+
+### **Phase 1: Core Setup**
+1. Vite + React + TypeScript setup
+2. Tailwind CSS configuration
+3. Basic routing and layout
+4. Component library foundation
+
+### **Phase 2: Core Features**
+1. Authentication system
+2. Dashboard layout
+3. Application management
+4. Resume management
+
+### **Phase 3: Advanced Features**
+1. AI integration UI
+2. Job search interface
+3. Analytics dashboard
+4. Settings and preferences
+
+### **Phase 4: Polish & Optimization**
+1. Performance optimization
+2. Accessibility improvements
+3. Testing coverage
+4. Documentation
+
+## 🔄 **Development Workflow**
+
+### **Git Workflow**
+- **Feature Branches**: Create feature branches for new features
+- **Pull Requests**: Code review for all changes
+- **Commit Messages**: Conventional commit format
+- **Branch Protection**: Protect main branch
+
+### **Code Review**
+- **Automated Checks**: ESLint, Prettier, TypeScript
+- **Manual Review**: Human review for logic and UX
+- **Testing**: Ensure tests pass before merge
+- **Documentation**: Update docs for new features
+
+## 📚 **Documentation Requirements**
+
+### **Code Documentation**
+- **JSDoc**: Function and component documentation
+- **README**: Project setup and development guide
+- **Component Storybook**: Component documentation
+- **API Documentation**: API endpoint documentation
+
+### **User Documentation**
+- **User Guide**: End-user documentation
+- **Feature Documentation**: Feature-specific guides
+- **Troubleshooting**: Common issues and solutions
+- **Video Tutorials**: Screen recordings for complex features

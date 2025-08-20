@@ -125,7 +125,7 @@ async def get_application(application_id: str) -> JobApplication:
             application_service = service_registry.get_application_service()
         
         # Get application by ID
-        application = await application_service.get_application_by_id(application_id)
+        application = await application_service.get_application(application_id)
         
         if not application:
             raise HTTPException(status_code=404, detail=f"Application {application_id} not found")

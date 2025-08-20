@@ -1,0 +1,424 @@
+---
+description: >
+  Comprehensive technical debt prevention rules for the AI Job Application Assistant project.
+  These rules ensure code quality, maintainability, and prevent accumulation of technical debt
+  through proactive measures, automated checks, and development best practices.
+  All rules are always applied and enforced through CI/CD, pre-commit hooks, and code review.
+globs:
+  - "**/*.py"
+  - "**/*.ts"
+  - "**/*.tsx"
+  - "**/*.js"
+  - "**/*.jsx"
+  - "**/*.json"
+  - "**/*.yaml"
+  - "**/*.yml"
+  - "**/*.toml"
+  - "**/*.md"
+  - "**/*.sh"
+alwaysApply: true
+---
+
+# 🚫 TECHNICAL DEBT PREVENTION RULES
+# AI Job Application Assistant - Zero Technical Debt Policy
+
+## 🎯 CORE PRINCIPLES
+
+### **1. ZERO TOLERANCE POLICY**
+- **No Quick Fixes**: Never implement temporary solutions that create future debt
+- **No Dead Code**: Remove unused code immediately, never leave commented-out code
+- **No Magic Numbers**: All constants must be named and documented
+- **No Hardcoded Values**: All configurable values must be externalized
+
+### **2. IMMEDIATE DEBT RESOLUTION**
+- **Fix Today**: Address technical debt within the same development session
+- **No Debt Accumulation**: Each commit must reduce or maintain debt level
+- **Refactor First**: Refactor before adding new features to debt-ridden code
+- **Technical Debt Sprint**: Dedicated time for debt reduction every 2 weeks
+
+## 🔧 BACKEND (PYTHON/FASTAPI) RULES
+
+### **Code Quality Enforcement**
+```python
+# REQUIRED: All functions must have type hints
+def process_application(application: JobApplication) -> ProcessResult:
+    pass
+
+# REQUIRED: All classes must have docstrings
+class ApplicationService:
+    """Service for managing job applications with full CRUD operations."""
+    
+    # REQUIRED: All public methods must have docstrings
+    async def create_application(self, data: CreateApplicationRequest) -> JobApplication:
+        """Create a new job application with validation and error handling."""
+        pass
+
+# REQUIRED: No more than 20 lines per function
+# REQUIRED: No more than 200 lines per class
+# REQUIRED: No more than 500 lines per module
+```
+
+### **Import & Dependency Rules**
+```python
+# REQUIRED: No circular imports
+# REQUIRED: No unused imports (use isort + autoflake)
+# REQUIRED: Group imports: stdlib, third-party, local
+# REQUIRED: Absolute imports from project root: from src.models.job import Job
+
+# FORBIDDEN: from * import *
+# FORBIDDEN: Relative imports across package boundaries
+# FORBIDDEN: Importing implementation details from other modules
+```
+
+### **Error Handling Standards**
+```python
+# REQUIRED: Custom exception classes for business logic
+class ApplicationNotFoundError(Exception):
+    """Raised when a job application cannot be found."""
+    pass
+
+# REQUIRED: Comprehensive error handling with logging
+try:
+    result = await service.process_data(data)
+except ValidationError as e:
+    logger.error(f"Validation failed: {e}", extra={"data": data})
+    raise ApplicationValidationError(f"Invalid data: {e}")
+except DatabaseError as e:
+    logger.error(f"Database operation failed: {e}")
+    raise ApplicationServiceError("Service temporarily unavailable")
+
+# REQUIRED: No bare except clauses
+# FORBIDDEN: except: pass
+# FORBIDDEN: Generic exception handling without specific types
+```
+
+### **Database & Performance Rules**
+```python
+# REQUIRED: Use async/await for all database operations
+# REQUIRED: Implement connection pooling
+# REQUIRED: Use database transactions for multi-step operations
+# REQUIRED: Implement query optimization and indexing
+# REQUIRED: No N+1 query problems
+
+# FORBIDDEN: Synchronous database calls in async functions
+# FORBIDDEN: Raw SQL without parameterization
+# FORBIDDEN: Loading entire datasets into memory
+```
+
+## 🎨 FRONTEND (REACT/TYPESCRIPT) RULES
+
+### **Component Quality Standards**
+```typescript
+// REQUIRED: All components must have TypeScript interfaces
+interface JobCardProps {
+  job: Job;
+  onSave: (job: Job) => void;
+  onApply: (job: Job) => void;
+}
+
+// REQUIRED: Functional components with hooks
+const JobCard: React.FC<JobCardProps> = ({ job, onSave, onApply }) => {
+  // REQUIRED: No more than 50 lines per component
+  // REQUIRED: Extract complex logic to custom hooks
+  // REQUIRED: Use React.memo for expensive components
+};
+
+// REQUIRED: No more than 3 levels of component nesting
+// REQUIRED: Extract reusable logic to custom hooks
+// REQUIRED: Use proper prop drilling alternatives (Context, Zustand)
+```
+
+### **State Management Rules**
+```typescript
+// REQUIRED: Use Zustand for global state
+// REQUIRED: Use React Query for server state
+// REQUIRED: Local state only for component-specific data
+// REQUIRED: No prop drilling beyond 2 levels
+
+// FORBIDDEN: Global variables
+// FORBIDDEN: Mutating props directly
+// FORBIDDEN: Complex state logic in components
+```
+
+### **Performance Standards**
+```typescript
+// REQUIRED: Lazy load routes and heavy components
+const LazyDashboard = lazy(() => import('./pages/Dashboard'));
+
+// REQUIRED: Use useMemo for expensive calculations
+const expensiveValue = useMemo(() => computeExpensiveValue(data), [data]);
+
+// REQUIRED: Use useCallback for function props
+const handleSave = useCallback((job: Job) => {
+  saveJob(job);
+}, [saveJob]);
+
+// REQUIRED: Bundle size < 500KB gzipped
+// REQUIRED: First contentful paint < 2.5s
+// REQUIRED: Time to interactive < 3.8s
+```
+
+## 🧪 TESTING & QUALITY ASSURANCE
+
+### **Test Coverage Requirements**
+```python
+# REQUIRED: 100% unit test coverage for business logic
+# REQUIRED: 90%+ integration test coverage
+# REQUIRED: All public APIs must have tests
+# REQUIRED: Mock external dependencies
+
+# TEST PATTERNS
+def test_create_application_success():
+    """Test successful application creation with valid data."""
+    # Arrange
+    app_data = create_test_application_data()
+    
+    # Act
+    result = await application_service.create_application(app_data)
+    
+    # Assert
+    assert result.id is not None
+    assert result.status == ApplicationStatus.DRAFT
+```
+
+### **Automated Quality Gates**
+```yaml
+# .github/workflows/quality-check.yml
+- name: Code Quality Check
+  run: |
+    # REQUIRED: All checks must pass
+    black --check --diff .
+    isort --check-only --diff .
+    flake8 --max-line-length=88 --extend-ignore=E203,W503
+    mypy --strict src/
+    pytest --cov=src --cov-report=xml --cov-fail-under=95
+```
+
+## 📊 MONITORING & METRICS
+
+### **Code Quality Metrics**
+```python
+# REQUIRED: Track these metrics in CI/CD
+QUALITY_METRICS = {
+    "test_coverage": ">= 95%",
+    "code_complexity": "<= 10 (cyclomatic complexity)",
+    "maintainability_index": ">= 65",
+    "technical_debt_ratio": "<= 5%",
+    "duplication": "<= 3%",
+    "documentation_coverage": ">= 80%"
+}
+```
+
+### **Performance Monitoring**
+```python
+# REQUIRED: Monitor these metrics in production
+PERFORMANCE_METRICS = {
+    "api_response_time": "< 500ms (95th percentile)",
+    "database_query_time": "< 100ms (95th percentile)",
+    "memory_usage": "< 512MB per instance",
+    "cpu_usage": "< 70% average",
+    "error_rate": "< 1%"
+}
+```
+
+## 🔄 REFACTORING RULES
+
+### **When to Refactor**
+```python
+# IMMEDIATE REFACTORING REQUIRED WHEN:
+REFACTORING_TRIGGERS = [
+    "Function exceeds 20 lines",
+    "Class exceeds 200 lines",
+    "Module exceeds 500 lines",
+    "Cyclomatic complexity > 10",
+    "Code duplication > 10%",
+    "More than 3 levels of nesting",
+    "Long parameter lists (> 5 parameters)",
+    "Feature envy (method uses other objects more than self)",
+    "Data clumps (repeated parameter groups)",
+    "Primitive obsession (using primitives instead of objects)"
+]
+```
+
+### **Refactoring Process**
+```python
+# REQUIRED REFACTORING STEPS
+REFACTORING_PROCESS = [
+    "1. Write comprehensive tests first",
+    "2. Identify the smallest change possible",
+    "3. Make the change and run tests",
+    "4. Commit the refactoring",
+    "5. Repeat until debt is eliminated"
+]
+```
+
+## 🚨 DEBT PREVENTION TOOLS
+
+### **Pre-commit Hooks**
+```yaml
+# .pre-commit-config.yaml
+repos:
+  - repo: https://github.com/psf/black
+    rev: 23.3.0
+    hooks:
+      - id: black
+        language_version: python3.9
+  
+  - repo: https://github.com/pycqa/isort
+    rev: 5.12.0
+    hooks:
+      - id: isort
+  
+  - repo: https://github.com/pycqa/flake8
+    rev: 6.0.0
+    hooks:
+      - id: flake8
+  
+  - repo: https://github.com/pre-commit/mirrors-mypy
+    rev: v1.3.0
+    hooks:
+      - id: mypy
+        additional_dependencies: [types-all]
+```
+
+### **IDE Configuration**
+```json
+// .vscode/settings.json
+{
+  "python.linting.enabled": true,
+  "python.linting.flake8Enabled": true,
+  "python.formatting.provider": "black",
+  "python.sortImports.args": ["--profile", "black"],
+  "typescript.preferences.importModuleSpecifier": "relative",
+  "typescript.suggest.autoImports": true,
+  "editor.codeActionsOnSave": {
+    "source.organizeImports": true,
+    "source.fixAll": true
+  }
+}
+```
+
+## 📋 DAILY DEBT PREVENTION CHECKLIST
+
+### **Before Each Commit**
+- [ ] All tests pass
+- [ ] Code coverage maintained or improved
+- [ ] No new linting errors
+- [ ] No new type errors
+- [ ] No code duplication introduced
+- [ ] Functions/classes within size limits
+- [ ] All public APIs documented
+- [ ] Error handling implemented
+- [ ] Performance impact assessed
+
+### **Weekly Debt Review**
+- [ ] Run code quality analysis
+- [ ] Review technical debt metrics
+- [ ] Identify debt hotspots
+- [ ] Plan refactoring sessions
+- [ ] Update documentation
+- [ ] Review dependency updates
+
+### **Monthly Debt Assessment**
+- [ ] Full codebase analysis
+- [ ] Performance benchmarking
+- [ ] Security vulnerability scan
+- [ ] Architecture review
+- [ ] Technical debt roadmap update
+- [ ] Team debt prevention training
+
+## 🎯 DEBT PREVENTION SUCCESS METRICS
+
+### **Target Metrics**
+```python
+TARGET_METRICS = {
+    "code_quality": {
+        "test_coverage": "95%+",
+        "maintainability_index": "70+",
+        "technical_debt_ratio": "< 3%",
+        "duplication": "< 2%"
+    },
+    "performance": {
+        "response_time": "< 500ms",
+        "throughput": "1000+ req/sec",
+        "error_rate": "< 0.5%"
+    },
+    "development": {
+        "time_to_fix_bug": "< 4 hours",
+        "time_to_add_feature": "< 2 days",
+        "deployment_frequency": "Daily"
+    }
+}
+```
+
+## 🚫 ABSOLUTE FORBIDDEN PRACTICES
+
+### **Code Smells (Never Allowed)**
+```python
+# FORBIDDEN: Dead code
+def unused_function():  # This will be flagged
+    pass
+
+# FORBIDDEN: Commented code
+# def old_function():  # This will be flagged
+#     pass
+
+# FORBIDDEN: Magic numbers
+if status == 1:  # Use ApplicationStatus.ACTIVE instead
+    pass
+
+# FORBIDDEN: Long functions
+def very_long_function():  # Max 20 lines
+    # ... 30+ lines of code
+
+# FORBIDDEN: Deep nesting
+if condition1:
+    if condition2:
+        if condition3:
+            if condition4:  # Max 3 levels
+                pass
+```
+
+### **Architecture Violations (Never Allowed)**
+```python
+# FORBIDDEN: Circular dependencies
+# FORBIDDEN: God objects (classes doing everything)
+# FORBIDDEN: Anemic domain models
+# FORBIDDEN: Service layer bypassing
+# FORBIDDEN: Direct database access from controllers
+# FORBIDDEN: Business logic in presentation layer
+```
+
+## 🏆 DEBT PREVENTION REWARDS
+
+### **Recognition System**
+- **Zero Debt Commits**: Recognition for debt-free commits
+- **Refactoring Champions**: Awards for significant debt reduction
+- **Quality Guardians**: Recognition for maintaining high standards
+- **Performance Heroes**: Awards for performance improvements
+
+### **Team Incentives**
+- **Debt Reduction Sprints**: Dedicated time for debt elimination
+- **Quality Metrics Dashboard**: Public display of team performance
+- **Peer Recognition**: Team members nominate quality champions
+- **Career Growth**: Quality contributions factor into promotions
+
+## 📚 CONTINUOUS IMPROVEMENT
+
+### **Learning & Training**
+- **Weekly Code Reviews**: Learn from team feedback
+- **Monthly Architecture Sessions**: Discuss design improvements
+- **Quarterly Debt Prevention Workshops**: Team training sessions
+- **Annual Quality Summit**: Industry best practices sharing
+
+### **Tool & Process Updates**
+- **Quarterly Tool Review**: Evaluate new quality tools
+- **Process Optimization**: Streamline quality workflows
+- **Automation Enhancement**: Reduce manual quality checks
+- **Industry Benchmarking**: Compare with industry standards
+
+---
+
+# 🎯 REMEMBER: TECHNICAL DEBT IS A CHOICE, NOT A NECESSITY
+# Every line of code should improve the system, not burden it
+# Quality is not a cost, it's an investment in future productivity

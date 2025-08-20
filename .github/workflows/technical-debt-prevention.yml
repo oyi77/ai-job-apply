@@ -1,0 +1,456 @@
+name: Technical Debt Prevention
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main, develop ]
+  schedule:
+    # Run weekly on Sundays at 2 AM UTC
+    - cron: '0 2 * * 0'
+  workflow_dispatch:
+    inputs:
+      force_run:
+        description: 'Force run all checks'
+        required: false
+        default: 'false'
+
+env:
+  PYTHON_VERSION: '3.9'
+  NODE_VERSION: '18'
+
+jobs:
+  technical-debt-analysis:
+    name: Technical Debt Analysis
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 0  # Full history for debt analysis
+    
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: ${{ env.PYTHON_VERSION }}
+        cache: 'pip'
+    
+    - name: Set up Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: ${{ env.NODE_VERSION }}
+        cache: 'npm'
+        cache-dependency-path: frontend/package-lock.json
+    
+    - name: Install Python dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r requirements.txt
+        pip install black isort flake8 mypy pytest pytest-cov pytest-asyncio
+        pip install pre-commit bandit safety autoflake
+    
+    - name: Install Node.js dependencies
+      run: |
+        cd frontend
+        npm ci
+    
+    - name: Install pre-commit hooks
+      run: |
+        pip install pre-commit
+        pre-commit install
+    
+    - name: Run pre-commit hooks
+      run: |
+        pre-commit run --all-files
+    
+    - name: Run technical debt analysis
+      run: |
+        python scripts/technical-debt-monitor.py --project-root . --output technical-debt-report.json
+    
+    - name: Upload technical debt report
+      uses: actions/upload-artifact@v4
+      with:
+        name: technical-debt-report
+        path: technical-debt-report.json
+    
+    - name: Check for critical issues
+      run: |
+        if [ -f technical-debt-report.json ]; then
+          CRITICAL_ISSUES=$(python -c "
+          import json
+          with open('technical-debt-report.json') as f:
+              data = json.load(f)
+              print(len(data.get('critical_issues', [])))
+          ")
+          if [ "$CRITICAL_ISSUES" -gt 0 ]; then
+            echo "🚨 Found $CRITICAL_ISSUES critical issues!"
+            exit 1
+          fi
+        fi
+    
+    - name: Comment on PR with debt status
+      if: github.event_name == 'pull_request'
+      uses: actions/github-script@v7
+      with:
+        script: |
+          const fs = require('fs');
+          let report = {};
+          try {
+            report = JSON.parse(fs.readFileSync('technical-debt-report.json', 'utf8'));
+          } catch (e) {
+            console.log('No technical debt report found');
+            return;
+          }
+          
+          const score = report.overall_score || 0;
+          const debtIndicators = report.debt_indicators || [];
+          const criticalIssues = report.critical_issues || [];
+          
+          let comment = `## 🔍 Technical Debt Analysis\n\n`;
+          comment += `**Overall Score:** ${score.toFixed(1)}/100\n\n`;
+          
+          if (criticalIssues.length > 0) {
+            comment += `🚨 **Critical Issues (${criticalIssues.length}):**\n`;
+            criticalIssues.forEach(issue => {
+              comment += `- ${issue}\n`;
+            });
+            comment += `\n`;
+          }
+          
+          if (debtIndicators.length > 0) {
+            comment += `⚠️ **Debt Indicators (${debtIndicators.length}):**\n`;
+            debtIndicators.slice(0, 5).forEach(indicator => {
+              comment += `- ${indicator}\n`;
+            });
+            if (debtIndicators.length > 5) {
+              comment += `- ... and ${debtIndicators.length - 5} more\n`;
+            }
+            comment += `\n`;
+          }
+          
+          if (score >= 90) {
+            comment += `🎉 **Excellent code quality!** Keep up the great work!\n`;
+          } else if (score >= 80) {
+            comment += `✅ **Good code quality** with some room for improvement.\n`;
+          } else if (score >= 70) {
+            comment += `⚠️ **Code quality needs attention** - consider addressing debt indicators.\n`;
+          } else {
+            comment += `🚨 **Code quality requires immediate attention** - critical issues found.\n`;
+          }
+          
+          comment += `\n📊 [View full report](${github.server_url}/${github.repository}/actions/runs/${github.run_id})\n`;
+          
+          github.rest.issues.createComment({
+            issue_number: context.issue.number,
+            owner: context.repo.owner,
+            repo: context.repo.repo,
+            body: comment
+          });
+
+  code-quality-checks:
+    name: Code Quality Checks
+    runs-on: ubuntu-latest
+    needs: technical-debt-analysis
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+    
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: ${{ env.PYTHON_VERSION }}
+        cache: 'pip'
+    
+    - name: Set up Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: ${{ env.NODE_VERSION }}
+        cache: 'npm'
+        cache-dependency-path: frontend/package-lock.json
+    
+    - name: Install Python dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r requirements.txt
+        pip install black isort flake8 mypy pytest pytest-cov pytest-asyncio
+        pip install pre-commit bandit safety autoflake
+    
+    - name: Install Node.js dependencies
+      run: |
+        cd frontend
+        npm ci
+    
+    - name: Check Python code formatting
+      run: |
+        black --check --diff .
+    
+    - name: Check Python import sorting
+      run: |
+        isort --check-only --diff .
+    
+    - name: Run Python linting
+      run: |
+        flake8 --max-line-length=88 --extend-ignore=E203,W503,F401 src/ tests/
+    
+    - name: Run Python type checking
+      run: |
+        mypy --strict --ignore-missing-imports src/
+    
+    - name: Run Python security checks
+      run: |
+        bandit -r src/ -f json -o bandit-report.json
+        safety check
+    
+    - name: Check TypeScript/JavaScript code
+      run: |
+        cd frontend
+        npm run lint
+        npm run type-check
+    
+    - name: Upload quality reports
+      uses: actions/upload-artifact@v4
+      with:
+        name: quality-reports
+        path: |
+          bandit-report.json
+          frontend/dist/
+
+  test-coverage:
+    name: Test Coverage
+    runs-on: ubuntu-latest
+    needs: technical-debt-analysis
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+    
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: ${{ env.PYTHON_VERSION }}
+        cache: 'pip'
+    
+    - name: Install Python dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r requirements.txt
+        pip install pytest pytest-cov pytest-asyncio
+    
+    - name: Run Python tests with coverage
+      run: |
+        pytest tests/ --cov=src --cov-report=xml --cov-report=html --cov-fail-under=95
+    
+    - name: Upload coverage reports
+      uses: actions/upload-artifact@v4
+      with:
+        name: coverage-reports
+        path: |
+          htmlcov/
+          .coverage
+          coverage.xml
+    
+    - name: Upload coverage to Codecov
+      uses: codecov/codecov-action@v3
+      with:
+        file: ./coverage.xml
+        flags: unittests
+        name: codecov-umbrella
+        fail_ci_if_error: true
+
+  debt-prevention-gates:
+    name: Debt Prevention Gates
+    runs-on: ubuntu-latest
+    needs: [technical-debt-analysis, code-quality-checks, test-coverage]
+    
+    steps:
+    - name: Download technical debt report
+      uses: actions/download-artifact@v4
+      with:
+        name: technical-debt-report
+    
+    - name: Download quality reports
+      uses: actions/download-artifact@v4
+      with:
+        name: quality-reports
+    
+    - name: Download coverage reports
+      uses: actions/download-artifact@v4
+      with:
+        name: coverage-reports
+    
+    - name: Check debt prevention gates
+      run: |
+        echo "🔍 Checking technical debt prevention gates..."
+        
+        # Check technical debt score
+        if [ -f technical-debt-report.json ]; then
+          SCORE=$(python -c "
+          import json
+          with open('technical-debt-report.json') as f:
+              data = json.load(f)
+              print(data.get('overall_score', 0))
+          ")
+          
+          echo "📊 Technical Debt Score: $SCORE/100"
+          
+          # Fail if score is below 80
+          if (( $(echo "$SCORE < 80" | bc -l) )); then
+            echo "❌ Technical debt score too low: $SCORE/100 (minimum: 80)"
+            exit 1
+          fi
+          
+          # Check for critical issues
+          CRITICAL_ISSUES=$(python -c "
+          import json
+          with open('technical-debt-report.json') as f:
+              data = json.load(f)
+              print(len(data.get('critical_issues', [])))
+          ")
+          
+          if [ "$CRITICAL_ISSUES" -gt 0 ]; then
+            echo "❌ Found $CRITICAL_ISSUES critical issues - blocking deployment"
+            exit 1
+          fi
+          
+          echo "✅ Technical debt gates passed!"
+        else
+          echo "❌ Technical debt report not found"
+          exit 1
+        fi
+        
+        # Check test coverage
+        if [ -f coverage.xml ]; then
+          COVERAGE=$(python -c "
+          import xml.etree.ElementTree as ET
+          tree = ET.parse('coverage.xml')
+          root = tree.getroot()
+          coverage = root.attrib.get('line-rate', '0')
+          print(float(coverage) * 100)
+          ")
+          
+          echo "🧪 Test Coverage: ${COVERAGE}%"
+          
+          # Fail if coverage is below 95%
+          if (( $(echo "$COVERAGE < 95" | bc -l) )); then
+            echo "❌ Test coverage too low: ${COVERAGE}% (minimum: 95%)"
+            exit 1
+          fi
+          
+          echo "✅ Test coverage gates passed!"
+        else
+          echo "❌ Coverage report not found"
+          exit 1
+        fi
+        
+        echo "🎉 All debt prevention gates passed!"
+    
+    - name: Generate debt prevention summary
+      run: |
+        echo "## 🎯 Technical Debt Prevention Summary" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+        echo "✅ **All quality gates passed**" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+        echo "### 📊 Quality Metrics:" >> $GITHUB_STEP_SUMMARY
+        echo "- Code formatting: ✅ Black" >> $GITHUB_STEP_SUMMARY
+        echo "- Import sorting: ✅ isort" >> $GITHUB_STEP_SUMMARY
+        echo "- Linting: ✅ flake8" >> $GITHUB_STEP_SUMMARY
+        echo "- Type checking: ✅ mypy" >> $GITHUB_STEP_SUMMARY
+        echo "- Security: ✅ bandit + safety" >> $GITHUB_STEP_SUMMARY
+        echo "- Test coverage: ✅ ≥95%" >> $GITHUB_STEP_SUMMARY
+        echo "- Technical debt: ✅ Score ≥80" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+        echo "🎉 **Code is ready for deployment!**" >> $GITHUB_STEP_SUMMARY
+
+  weekly-debt-review:
+    name: Weekly Debt Review
+    runs-on: ubuntu-latest
+    if: github.event_name == 'schedule'
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+    
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: ${{ env.PYTHON_VERSION }}
+        cache: 'pip'
+    
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r requirements.txt
+        pip install black isort flake8 mypy pytest pytest-cov pytest-asyncio
+        pip install pre-commit bandit safety autoflake
+    
+    - name: Generate comprehensive debt report
+      run: |
+        python scripts/technical-debt-monitor.py --project-root . --output weekly-debt-report.json
+    
+    - name: Create weekly debt review issue
+      uses: actions/github-script@v7
+      with:
+        script: |
+          const fs = require('fs');
+          let report = {};
+          try {
+            report = JSON.parse(fs.readFileSync('weekly-debt-report.json', 'utf8'));
+          } catch (e) {
+            console.log('No weekly debt report found');
+            return;
+          }
+          
+          const score = report.overall_score || 0;
+          const debtIndicators = report.debt_indicators || [];
+          const criticalIssues = report.critical_issues || [];
+          const recommendations = report.recommendations || [];
+          
+          const title = `📅 Weekly Technical Debt Review - ${new Date().toISOString().split('T')[0]}`;
+          
+          let body = `## 🔍 Weekly Technical Debt Review\n\n`;
+          body += `**Generated:** ${new Date().toISOString()}\n`;
+          body += `**Overall Score:** ${score.toFixed(1)}/100\n\n`;
+          
+          if (criticalIssues.length > 0) {
+            body += `🚨 **Critical Issues (${criticalIssues.length}):**\n`;
+            criticalIssues.forEach(issue => {
+              body += `- ${issue}\n`;
+            });
+            body += `\n`;
+          }
+          
+          if (debtIndicators.length > 0) {
+            body += `⚠️ **Debt Indicators (${debtIndicators.length}):**\n`;
+            debtIndicators.forEach(indicator => {
+              body += `- ${indicator}\n`;
+            });
+            body += `\n`;
+          }
+          
+          if (recommendations.length > 0) {
+            body += `💡 **Recommendations:**\n`;
+            recommendations.forEach(rec => {
+              body += `- ${rec}\n`;
+            });
+            body += `\n`;
+          }
+          
+          body += `---\n`;
+          body += `This issue was automatically generated by the weekly technical debt review workflow.\n`;
+          body += `Please review and address any issues found.\n`;
+          
+          github.rest.issues.create({
+            owner: context.repo.owner,
+            repo: context.repo.repo,
+            title: title,
+            body: body,
+            labels: ['technical-debt', 'weekly-review', 'automated']
+          });
+    
+    - name: Upload weekly report
+      uses: actions/upload-artifact@v4
+      with:
+        name: weekly-debt-report
+        path: weekly-debt-report.json

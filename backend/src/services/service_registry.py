@@ -11,7 +11,7 @@ from .gemini_ai_service import GeminiAIService
 from .local_file_service import LocalFileService
 from .file_based_resume_service import FileBasedResumeService
 from .memory_based_application_service import MemoryBasedApplicationService
-from .jobspy_job_service import JobSpyJobService
+# from .jobspy_job_service import JobSpyJobService
 
 
 class ServiceRegistry:
@@ -50,7 +50,60 @@ class ServiceRegistry:
             self._services['application_service'] = application_service
             
             # 5. Job search service (no dependencies)
-            job_search_service = JobSpyJobService()
+            # job_search_service = JobSpyJobService()
+            # self._services['job_search_service'] = job_search_service
+            
+            # Temporary mock job search service for testing
+            class MockJobSearchService:
+                async def search_jobs(self, query: str, location: str = None, limit: int = 10):
+                    return [
+                        {
+                            "id": "1", 
+                            "title": "Software Engineer", 
+                            "company": "Tech Corp", 
+                            "location": "Remote",
+                            "url": "https://techcorp.com/careers/software-engineer",
+                            "portal": "LinkedIn",
+                            "description": "We are looking for a talented software engineer...",
+                            "requirements": ["Python", "JavaScript", "React"],
+                            "salary_range": "$80,000 - $120,000",
+                            "job_type": "full_time",
+                            "experience_level": "mid"
+                        },
+                        {
+                            "id": "2", 
+                            "title": "Data Scientist", 
+                            "company": "AI Inc", 
+                            "location": "San Francisco",
+                            "url": "https://aiinc.com/careers/data-scientist",
+                            "portal": "Indeed",
+                            "description": "Join our AI research team...",
+                            "requirements": ["Python", "Machine Learning", "Statistics"],
+                            "salary_range": "$100,000 - $150,000",
+                            "job_type": "full_time",
+                            "experience_level": "senior"
+                        }
+                    ]
+                
+                async def get_job_details(self, job_id: str, platform: str = None):
+                    return {
+                        "id": job_id,
+                        "title": "Software Engineer",
+                        "company": "Tech Corp",
+                        "location": "Remote",
+                        "url": "https://techcorp.com/careers/software-engineer",
+                        "portal": "LinkedIn",
+                        "description": "We are looking for a talented software engineer...",
+                        "requirements": ["Python", "JavaScript", "React"],
+                        "salary_range": "$80,000 - $120,000",
+                        "job_type": "full_time",
+                        "experience_level": "mid"
+                    }
+                
+                async def is_available(self):
+                    return True
+            
+            job_search_service = MockJobSearchService()
             self._services['job_search_service'] = job_search_service
             
             self._initialized = True
