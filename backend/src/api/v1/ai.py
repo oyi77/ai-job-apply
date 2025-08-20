@@ -28,7 +28,7 @@ async def optimize_resume(request: ResumeOptimizationRequest) -> ResumeOptimizat
         logger.info(f"Resume optimization request for {request.target_role} at {request.company_name}")
         
         # Get AI service from unified registry
-        ai_service = service_registry.get_ai_service()
+        ai_service = await service_registry.get_ai_service()
         
         # Use the real AI service for optimization
         response = await ai_service.optimize_resume(request)
@@ -56,7 +56,7 @@ async def generate_cover_letter(request: CoverLetterRequest) -> CoverLetter:
         logger.info(f"Cover letter generation request for {request.job_title} at {request.company_name}")
         
         # Get AI service from unified registry
-        ai_service = service_registry.get_ai_service()
+        ai_service = await service_registry.get_ai_service()
         
         # Use the real AI service for cover letter generation
         response = await ai_service.generate_cover_letter(request)
@@ -88,7 +88,7 @@ async def analyze_job_match(
         logger.info("Job match analysis request received")
         
         # Get AI service from unified registry
-        ai_service = service_registry.get_ai_service()
+        ai_service = await service_registry.get_ai_service()
         
         # Use the real AI service for job match analysis
         analysis = await ai_service.analyze_job_match(resume_content, job_description)
@@ -116,7 +116,7 @@ async def extract_resume_skills(resume_content: str) -> Dict[str, Any]:
         logger.info("Skills extraction request received")
         
         # Get AI service from unified registry
-        ai_service = service_registry.get_ai_service()
+        ai_service = await service_registry.get_ai_service()
         
         # Use the real AI service for skills extraction
         skills = await ai_service.extract_resume_skills(resume_content)
@@ -152,7 +152,7 @@ async def improve_resume_suggestions(resume_content: str) -> Dict[str, Any]:
         logger.info("Resume improvement suggestions request received")
         
         # Get AI service from unified registry
-        ai_service = service_registry.get_ai_service()
+        ai_service = await service_registry.get_ai_service()
         
         # Use the real AI service for improvement suggestions
         suggestions = await ai_service.suggest_resume_improvements(resume_content, "")
@@ -188,7 +188,7 @@ async def ai_service_health() -> Dict[str, Any]:
     """
     try:
         # Get AI service from unified registry
-        ai_service = service_registry.get_ai_service()
+        ai_service = await service_registry.get_ai_service()
         
         # Check service availability
         is_available = await ai_service.is_available()

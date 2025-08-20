@@ -10,6 +10,7 @@ from ..core.resume_service import ResumeService
 from ..core.application_service import ApplicationService
 from ..core.job_search import JobSearchService
 from ..core.cover_letter_service import CoverLetterService
+from ..core.job_application import JobApplicationService
 
 
 class ServiceProvider(ABC):
@@ -110,11 +111,19 @@ class ServiceRegistry:
         self.register_service('job_search_service', job_provider)
         await job_provider.initialize()
         self._instances['job_search_service'] = job_provider.get_service()
+        
+        # Job application service (no dependencies)
+        from .job_application_service import MultiPlatformJobApplicationService
+        job_app_provider = JobApplicationServiceProvider()
+        self.register_service('job_application_service', job_app_provider)
+        await job_app_provider.initialize()
+        self._instances['job_application_service'] = job_app_provider.get_service()
     
-    def get_service(self, name: str) -> Any:
+    async def get_service(self, name: str) -> Any:
         """Get a service instance by name."""
         if not self._initialized:
-            raise RuntimeError("Service registry not initialized. Call await initialize() first.")
+            self._logger.info("Service registry not initialized, initializing now...")
+            await self.initialize()
         
         if name not in self._instances:
             raise KeyError(f"Service '{name}' not found")
@@ -122,29 +131,33 @@ class ServiceRegistry:
         return self._instances[name]
     
     # Convenience methods for type-safe service access
-    def get_ai_service(self) -> AIService:
+    async def get_ai_service(self) -> AIService:
         """Get the AI service instance."""
-        return self.get_service('ai_service')
+        return await self.get_service('ai_service')
     
-    def get_file_service(self) -> FileService:
+    async def get_file_service(self) -> FileService:
         """Get the file service instance."""
-        return self.get_service('file_service')
+        return await self.get_service('file_service')
     
-    def get_resume_service(self) -> ResumeService:
+    async def get_resume_service(self) -> ResumeService:
         """Get the resume service instance."""
-        return self.get_service('resume_service')
+        return await self.get_service('resume_service')
     
-    def get_application_service(self) -> ApplicationService:
+    async def get_application_service(self) -> ApplicationService:
         """Get the application service instance."""
-        return self.get_service('application_service')
+        return await self.get_service('application_service')
     
-    def get_cover_letter_service(self) -> CoverLetterService:
+    async def get_cover_letter_service(self) -> CoverLetterService:
         """Get the cover letter service instance."""
-        return self.get_service('cover_letter_service')
+        return await self.get_service('cover_letter_service')
     
-    def get_job_search_service(self) -> JobSearchService:
+    async def get_job_search_service(self) -> JobSearchService:
         """Get the job search service instance."""
-        return self.get_service('job_search_service')
+        return await self.get_service('job_search_service')
+    
+    async def get_job_application_service(self) -> JobApplicationService:
+        """Get the job application service instance."""
+        return await self.get_service('job_application_service')
     
     async def health_check(self) -> Dict[str, Any]:
         """Check the health of all services."""
@@ -305,6 +318,24 @@ class JobSearchServiceProvider(ServiceProvider):
     async def initialize(self) -> None:
         from .job_search_service import JobSearchService
         self._service = JobSearchService()
+        # Initialize the service to check JobSpy availability
+        await self._service.initialize()
+    
+    async def cleanup(self) -> None:
+        if hasattr(self._service, 'cleanup'):
+            await self._service.cleanup()
+
+
+class JobApplicationServiceProvider(ServiceProvider):
+    """Provider for job application service."""
+    
+    def get_service(self) -> JobApplicationService:
+        return self._service
+    
+    async def initialize(self) -> None:
+        from .job_application_service import MultiPlatformJobApplicationService
+        self._service = MultiPlatformJobApplicationService()
+        await self._service.initialize()
     
     async def cleanup(self) -> None:
         if hasattr(self._service, 'cleanup'):

@@ -59,9 +59,8 @@ class CoverLetterService(CoverLetterService):
                 company_name=cover_letter_data.company_name,
                 content=cover_letter_data.content,
                 tone=getattr(cover_letter_data, 'tone', 'professional'),
-                template_used=getattr(cover_letter_data, 'template_used', None),
-                job_description=getattr(cover_letter_data, 'job_description', None),
-                resume_summary=getattr(cover_letter_data, 'resume_summary', None),
+                word_count=getattr(cover_letter_data, 'word_count', len(cover_letter_data.content.split())),
+                file_path=getattr(cover_letter_data, 'file_path', None),
                 created_at=datetime.utcnow(),
                 updated_at=datetime.utcnow()
             )

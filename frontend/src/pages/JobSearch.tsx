@@ -45,7 +45,8 @@ const JobSearch: React.FC = () => {
   const { applications, addApplication } = useAppStore();
 
   // Search jobs
-  const { data: searchResults, isLoading, error, refetch } = useQuery({
+  // Search jobs
+  const { data: searchResults = { data: [] }, isLoading, error, refetch } = useQuery({
     queryKey: ['job-search', searchQuery, location, selectedJobType, selectedExperience],
     queryFn: () => jobSearchService.searchJobs({
       query: searchQuery,
@@ -85,12 +86,12 @@ const JobSearch: React.FC = () => {
     if (selectedJob) {
       createApplicationMutation.mutate({
         ...data,
-        job_id: selectedJob.id,
-        job_title: selectedJob.title,
-        company: selectedJob.company,
-        location: selectedJob.location,
+        job_id: selectedJob.id || 'unknown',
+        job_title: selectedJob.title || 'Unknown Job',
+        company: selectedJob.company || 'Unknown Company',
+        location: selectedJob.location || 'Unknown Location',
         applied_date: new Date().toISOString(),
-        status: 'applied' as ApplicationStatus,
+        status: 'submitted' as ApplicationStatus,
       });
     }
   };
@@ -125,26 +126,26 @@ const JobSearch: React.FC = () => {
     { value: 'salary', label: 'Salary' },
   ];
 
-  const formatSalary = (min: number, max: number, currency: string = 'USD') => {
-    const formatter = new Intl.NumberFormat('en-US', {
-      style: 'currency',
-      currency: currency,
-      minimumFractionDigits: 0,
-      maximumFractionDigits: 0,
-    });
-    return `${formatter.format(min)} - ${formatter.format(max)}`;
-  };
+
 
   const formatDate = (dateString: string) => {
-    const date = new Date(dateString);
-    const now = new Date();
-    const diffTime = Math.abs(now.getTime() - date.getTime());
-    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+    if (!dateString) return 'Recently';
     
-    if (diffDays === 1) return 'Today';
-    if (diffDays === 2) return 'Yesterday';
-    if (diffDays <= 7) return `${diffDays - 1} days ago`;
-    return date.toLocaleDateString();
+    try {
+      const date = new Date(dateString);
+      if (isNaN(date.getTime())) return 'Recently';
+      
+      const now = new Date();
+      const diffTime = Math.abs(now.getTime() - date.getTime());
+      const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+      
+      if (diffDays === 1) return 'Today';
+      if (diffDays === 2) return 'Yesterday';
+      if (diffDays <= 7) return `${diffDays - 1} days ago`;
+      return date.toLocaleDateString();
+    } catch (error) {
+      return 'Recently';
+    }
   };
 
   return (
@@ -267,11 +268,11 @@ const JobSearch: React.FC = () => {
             </div>
           </CardHeader>
           <CardBody>
-            {searchResults.data && searchResults.data.length > 0 ? (
+            {searchResults?.data && Array.isArray(searchResults.data) && searchResults.data.length > 0 ? (
               <div className="space-y-4">
-                {searchResults.data.map((job) => (
+                {searchResults.data.map((job) => job && (
                   <div
-                    key={job.id}
+                    key={job.id || `job-${Math.random()}`}
                     className="border border-gray-200 rounded-lg p-4 hover:bg-gray-50 transition-colors cursor-pointer"
                     onClick={() => handleJobClick(job)}
                   >
@@ -281,10 +282,12 @@ const JobSearch: React.FC = () => {
                           <h4 className="text-lg font-medium text-gray-900">
                             {job.title}
                           </h4>
-                          <Badge variant="primary" size="sm">
-                            {job.job_type.replace('_', ' ')}
-                          </Badge>
-                          {job.is_remote && (
+                          {job.job_type && (
+                            <Badge variant="primary" size="sm">
+                              {job.job_type.replace('_', ' ')}
+                            </Badge>
+                          )}
+                          {job.location?.toLowerCase().includes('remote') && (
                             <Badge variant="success" size="sm">
                               Remote
                             </Badge>
@@ -302,14 +305,14 @@ const JobSearch: React.FC = () => {
                           </div>
                           <div className="flex items-center space-x-1">
                             <ClockIcon className="h-4 w-4" />
-                            <span>{formatDate(job.posted_date)}</span>
+                            <span>{job.posted_date ? formatDate(job.posted_date) : 'Recently'}</span>
                           </div>
                         </div>
 
-                        {job.salary_min && job.salary_max && (
+                        {job.salary && (
                           <div className="flex items-center space-x-1 text-sm text-gray-600 mb-2">
                             <CurrencyDollarIcon className="h-4 w-4" />
-                            <span>{formatSalary(job.salary_min, job.salary_max, job.salary_currency)}</span>
+                            <span>{job.salary}</span>
                           </div>
                         )}
 
@@ -387,25 +390,27 @@ const JobSearch: React.FC = () => {
               <div className="flex items-start justify-between">
                 <div>
                   <h3 className="text-xl font-medium text-gray-900">
-                    {selectedJob.title}
+                    {selectedJob?.title || 'Job Title'}
                   </h3>
-                  <p className="text-lg text-gray-600 mt-1">{selectedJob.company}</p>
+                  <p className="text-lg text-gray-600 mt-1">{selectedJob?.company || 'Company'}</p>
                   <div className="flex items-center space-x-4 mt-2 text-sm text-gray-500">
                     <div className="flex items-center space-x-1">
                       <MapPinIcon className="h-4 w-4" />
-                      <span>{selectedJob.location}</span>
+                      <span>{selectedJob?.location || 'Location'}</span>
                     </div>
                     <div className="flex items-center space-x-1">
                       <ClockIcon className="h-4 w-4" />
-                      <span>Posted {formatDate(selectedJob.posted_date)}</span>
+                      <span>Posted {selectedJob?.posted_date ? formatDate(selectedJob.posted_date) : 'Recently'}</span>
                     </div>
                   </div>
                 </div>
                 <div className="flex flex-col items-end space-y-2">
-                  <Badge variant="primary">
-                    {selectedJob.job_type.replace('_', ' ')}
-                  </Badge>
-                  {selectedJob.is_remote && (
+                  {selectedJob?.job_type && (
+                    <Badge variant="primary">
+                      {selectedJob.job_type.replace('_', ' ')}
+                    </Badge>
+                  )}
+                  {selectedJob?.location?.toLowerCase().includes('remote') && (
                     <Badge variant="success">Remote</Badge>
                   )}
                 </div>
@@ -415,18 +420,18 @@ const JobSearch: React.FC = () => {
             {/* Job Details */}
             <div className="space-y-6">
               {/* Salary */}
-              {selectedJob.salary_min && selectedJob.salary_max && (
+              {selectedJob?.salary && (
                 <div>
                   <h4 className="text-lg font-medium text-gray-900 mb-2">Salary</h4>
                   <div className="flex items-center space-x-2 text-lg text-gray-600">
                     <CurrencyDollarIcon className="h-5 w-5" />
-                    <span>{formatSalary(selectedJob.salary_min, selectedJob.salary_max, selectedJob.salary_currency)}</span>
+                    <span>{selectedJob.salary}</span>
                   </div>
                 </div>
               )}
 
               {/* Description */}
-              {selectedJob.description && (
+              {selectedJob?.description && (
                 <div>
                   <h4 className="text-lg font-medium text-gray-900 mb-2">Job Description</h4>
                   <div className="text-gray-600 whitespace-pre-wrap">
@@ -436,7 +441,7 @@ const JobSearch: React.FC = () => {
               )}
 
               {/* Requirements */}
-              {selectedJob.requirements && selectedJob.requirements.length > 0 && (
+              {selectedJob?.requirements && selectedJob.requirements.length > 0 && (
                 <div>
                   <h4 className="text-lg font-medium text-gray-900 mb-2">Requirements</h4>
                   <ul className="space-y-2 text-gray-600">
@@ -451,7 +456,7 @@ const JobSearch: React.FC = () => {
               )}
 
               {/* Skills */}
-              {selectedJob.skills && selectedJob.skills.length > 0 && (
+              {selectedJob?.skills && selectedJob.skills.length > 0 && (
                 <div>
                   <h4 className="text-lg font-medium text-gray-900 mb-2">Required Skills</h4>
                   <div className="flex flex-wrap gap-2">
@@ -465,7 +470,7 @@ const JobSearch: React.FC = () => {
               )}
 
               {/* Benefits */}
-              {selectedJob.benefits && selectedJob.benefits.length > 0 && (
+              {selectedJob?.benefits && selectedJob.benefits.length > 0 && (
                 <div>
                   <h4 className="text-lg font-medium text-gray-900 mb-2">Benefits</h4>
                   <ul className="space-y-2 text-gray-600">
@@ -516,9 +521,9 @@ const JobSearch: React.FC = () => {
               <div className="p-4 bg-gray-50 border border-gray-200 rounded-lg">
                 <h4 className="font-medium text-gray-900 mb-2">Job Details</h4>
                 <p className="text-sm text-gray-600">
-                  <strong>{selectedJob.title}</strong> at <strong>{selectedJob.company}</strong>
+                  <strong>{selectedJob?.title || 'Job Title'}</strong> at <strong>{selectedJob?.company || 'Company'}</strong>
                 </p>
-                <p className="text-sm text-gray-500 mt-1">{selectedJob.location}</p>
+                <p className="text-sm text-gray-500 mt-1">{selectedJob?.location || 'Location'}</p>
               </div>
               
               <FormField

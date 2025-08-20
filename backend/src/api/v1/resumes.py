@@ -58,10 +58,10 @@ async def upload_resume(
             )
         
         # Get resume service from unified registry
-        resume_service = service_registry.get_resume_service()
+        resume_service = await service_registry.get_resume_service()
         
         # Get file service from unified registry
-        file_service = service_registry.get_file_service()
+        file_service = await service_registry.get_file_service()
         
         # Read file content
         file_content = await file.read()
@@ -110,7 +110,7 @@ async def get_all_resumes() -> Dict[str, Any]:
     """
     try:
         # Get resume service from unified registry
-        resume_service = service_registry.get_resume_service()
+        resume_service = await service_registry.get_resume_service()
         
         # Use the real resume service
         resumes = await resume_service.get_all_resumes()
@@ -139,7 +139,7 @@ async def get_resume(resume_id: str) -> Resume:
     """
     try:
         # Get resume service from unified registry
-        resume_service = service_registry.get_resume_service()
+        resume_service = await service_registry.get_resume_service()
         
         # Get the resume
         resume = await resume_service.get_resume(resume_id)
@@ -175,7 +175,7 @@ async def update_resume(
     """
     try:
         # Get resume service from unified registry
-        resume_service = service_registry.get_resume_service()
+        resume_service = await service_registry.get_resume_service()
         
         # Prepare updates
         updates = {}
@@ -215,7 +215,7 @@ async def delete_resume(resume_id: str) -> dict:
     """
     try:
         # Get resume service from unified registry
-        resume_service = service_registry.get_resume_service()
+        resume_service = await service_registry.get_resume_service()
         
         # Delete the resume
         success = await resume_service.delete_resume(resume_id)
@@ -245,7 +245,7 @@ async def set_default_resume(resume_id: str) -> dict:
     """
     try:
         # Get resume service from unified registry
-        resume_service = service_registry.get_resume_service()
+        resume_service = await service_registry.get_resume_service()
         
         # Set as default resume
         success = await resume_service.set_default_resume(resume_id)

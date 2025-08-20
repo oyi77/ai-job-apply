@@ -26,7 +26,7 @@ async def search_jobs(request: JobSearchRequest) -> JobSearchResponse:
         logger.info(f"Job search request: {request.keywords} in {request.location}")
         
         # Get job search service from unified registry
-        job_search_service = service_registry.get_job_search_service()
+        job_search_service = await service_registry.get_job_search_service()
         
         # Use the real job search service
         response = await job_search_service.search_jobs(request)
@@ -49,7 +49,7 @@ async def get_available_sites() -> List[str]:
     """
     try:
         # Get job search service from unified registry
-        job_search_service = service_registry.get_job_search_service()
+        job_search_service = await service_registry.get_job_search_service()
         
         # Use the real job search service
         return job_search_service.get_available_sites()
@@ -73,7 +73,7 @@ async def get_job_details(job_id: str) -> Job:
     """
     try:
         # Get job search service from unified registry
-        job_search_service = service_registry.get_job_search_service()
+        job_search_service = await service_registry.get_job_search_service()
         
         # Extract platform from job_id (assuming format: platform_jobid)
         if "_" in job_id:

@@ -25,6 +25,17 @@ class JobType(str, Enum):
     FREELANCE = "freelance"
 
 
+class JobApplicationMethod(str, Enum):
+    """Job application method enumeration."""
+    DIRECT_URL = "direct_url"
+    EMAIL = "email"
+    EXTERNAL_SITE = "external_site"
+    PHONE = "phone"
+    IN_PERSON = "in_person"
+    FORM = "form"
+    UNKNOWN = "unknown"
+
+
 class Job(BaseModel):
     """Job posting model."""
     id: Optional[str] = None
@@ -41,6 +52,15 @@ class Job(BaseModel):
     requirements: Optional[List[str]] = Field(None, description="Job requirements")
     benefits: Optional[List[str]] = Field(None, description="Job benefits")
     skills: Optional[List[str]] = Field(None, description="Required skills")
+    
+    # Application-related fields
+    application_method: JobApplicationMethod = Field(default=JobApplicationMethod.UNKNOWN, description="How to apply")
+    apply_url: Optional[HttpUrl] = Field(None, description="Direct application URL")
+    contact_email: Optional[str] = Field(None, description="Application contact email")
+    contact_phone: Optional[str] = Field(None, description="Application contact phone")
+    external_application: bool = Field(False, description="If application is external to this platform")
+    application_deadline: Optional[str] = Field(None, description="Application deadline")
+    
     created_at: datetime = Field(default_factory=datetime.utcnow)
     updated_at: datetime = Field(default_factory=datetime.utcnow)
     
@@ -50,6 +70,30 @@ class Job(BaseModel):
             datetime: lambda v: v.isoformat()
         }
     }
+
+
+class ApplicationForm(BaseModel):
+    """Job application form information."""
+    form_url: Optional[HttpUrl] = Field(None, description="Application form URL")
+    form_fields: List[Dict[str, Any]] = Field(default_factory=list, description="Form field definitions")
+    required_fields: List[str] = Field(default_factory=list, description="Required form fields")
+    optional_fields: List[str] = Field(default_factory=list, description="Optional form fields")
+    file_uploads: List[str] = Field(default_factory=list, description="File upload field names")
+    form_type: str = Field(default="standard", description="Type of application form")
+
+
+class ApplicationInfo(BaseModel):
+    """Complete job application information."""
+    job: Job
+    application_method: JobApplicationMethod
+    apply_url: Optional[HttpUrl] = None
+    contact_email: Optional[str] = None
+    contact_phone: Optional[str] = None
+    application_form: Optional[ApplicationForm] = None
+    instructions: Optional[str] = None
+    requirements: Optional[List[str]] = None
+    deadline: Optional[str] = None
+    external_site: Optional[bool] = None
 
 
 class JobSearchRequest(BaseModel):

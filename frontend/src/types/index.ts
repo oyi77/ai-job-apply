@@ -19,7 +19,7 @@ export interface JobApplication {
 
 export const ApplicationStatus = {
   DRAFT: 'draft',
-  APPLIED: 'applied',
+  SUBMITTED: 'submitted',
   UNDER_REVIEW: 'under_review',
   INTERVIEW_SCHEDULED: 'interview_scheduled',
   INTERVIEW_COMPLETED: 'interview_completed',
@@ -66,38 +66,36 @@ export interface Certification {
 
 // Cover Letter Types
 export interface CoverLetter {
-  id: string;
+  id?: string;
   job_title: string;
-  company: string;
+  company_name: string;
   content: string;
-  generated_by: string;
-  status?: 'draft' | 'final' | 'sent';
-  created_at: string;
-  updated_at: string;
+  file_path?: string;
+  tone: string;
+  word_count: number;
+  generated_at?: string;
+  created_at?: string;
+  updated_at?: string;
 }
 
 // Job Types
 export interface Job {
-  id: string;
+  id?: string;
   title: string;
   company: string;
   location: string;
-  description: string;
-  requirements: string[];
-  salary_range?: string;
-  salary_min?: number;
-  salary_max?: number;
-  salary_currency?: string;
-  job_type: JobType;
-  experience_level: ExperienceLevel;
-  posted_date: string;
-  application_deadline?: string;
-  source: JobSource;
-  url?: string;
-  portal?: string;
-  is_remote?: boolean;
-  skills?: string[];
+  url: string;
+  portal: string;
+  description?: string;
+  salary?: string;
+  posted_date?: string;
+  experience_level?: ExperienceLevel;
+  job_type?: JobType;
+  requirements?: string[];
   benefits?: string[];
+  skills?: string[];
+  created_at?: string;
+  updated_at?: string;
 }
 
 export const JobType = {

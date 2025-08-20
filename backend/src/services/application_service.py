@@ -70,10 +70,12 @@ class ApplicationService(ApplicationService):
             
             application = JobApplication(
                 id=app_id,
-                job_id=job_info.get("id", str(uuid.uuid4())),
-                job_title=job_info.get("title", "Unknown Position"),
+                job_id=job_info.get("job_id", job_info.get("id", str(uuid.uuid4()))),
+                job_title=job_info.get("job_title", job_info.get("title", "Unknown Position")),
                 company=job_info.get("company", "Unknown Company"),
-                status=ApplicationStatus.DRAFT,
+                location=job_info.get("location", "Unknown Location"),
+                status=job_info.get("status", ApplicationStatus.DRAFT),
+                applied_date=job_info.get("applied_date"),
                 resume_path=resume_path,
                 notes=job_info.get("notes", ""),
             )

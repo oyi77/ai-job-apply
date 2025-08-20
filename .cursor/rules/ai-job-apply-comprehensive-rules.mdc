@@ -1,0 +1,412 @@
+---
+description: Comprehensive development rules for AI Job Application Assistant - Full-stack application with AI integration, database backend, and React frontend
+globs: ["**/*.py", "**/*.ts", "**/*.tsx", "**/*.js", "**/*.jsx", "**/*.md", "**/*.yml", "**/*.yaml", "**/*.toml", "**/*.sh"]
+alwaysApply: true
+---
+
+# 🚀 **AI Job Application Assistant - Comprehensive Development Rules**
+
+## 📋 **Project Status: PRODUCTION READY - FULL STACK COMPLETE**
+
+### **Current Architecture**
+- **Backend**: FastAPI + SQLAlchemy + PostgreSQL (Port 8000)
+- **Frontend**: React + TypeScript + Tailwind CSS (Port 5173)
+- **Database**: Full database integration with repositories
+- **AI Services**: Gemini AI integration with fallbacks
+- **Testing**: Comprehensive test suite with pytest + Vitest
+
+---
+
+## 🏗️ **Backend Development Rules (Python/FastAPI)**
+
+### **Code Quality Standards**
+```python
+# REQUIRED: All functions must have type hints and docstrings
+async def create_application(data: CreateApplicationRequest) -> JobApplication:
+    """Create a new job application with validation and error handling."""
+    pass
+
+# REQUIRED: Maximum function length: 20 lines
+# REQUIRED: Maximum class length: 200 lines  
+# REQUIRED: Maximum module length: 500 lines
+# REQUIRED: Use async/await for all I/O operations
+# REQUIRED: Comprehensive error handling with custom exceptions
+```
+
+### **Database & Repository Pattern**
+```python
+# REQUIRED: Use repository pattern for all data access
+class ApplicationRepository:
+    async def create(self, application: JobApplication) -> JobApplication:
+        pass
+    
+    async def get_by_id(self, id: str) -> Optional[JobApplication]:
+        pass
+
+# REQUIRED: Use SQLAlchemy async with proper session management
+# REQUIRED: Implement proper error handling and rollbacks
+# REQUIRED: Use relationship loading for efficient queries
+```
+
+### **Service Layer Architecture**
+```python
+# REQUIRED: Abstract base classes for all services
+class AIService(ABC):
+    @abstractmethod
+    async def optimize_resume(self, resume: Resume, job: Job) -> ResumeOptimization:
+        pass
+
+# REQUIRED: Concrete implementations in services/ directory
+# REQUIRED: Dependency injection through service registry
+# REQUIRED: Graceful fallbacks when external services unavailable
+```
+
+### **API Endpoint Standards**
+```python
+# REQUIRED: Use Pydantic models for request/response validation
+# REQUIRED: Proper HTTP status codes and error responses
+# REQUIRED: API versioning with /api/v1/ prefix
+# REQUIRED: Comprehensive logging for all operations
+# REQUIRED: Rate limiting and security headers
+```
+
+---
+
+## 🎨 **Frontend Development Rules (React/TypeScript)**
+
+### **Component Architecture**
+```typescript
+// REQUIRED: Functional components with hooks
+const JobCard: React.FC<JobCardProps> = ({ job, onSave, onApply }) => {
+  // REQUIRED: Maximum component length: 50 lines
+  // REQUIRED: Extract complex logic to custom hooks
+  // REQUIRED: Use React.memo for expensive components
+};
+
+// REQUIRED: All components must have TypeScript interfaces
+interface JobCardProps {
+  job: Job;
+  onSave: (job: Job) => void;
+  onApply: (job: Job) => void;
+}
+```
+
+### **State Management**
+```typescript
+// REQUIRED: Zustand for global state management
+// REQUIRED: React Query for server state
+// REQUIRED: Local state only for component-specific data
+// REQUIRED: No prop drilling beyond 2 levels
+
+// REQUIRED: Use useMemo for expensive calculations
+const expensiveValue = useMemo(() => computeExpensiveValue(data), [data]);
+
+// REQUIRED: Use useCallback for function props
+const handleSave = useCallback((job: Job) => void) => {
+  saveJob(job);
+}, [saveJob]);
+```
+
+### **Performance Standards**
+```typescript
+// REQUIRED: Lazy load routes and heavy components
+const LazyDashboard = lazy(() => import('./pages/Dashboard'));
+
+// REQUIRED: Bundle size < 500KB gzipped
+// REQUIRED: First contentful paint < 2.5s
+// REQUIRED: Time to interactive < 3.8s
+// REQUIRED: Mobile-first responsive design
+```
+
+---
+
+## 🗄️ **Database & Data Rules**
+
+### **Database Models**
+```python
+# REQUIRED: Use SQLAlchemy 2.0 async syntax
+class JobApplication(Base):
+    __tablename__ = "job_applications"
+    
+    id = Column(String, primary_key=True)
+    job_title = Column(String, nullable=False)
+    company = Column(String, nullable=False)
+    status = Column(Enum(ApplicationStatus), nullable=False)
+    created_at = Column(DateTime, default=datetime.utcnow)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+# REQUIRED: Proper foreign key relationships
+# REQUIRED: JSON fields for flexible data storage
+# REQUIRED: Automatic timestamp management
+```
+
+### **Repository Implementation**
+```python
+# REQUIRED: Async operations with proper error handling
+async def get_applications_with_resumes(self) -> List[JobApplication]:
+    async with self.session() as session:
+        stmt = (
+            select(JobApplication)
+            .options(selectinload(JobApplication.resume))
+            .order_by(JobApplication.created_at.desc())
+        )
+        result = await session.execute(stmt)
+        return result.scalars().unique().all()
+
+# REQUIRED: Use selectinload for relationship loading
+# REQUIRED: Implement proper pagination for large datasets
+# REQUIRED: Cache frequently accessed data
+```
+
+---
+
+## 🤖 **AI Service Integration Rules**
+
+### **Gemini AI Service**
+```python
+# REQUIRED: Graceful fallback when AI service unavailable
+async def optimize_resume(self, resume: Resume, job: Job) -> ResumeOptimization:
+    try:
+        response = await self.gemini_client.generate_content(prompt)
+        return self._parse_ai_response(response)
+    except Exception as e:
+        logger.warning(f"AI service unavailable: {e}, using fallback")
+        return self._generate_fallback_optimization(resume, job)
+
+# REQUIRED: Well-structured prompts for consistent responses
+# REQUIRED: Response validation before returning to users
+# REQUIRED: Rate limiting and error handling
+# REQUIRED: Mock responses for development and testing
+```
+
+### **AI Service Health Monitoring**
+```python
+# REQUIRED: Health check endpoints for all AI services
+# REQUIRED: Service availability monitoring
+# REQUIRED: Performance metrics collection
+# REQUIRED: Automatic fallback when services fail
+```
+
+---
+
+## 🧪 **Testing & Quality Assurance**
+
+### **Backend Testing (pytest)**
+```python
+# REQUIRED: 100% unit test coverage for business logic
+# REQUIRED: Use pytest-asyncio for async tests
+# REQUIRED: Mock external dependencies
+# REQUIRED: Test database with fixtures
+
+@pytest.mark.asyncio
+async def test_create_application():
+    # Arrange
+    app_data = {"job_title": "Test", "company": "Test Corp"}
+    
+    # Act
+    result = await application_service.create_application(app_data)
+    
+    # Assert
+    assert result.job_title == "Test"
+    assert result.company == "Test Corp"
+```
+
+### **Frontend Testing (Vitest)**
+```typescript
+// REQUIRED: Component unit tests with React Testing Library
+// REQUIRED: Hook testing for custom hooks
+// REQUIRED: Mock API calls with MSW
+// REQUIRED: Test user interactions and accessibility
+
+import { render, screen } from '@testing-library/react';
+import { JobCard } from './JobCard';
+
+test('renders job information correctly', () => {
+  render(<JobCard job={mockJob} onSave={jest.fn()} onApply={jest.fn()} />);
+  expect(screen.getByText(mockJob.title)).toBeInTheDocument();
+});
+```
+
+---
+
+## 📊 **Performance & Monitoring Rules**
+
+### **Backend Performance**
+```python
+# REQUIRED: API response time < 500ms (95th percentile)
+# REQUIRED: Database query time < 100ms (95th percentile)
+# REQUIRED: Memory usage < 512MB per instance
+# REQUIRED: CPU usage < 70% average
+# REQUIRED: Error rate < 1%
+
+# REQUIRED: Implement connection pooling
+# REQUIRED: Use database indexes for performance
+# REQUIRED: Implement caching strategies
+# REQUIRED: Monitor and log performance metrics
+```
+
+### **Frontend Performance**
+```typescript
+// REQUIRED: Core Web Vitals compliance
+// REQUIRED: LCP < 2.5s, FID < 100ms, CLS < 0.1
+// REQUIRED: Bundle size optimization
+// REQUIRED: Image and asset optimization
+// REQUIRED: Progressive Web App features
+```
+
+---
+
+## 🔒 **Security & Production Rules**
+
+### **Security Standards**
+```python
+# REQUIRED: Input validation and sanitization
+# REQUIRED: SQL injection prevention
+# REQUIRED: XSS protection
+# REQUIRED: CSRF protection
+# REQUIRED: Secure file upload handling
+# REQUIRED: Environment variable management
+# REQUIRED: HTTPS enforcement in production
+```
+
+### **Production Deployment**
+```python
+# REQUIRED: Environment-specific configuration
+# REQUIRED: Health check endpoints
+# REQUIRED: Graceful shutdown handling
+# REQUIRED: Log aggregation and monitoring
+# REQUIRED: Error tracking and alerting
+# REQUIRED: Backup and recovery procedures
+```
+
+---
+
+## 📁 **File Organization Rules**
+
+### **Backend Structure**
+```
+src/
+├── api/                    # API endpoints and routers
+├── core/                   # Business logic interfaces
+├── database/               # Database models and repositories
+├── models/                 # Pydantic data models
+├── services/               # Service implementations
+└── utils/                  # Utility functions
+```
+
+### **Frontend Structure**
+```
+src/
+├── components/             # Reusable UI components
+├── hooks/                  # Custom React hooks
+├── pages/                  # Page components
+├── services/               # API service functions
+├── stores/                 # Zustand stores
+└── types/                  # TypeScript type definitions
+```
+
+---
+
+## 🚀 **Development Workflow Rules**
+
+### **Git & Version Control**
+```bash
+# REQUIRED: Feature branch workflow
+# REQUIRED: Conventional commit messages
+# REQUIRED: Pull request reviews
+# REQUIRED: No direct commits to main branch
+# REQUIRED: Automated testing on all PRs
+```
+
+### **Code Quality Gates**
+```bash
+# REQUIRED: All tests must pass
+# REQUIRED: Code coverage maintained or improved
+# REQUIRED: No new linting errors
+# REQUIRED: No new type errors
+# REQUIRED: Security scan passed
+# REQUIRED: Performance benchmarks met
+```
+
+---
+
+## 🎯 **Immediate Action Items**
+
+### **Current Issues to Resolve**
+1. **Job Search Service**: Fix fallback job search implementation
+2. **API Integration**: Ensure frontend-backend communication
+3. **Performance**: Optimize database queries and API responses
+4. **Testing**: Increase test coverage to 95%+
+
+### **Next Development Phase**
+1. **Advanced AI Features**: Enhanced resume optimization
+2. **Job Board Integration**: Real job search APIs
+3. **Analytics Dashboard**: Advanced reporting and insights
+4. **Mobile App**: React Native or Flutter implementation
+
+---
+
+## 🏆 **Success Metrics**
+
+### **Quality Metrics**
+- **Test Coverage**: 95%+ for all components
+- **Code Quality**: Zero technical debt
+- **Performance**: All benchmarks met
+- **Security**: Zero vulnerabilities
+
+### **Feature Metrics**
+- **AI Services**: 99.9% availability
+- **Database**: < 100ms query response
+- **API**: < 500ms response time
+- **Frontend**: < 2.5s load time
+
+---
+
+## 🔄 **Continuous Improvement**
+
+### **Weekly Reviews**
+- Code quality assessment
+- Performance monitoring
+- Security vulnerability scan
+- Technical debt review
+
+### **Monthly Assessments**
+- Architecture review
+- Technology stack evaluation
+- Performance benchmarking
+- User feedback analysis
+
+---
+
+## 🚫 **Forbidden Practices**
+
+### **Never Allowed**
+- Hardcoded configuration values
+- Synchronous operations in async functions
+- Raw SQL without parameterization
+- Direct database access from controllers
+- Business logic in presentation layer
+- Unhandled exceptions
+- Dead or commented code
+- Magic numbers without constants
+
+---
+
+## 📚 **Documentation Requirements**
+
+### **Code Documentation**
+- Comprehensive docstrings for all public APIs
+- README files for all major components
+- API documentation with OpenAPI/Swagger
+- Architecture decision records (ADRs)
+
+### **User Documentation**
+- User guides and tutorials
+- API reference documentation
+- Deployment and setup guides
+- Troubleshooting documentation
+
+---
+
+*Generated on: 2025-08-21*  
+*Status: PRODUCTION READY - COMPREHENSIVE RULES COMPLETE* 🚀

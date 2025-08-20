@@ -97,7 +97,7 @@ export const applicationService = {
 
   // Create new application
   createApplication: async (application: Omit<JobApplication, 'id' | 'created_at' | 'updated_at'>): Promise<JobApplication> => {
-    const response = await apiClient.post('/api/v1/applications', application);
+    const response = await apiClient.post('/api/v1/applications/', application);
     return handleApiResponse(response);
   },
 
@@ -184,8 +184,21 @@ export const coverLetterService = {
   },
 
   // Create cover letter
-  createCoverLetter: async (coverLetter: Omit<CoverLetter, 'id' | 'created_at' | 'updated_at'>): Promise<CoverLetter> => {
-    const response = await apiClient.post('/api/v1/cover-letters', coverLetter);
+  createCoverLetter: async (coverLetter: Omit<CoverLetter, 'id' | 'created_at' | 'updated_at' | 'generated_at'>): Promise<CoverLetter> => {
+    // Calculate word count from content
+    const wordCount = coverLetter.content.trim().split(/\s+/).length;
+    
+    // Prepare the request with correct field names
+    const requestBody = {
+      job_title: coverLetter.job_title,
+      company_name: coverLetter.company_name,
+      content: coverLetter.content,
+      tone: coverLetter.tone || 'professional',
+      word_count: wordCount,
+      file_path: coverLetter.file_path
+    };
+    
+    const response = await apiClient.post('/api/v1/cover-letters/', requestBody);
     return handleApiResponse(response);
   },
 
@@ -249,16 +262,28 @@ export const jobSearchService = {
     sort_by?: string;
     sort_order?: string;
   }): Promise<{ data: Job[] }> => {
-    const searchParams = new URLSearchParams();
-    searchParams.append('query', params.query);
-    if (params.location) searchParams.append('location', params.location);
-    if (params.job_type) searchParams.append('job_type', params.job_type);
-    if (params.experience_level) searchParams.append('experience_level', params.experience_level);
-    if (params.sort_by) searchParams.append('sort_by', params.sort_by);
-    if (params.sort_order) searchParams.append('sort_order', params.sort_order);
+    // Convert to backend expected format
+    const requestBody = {
+      keywords: [params.query], // Backend expects keywords array
+      location: params.location || "Remote",
+      experience_level: params.experience_level || "entry",
+      job_type: params.job_type,
+      is_remote: params.location?.toLowerCase().includes('remote') || false,
+      sort_by: params.sort_by || "relevance",
+      sort_order: params.sort_order || "desc"
+    };
 
-    const response = await apiClient.get(`/api/v1/jobs/search?${searchParams.toString()}`);
-    return { data: response.data };
+    const response = await apiClient.post('/api/v1/jobs/search', requestBody);
+    
+    // Backend returns jobs grouped by portal, convert to flat array
+    const allJobs: Job[] = [];
+    if (response.data.jobs) {
+      Object.values(response.data.jobs).forEach(portalJobs => {
+        allJobs.push(...portalJobs);
+      });
+    }
+    
+    return { data: allJobs };
   },
 
   // Get job by ID

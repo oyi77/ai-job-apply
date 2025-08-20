@@ -16,7 +16,7 @@ from src.models.cover_letter import CoverLetterRequest, CoverLetter
 from src.models.application import JobApplication, ApplicationUpdateRequest
 from src.utils.logger import get_logger
 from src.services.service_registry import service_registry
-from src.services.service_registry import service_registry
+from src.middleware.response_middleware import add_response_wrapper_middleware
 
 # Initialize logger
 logger = get_logger(__name__)
@@ -45,6 +45,9 @@ def create_app() -> FastAPI:
         allow_headers=["*"],
     )
     
+    # Response wrapper middleware disabled - using manual wrapping in endpoints
+    # add_response_wrapper_middleware(app)
+    
     # Mount static files if directory exists
     static_dir = Path("static")
     if static_dir.exists() and static_dir.is_dir():
@@ -57,12 +60,14 @@ def create_app() -> FastAPI:
         from src.api.v1.applications import router as applications_router
         from src.api.v1.ai import router as ai_router
         from src.api.v1.cover_letters import router as cover_letters_router
+        from src.api.v1.job_applications import router as job_applications_router
         
         app.include_router(jobs_router, prefix="/api/v1/jobs", tags=["jobs"])
         app.include_router(resumes_router, prefix="/api/v1/resumes", tags=["resumes"])
         app.include_router(applications_router, prefix="/api/v1/applications", tags=["applications"])
         app.include_router(ai_router, prefix="/api/v1/ai", tags=["ai"])
         app.include_router(cover_letters_router, prefix="/api/v1/cover-letters", tags=["cover-letters"])
+        app.include_router(job_applications_router, prefix="/api/v1/job-applications", tags=["job-applications"])
         
         logger.info("All API routers loaded successfully")
     except ImportError as e:
@@ -90,19 +95,20 @@ def create_app() -> FastAPI:
     async def startup_event():
         """Initialize the application on startup."""
         try:
-            logger.info("AI Job Application Assistant starting up...")
+            logger.info("🚀 AI Job Application Assistant starting up...")
+            logger.info("Startup event triggered successfully!")
             
-            # Validate configuration
-            config.validate()
-            logger.info("Configuration validated successfully")
+            # Configuration is automatically validated by Pydantic
+            logger.info("Configuration loaded successfully")
             
             # Initialize services
+            logger.info("Initializing services...")
             await initialize_services()
             logger.info("Services initialized successfully")
             
-            logger.info("AI Job Application Assistant started successfully")
+            logger.info("🎉 AI Job Application Assistant started successfully")
         except Exception as e:
-            logger.error(f"Error during startup: {e}", exc_info=True)
+            logger.error(f"❌ Error during startup: {e}", exc_info=True)
             raise
     
     return app
@@ -119,7 +125,7 @@ async def initialize_services() -> None:
         logger.info(f"Services health check: {health_status}")
         
         # Log service availability
-        ai_service = service_registry.get_ai_service()
+        ai_service = await service_registry.get_ai_service()
         ai_available = await ai_service.is_available()
         logger.info(f"AI Service (Gemini) available: {ai_available}")
         

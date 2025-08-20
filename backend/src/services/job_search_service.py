@@ -4,6 +4,7 @@ import asyncio
 from typing import List, Dict, Any, Optional
 from datetime import datetime
 from loguru import logger
+import re # Added for regex operations
 
 from ..core.job_search import JobSearchService
 from ..models.job import Job, JobSearchRequest, JobSearchResponse
@@ -97,24 +98,7 @@ class JobSearchService(JobSearchService):
             )
             
             # Convert JobSpy results to our format
-            jobs_by_platform = self._convert_jobspy_results(jobs_df, request)
-            
-            # Create response
-            response = JobSearchResponse(
-                jobs=jobs_by_platform,
-                total_jobs=sum(len(jobs) for jobs in jobs_by_platform.values()),
-                search_metadata={
-                    "keywords": request.keywords,
-                    "location": request.location,
-                    "experience_level": request.experience_level,
-                    "sites_searched": list(jobs_by_platform.keys()),
-                    "timestamp": datetime.utcnow(),
-                    "method": "jobspy"
-                }
-            )
-            
-            self.logger.info(f"JobSpy found {response.total_jobs} jobs across {len(jobs_by_platform)} platforms")
-            return response
+            return self._convert_jobspy_results(jobs_df, request)
             
         except Exception as e:
             self.logger.error(f"JobSpy search failed: {e}", exc_info=True)
@@ -205,8 +189,7 @@ class JobSearchService(JobSearchService):
             )
             
             # Convert results
-            jobs_by_platform = self._convert_jobspy_results(jobs_df, request)
-            return jobs_by_platform.get(site, [])
+            return self._convert_jobspy_results(jobs_df, request)
             
         except Exception as e:
             self.logger.error(f"JobSpy search for {site} failed: {e}")
@@ -300,73 +283,72 @@ class JobSearchService(JobSearchService):
         
         return params
     
-    def _convert_jobspy_results(self, jobs_df, request: JobSearchRequest) -> Dict[str, List[Job]]:
-        """Convert JobSpy DataFrame results to our format."""
-        jobs_by_platform = {}
-        
+    def _convert_jobspy_results(self, jobs_df, request: JobSearchRequest) -> JobSearchResponse:
+        """Convert JobSpy results to our format."""
         try:
-            if jobs_df.empty:
-                self.logger.info("No jobs found from JobSpy")
-                return jobs_by_platform
+            jobs_by_platform = {}
             
-            # Group jobs by platform
-            for platform in self.supported_platforms:
-                platform_jobs = []
-                
-                # Filter jobs for this platform
-                platform_df = jobs_df[jobs_df['site'] == platform]
-                
-                for _, row in platform_df.iterrows():
-                    try:
-                        # Convert JobSpy row to our Job model
-                        job = self._convert_jobspy_row(row, platform, request)
-                        if job:
-                            platform_jobs.append(job)
-                    except Exception as e:
-                        self.logger.debug(f"Error converting job from {platform}: {e}")
-                        continue
-                
-                if platform_jobs:
-                    jobs_by_platform[platform] = platform_jobs
-                    self.logger.debug(f"Converted {len(platform_jobs)} jobs from {platform}")
+            for _, row in jobs_df.iterrows():
+                job = self._convert_job_row(row, request)
+                if job:
+                    platform = job.portal.lower()
+                    if platform not in jobs_by_platform:
+                        jobs_by_platform[platform] = []
+                    jobs_by_platform[platform].append(job)
+            
+            total_jobs = sum(len(jobs) for jobs in jobs_by_platform.values())
+            
+            return JobSearchResponse(
+                jobs=jobs_by_platform,
+                total_jobs=total_jobs,
+                search_metadata={
+                    "keywords": request.keywords,
+                    "location": request.location,
+                    "experience_level": request.experience_level,
+                    "sources": list(jobs_by_platform.keys())
+                }
+            )
             
         except Exception as e:
-            self.logger.error(f"Error converting JobSpy results: {e}")
-        
-        return jobs_by_platform
+            self.logger.error(f"Error converting JobSpy results: {e}", exc_info=True)
+            raise
     
-    def _convert_jobspy_row(self, row, platform: str, request: JobSearchRequest) -> Optional[Job]:
-        """Convert a single JobSpy row to our Job model."""
+    def _convert_job_row(self, row, request: JobSearchRequest) -> Optional[Job]:
+        """Convert a JobSpy row to our Job model."""
         try:
-            # Extract basic information using correct column names
-            title = str(row.get('title', 'Unknown Position'))
-            company = str(row.get('company', 'Unknown Company'))
-            
-            # Handle location - JobSpy has a single location column
-            location = str(row.get('location', request.location))
-            
+            # Extract basic information
+            title = str(row.get('title', 'Unknown Title')).strip()
+            company = str(row.get('company', 'Unknown Company')).strip()
+            location = str(row.get('location', request.location)).strip()
             job_url = str(row.get('job_url', ''))
             description = str(row.get('description', ''))
+            salary = str(row.get('salary', 'Not specified'))
+            posted_date = str(row.get('posted_date', 'Recently'))
             
-            # Extract salary information
-            salary = "Not specified"
-            if hasattr(row, 'min_amount') and hasattr(row, 'max_amount'):
-                min_amount = getattr(row, 'min_amount', None)
-                max_amount = getattr(row, 'max_amount', None)
-                if min_amount and max_amount:
-                    salary = f"${min_amount:,} - ${max_amount:,}"
-                elif min_amount:
-                    salary = f"${min_amount:,}+"
+            # Determine platform from URL
+            platform = "unknown"
+            if "linkedin.com" in job_url.lower():
+                platform = "linkedin"
+            elif "indeed.com" in job_url.lower():
+                platform = "indeed"
+            elif "glassdoor.com" in job_url.lower():
+                platform = "glassdoor"
+            elif "google.com" in job_url.lower():
+                platform = "google_jobs"
+            elif "ziprecruiter.com" in job_url.lower():
+                platform = "zip_recruiter"
             
-            # Extract job type
-            job_type = str(getattr(row, 'job_type', 'Not specified'))
+            # Extract application information
+            apply_url = self._extract_apply_url(job_url, description)
+            contact_email = self._extract_contact_email(description)
+            contact_phone = self._extract_contact_phone(description)
+            external_application = bool(apply_url and apply_url != job_url)
             
-            # Extract posted date
-            posted_date = "Recently"
-            if hasattr(row, 'date_posted'):
-                posted_date = str(getattr(row, 'date_posted', 'Recently'))
+            # Extract requirements and skills
+            requirements = self._extract_requirements(description)
+            skills = self._extract_skills(description)
             
-            # Create Job object
+            # Create Job object with enhanced application info
             job = Job(
                 title=title,
                 company=company,
@@ -377,6 +359,14 @@ class JobSearchService(JobSearchService):
                 salary=salary,
                 posted_date=posted_date,
                 experience_level=request.experience_level,
+                requirements=requirements,
+                skills=skills,
+                # Application-related fields
+                apply_url=apply_url,
+                contact_email=contact_email,
+                contact_phone=contact_phone,
+                external_application=external_application,
+                application_method=self._determine_application_method(apply_url, contact_email, platform),
                 created_at=datetime.utcnow(),
                 updated_at=datetime.utcnow()
             )
@@ -386,6 +376,139 @@ class JobSearchService(JobSearchService):
         except Exception as e:
             self.logger.debug(f"Error converting job row: {e}")
             return None
+    
+    def _extract_apply_url(self, job_url: str, description: str) -> Optional[str]:
+        """Extract application URL from job information."""
+        # Look for common apply button patterns
+        apply_patterns = [
+            r'apply[^"]*"([^"]*)"',
+            r'application[^"]*"([^"]*)"',
+            r'apply-now[^"]*"([^"]*)"',
+            r'apply-button[^"]*"([^"]*)"',
+            r'https?://[^\s<>"]*apply[^\s<>"]*',
+            r'https?://[^\s<>"]*application[^\s<>"]*'
+        ]
+        
+        for pattern in apply_patterns:
+            match = re.search(pattern, description, re.IGNORECASE)
+            if match:
+                url = match.group(1) if match.groups() else match.group(0)
+                if url.startswith('http'):
+                    return url
+                elif url.startswith('/'):
+                    # Relative URL, make it absolute
+                    from urllib.parse import urljoin
+                    return urljoin(job_url, url)
+        
+        return None
+    
+    def _extract_contact_email(self, description: str) -> Optional[str]:
+        """Extract contact email from job description."""
+        email_patterns = [
+            r'[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}',
+            r'email[^:]*:\s*([a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,})',
+            r'contact[^:]*:\s*([a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,})',
+            r'send[^:]*:\s*([a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,})'
+        ]
+        
+        for pattern in email_patterns:
+            match = re.search(pattern, description, re.IGNORECASE)
+            if match:
+                email = match.group(1) if match.groups() else match.group(0)
+                if '@' in email and '.' in email.split('@')[1]:
+                    return email
+        
+        return None
+    
+    def _extract_contact_phone(self, description: str) -> Optional[str]:
+        """Extract contact phone from job description."""
+        phone_patterns = [
+            r'\+?1?\s*\(?[0-9]{3}\)?[\s.-]?[0-9]{3}[\s.-]?[0-9]{4}',
+            r'phone[^:]*:\s*([0-9\s\(\)\-\+\.]+)',
+            r'tel[^:]*:\s*([0-9\s\(\)\-\+\.]+)',
+            r'call[^:]*:\s*([0-9\s\(\)\-\+\.]+)'
+        ]
+        
+        for pattern in phone_patterns:
+            match = re.search(pattern, description, re.IGNORECASE)
+            if match:
+                phone = match.group(1) if match.groups() else match.group(0)
+                # Clean up phone number
+                phone = re.sub(r'[^\d\+\-\(\)\s]', '', phone).strip()
+                if len(phone) >= 10:  # Minimum valid phone length
+                    return phone
+        
+        return None
+    
+    def _extract_requirements(self, description: str) -> List[str]:
+        """Extract job requirements from description."""
+        requirements = []
+        
+        # Look for requirements sections
+        req_patterns = [
+            r'requirements?[^:]*:\s*(.*?)(?=\n\n|\n[A-Z]|$)',
+            r'qualifications?[^:]*:\s*(.*?)(?=\n\n|\n[A-Z]|$)',
+            r'what you need[^:]*:\s*(.*?)(?=\n\n|\n[A-Z]|$)',
+            r'you should have[^:]*:\s*(.*?)(?=\n\n|\n[A-Z]|$)'
+        ]
+        
+        for pattern in req_patterns:
+            match = re.search(pattern, description, re.IGNORECASE | re.DOTALL)
+            if match:
+                req_text = match.group(1).strip()
+                # Split by common list indicators
+                req_items = re.split(r'[•\-\*]\s*|\d+\.\s*|\n', req_text)
+                requirements.extend([item.strip() for item in req_items if item.strip() and len(item.strip()) > 10])
+                break
+        
+        return requirements[:10]  # Limit to 10 requirements
+    
+    def _extract_skills(self, description: str) -> List[str]:
+        """Extract required skills from description."""
+        skills = []
+        
+        # Common technical skills
+        tech_skills = [
+            'python', 'javascript', 'java', 'c++', 'c#', 'php', 'ruby', 'go', 'rust',
+            'react', 'angular', 'vue', 'node.js', 'django', 'flask', 'spring',
+            'aws', 'azure', 'gcp', 'docker', 'kubernetes', 'jenkins', 'git',
+            'sql', 'mongodb', 'postgresql', 'mysql', 'redis', 'elasticsearch',
+            'machine learning', 'ai', 'data science', 'statistics', 'analytics'
+        ]
+        
+        # Look for skills in description
+        for skill in tech_skills:
+            if re.search(rf'\b{re.escape(skill)}\b', description, re.IGNORECASE):
+                skills.append(skill.title())
+        
+        # Look for skill sections
+        skill_patterns = [
+            r'skills?[^:]*:\s*(.*?)(?=\n\n|\n[A-Z]|$)',
+            r'technologies?[^:]*:\s*(.*?)(?=\n\n|\n[A-Z]|$)',
+            r'tools?[^:]*:\s*(.*?)(?=\n\n|\n[A-Z]|$)'
+        ]
+        
+        for pattern in skill_patterns:
+            match = re.search(pattern, description, re.IGNORECASE | re.DOTALL)
+            if match:
+                skill_text = match.group(1).strip()
+                # Extract individual skills
+                skill_items = re.split(r'[•\-\*]\s*|,\s*|\n', skill_text)
+                skills.extend([item.strip().title() for item in skill_items if item.strip() and len(item.strip()) > 2])
+                break
+        
+        return list(set(skills))[:15]  # Remove duplicates and limit to 15
+    
+    def _determine_application_method(self, apply_url: Optional[str], contact_email: Optional[str], platform: str) -> str:
+        """Determine the best application method for a job."""
+        if apply_url and apply_url != "unknown":
+            return "direct_url"
+        elif contact_email:
+            return "email"
+        elif platform in ["linkedin", "indeed", "glassdoor"]:
+            return "form"
+        else:
+            return "unknown"
     
     def _generate_mock_jobs(self, request: JobSearchRequest) -> List[Job]:
         """Generate mock jobs for fallback search."""
@@ -429,18 +552,82 @@ class JobSearchService(JobSearchService):
             "Software Corp"
         ]
         
+        # Sample application methods and URLs
+        application_methods = [
+            ("direct_url", "https://careers.techcorp.com/apply/12345"),
+            ("email", "careers@innovationlabs.com"),
+            ("form", "https://startupxyz.com/careers/apply"),
+            ("external_site", "https://bigtech.com/jobs/apply"),
+            ("direct_url", "https://digitalsolutions.com/careers/apply")
+        ]
+        
+        # Sample requirements and skills
+        sample_requirements = [
+            ["5+ years of software development experience", "Bachelor's degree in Computer Science", "Experience with modern web technologies"],
+            ["3+ years of full-stack development", "Proficiency in JavaScript and Python", "Experience with cloud platforms"],
+            ["Strong Python programming skills", "Knowledge of data structures and algorithms", "Experience with databases"],
+            ["React.js development experience", "Understanding of modern frontend frameworks", "CSS and HTML expertise"],
+            ["DevOps and CI/CD experience", "Knowledge of containerization", "Experience with cloud infrastructure"]
+        ]
+        
+        sample_skills = [
+            ["Python", "JavaScript", "React", "Node.js", "PostgreSQL"],
+            ["Java", "Spring Boot", "Microservices", "Docker", "AWS"],
+            ["Machine Learning", "Python", "TensorFlow", "Data Analysis", "Statistics"],
+            ["UI/UX Design", "Figma", "Adobe Creative Suite", "Prototyping", "User Research"],
+            ["DevOps", "Kubernetes", "Jenkins", "Terraform", "Monitoring"]
+        ]
+        
         # Generate mock jobs
         for i in range(15):
+            # Select random application method
+            app_method, app_url = application_methods[i % len(application_methods)]
+            
+            # Determine platform based on application method
+            if app_method == "email":
+                platform = "glassdoor"
+            elif app_method == "form":
+                platform = "linkedin"
+            elif app_method == "external_site":
+                platform = "indeed"
+            else:
+                platform = "mock"
+            
+            # Create realistic application information
+            if app_method == "email":
+                apply_url = None
+                contact_email = app_url
+                contact_phone = "+1 (555) 123-4567"
+                external_application = False
+            elif app_method == "direct_url":
+                apply_url = app_url
+                contact_email = f"careers@{sample_companies[i % len(sample_companies)].lower().replace(' ', '').replace('.', '')}.com"
+                contact_phone = None
+                external_application = True
+            else:
+                apply_url = app_url
+                contact_email = None
+                contact_phone = None
+                external_application = True
+            
             job = Job(
                 title=sample_titles[i % len(sample_titles)],
                 company=sample_companies[i % len(sample_companies)],
                 location=request.location,
                 url=f"https://example.com/job/{i+1}",
-                portal="mock",
-                description=f"This is a mock job description for {sample_titles[i % len(sample_titles)]} position. This job requires experience in the technologies mentioned in your search.",
+                portal=platform,
+                description=f"This is a mock job description for {sample_titles[i % len(sample_titles)]} position at {sample_companies[i % len(sample_companies)]}. This job requires experience in the technologies mentioned in your search. We are looking for a talented individual to join our team and contribute to exciting projects.",
                 salary="$80,000 - $120,000",
                 posted_date="Recently",
                 experience_level=request.experience_level or "mid",
+                requirements=sample_requirements[i % len(sample_requirements)],
+                skills=sample_skills[i % len(sample_skills)],
+                # Application-related fields
+                apply_url=apply_url,
+                contact_email=contact_email,
+                contact_phone=contact_phone,
+                external_application=external_application,
+                application_method=app_method,
                 created_at=datetime.utcnow(),
                 updated_at=datetime.utcnow()
             )

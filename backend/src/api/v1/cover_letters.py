@@ -1,10 +1,11 @@
 """Cover Letters API endpoints for the AI Job Application Assistant."""
 
 from fastapi import APIRouter, HTTPException
-from typing import List, Dict
+from typing import List, Dict, Any
 from ...models.cover_letter import CoverLetter, CoverLetterCreate, CoverLetterUpdate
 from ...utils.logger import get_logger
 from ...services.service_registry import service_registry
+from ...utils.response_wrapper import success_response, error_response
 
 logger = get_logger(__name__)
 
@@ -21,7 +22,7 @@ async def get_all_cover_letters() -> List[CoverLetter]:
     """
     try:
         # Get cover letter service from unified registry
-        cover_letter_service = service_registry.get_cover_letter_service()
+        cover_letter_service = await service_registry.get_cover_letter_service()
         
         # Get all cover letters
         cover_letters = await cover_letter_service.get_all_cover_letters()
@@ -46,7 +47,7 @@ async def get_cover_letter(cover_letter_id: str) -> CoverLetter:
     """
     try:
         # Get cover letter service from unified registry
-        cover_letter_service = service_registry.get_cover_letter_service()
+        cover_letter_service = await service_registry.get_cover_letter_service()
         
         # Get cover letter by ID
         cover_letter = await cover_letter_service.get_cover_letter(cover_letter_id)
@@ -63,8 +64,8 @@ async def get_cover_letter(cover_letter_id: str) -> CoverLetter:
         raise HTTPException(status_code=500, detail=f"Failed to get cover letter: {str(e)}")
 
 
-@router.post("/", response_model=CoverLetter)
-async def create_cover_letter(cover_letter: CoverLetterCreate) -> CoverLetter:
+@router.post("/", response_model=Dict[str, Any])
+async def create_cover_letter(cover_letter: CoverLetterCreate) -> Dict[str, Any]:
     """
     Create a new cover letter.
     
@@ -72,17 +73,17 @@ async def create_cover_letter(cover_letter: CoverLetterCreate) -> CoverLetter:
         cover_letter: Cover letter creation data
         
     Returns:
-        Created cover letter object
+        Consistent API response with created cover letter
     """
     try:
         # Get cover letter service from unified registry
-        cover_letter_service = service_registry.get_cover_letter_service()
+        cover_letter_service = await service_registry.get_cover_letter_service()
         
         # Create cover letter
         created_cover_letter = await cover_letter_service.create_cover_letter(cover_letter)
         
         logger.info(f"Cover letter created for {created_cover_letter.job_title} at {created_cover_letter.company_name}")
-        return created_cover_letter
+        return success_response(created_cover_letter.dict(), "Cover letter created successfully").dict()
         
     except HTTPException:
         raise
@@ -108,7 +109,7 @@ async def update_cover_letter(
     """
     try:
         # Get cover letter service from unified registry
-        cover_letter_service = service_registry.get_cover_letter_service()
+        cover_letter_service = await service_registry.get_cover_letter_service()
         
         # Update cover letter
         updated_cover_letter = await cover_letter_service.update_cover_letter(cover_letter_id, cover_letter_update)
@@ -139,7 +140,7 @@ async def delete_cover_letter(cover_letter_id: str) -> Dict[str, str]:
     """
     try:
         # Get cover letter service from unified registry
-        cover_letter_service = service_registry.get_cover_letter_service()
+        cover_letter_service = await service_registry.get_cover_letter_service()
         
         # Delete cover letter
         success = await cover_letter_service.delete_cover_letter(cover_letter_id)
@@ -170,7 +171,7 @@ async def generate_cover_letter_with_ai(cover_letter_request: CoverLetterCreate)
     """
     try:
         # Get cover letter service from unified registry
-        cover_letter_service = service_registry.get_cover_letter_service()
+        cover_letter_service = await service_registry.get_cover_letter_service()
         
         # Generate cover letter using AI
         generated_cover_letter = await cover_letter_service.generate_cover_letter(cover_letter_request)
