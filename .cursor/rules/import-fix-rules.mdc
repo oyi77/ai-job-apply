@@ -1,0 +1,179 @@
+---
+description: >
+  Import path and entry point rules for the AI Job Application Assistant project.
+  Ensures all Python imports are absolute from the project root, eliminates duplicate entry points, and enforces consistent, dynamic, and AI-friendly import architecture.
+  These rules prevent import conflicts, support SOLID/DRY principles, and guarantee future-proof, adaptable code for both human and AI agents.
+globs:
+  - "**/*.py"
+alwaysApply: true
+---
+{
+  "current_issues": {
+    "import_conflicts": {
+      "problem": "Conflicting import paths between src/main.py and root main.py",
+      "symptoms": [
+        "ModuleNotFoundError: No module named 'src'",
+        "ImportError: attempted relative import with no known parent package",
+        "Some API routers could not be loaded: No module named 'src.api.v1'"
+      ],
+      "root_cause": "Inconsistent import strategy and duplicate entry points"
+    },
+    "architecture_violations": {
+      "problem": "Violation of separation of concerns and single responsibility",
+      "symptoms": [
+        "src/main.py conflicts with root main.py",
+        "Mixed absolute and relative imports",
+        "API routers not properly organized"
+      ]
+    }
+  },
+  
+  "immediate_fixes": {
+    "remove_duplicate_main": {
+      "action": "Delete src/main.py to eliminate conflict",
+      "reason": "Root main.py should be the single entry point",
+      "impact": "Resolves import conflicts and clarifies architecture"
+    },
+    "fix_import_paths": {
+      "action": "Standardize all imports to use absolute paths from project root",
+      "pattern": "from src.module import Class",
+      "example": "from src.models.job import Job",
+      "when": "Always use this pattern for consistency"
+    },
+    "fix_api_structure": {
+      "action": "Fix API router imports in src/api.py",
+      "current": "from api.v1.jobs import router as jobs_router",
+      "correct": "from src.api.v1.jobs import router as jobs_router",
+      "reason": "Consistent with absolute import strategy"
+    }
+  },
+  
+  "import_strategy": {
+    "rule": "Use absolute imports from project root for all external imports",
+    "pattern": "from src.package.module import item",
+    "examples": {
+      "models": "from src.models.job import Job",
+      "utils": "from src.utils.logger import get_logger",
+      "config": "from src.config import config",
+      "api_routers": "from src.api.v1.jobs import router as jobs_router"
+    },
+    "benefits": [
+      "Consistent regardless of execution context",
+      "Clear dependency relationships",
+      "Easier for AI agents to understand",
+      "No import path conflicts"
+    ]
+  },
+  
+  "execution_context": {
+    "root_execution": {
+      "command": "python main.py (from project root)",
+      "working_directory": "/Users/paijo/ai-job-apply",
+      "imports": "from src.module import item",
+      "python_path": "Includes src/ in Python path"
+    },
+    "module_import": {
+      "command": "from src.api import app",
+      "working_directory": "Any directory",
+      "imports": "from src.module import item",
+      "python_path": "Project root in Python path"
+    }
+  },
+  
+  "file_organization": {
+    "root_level": {
+      "main.py": "Single application entry point",
+      "start.sh": "Setup and launch script",
+      "requirements.txt": "Dependencies",
+      ".env": "Environment variables"
+    },
+    "src_directory": {
+      "api.py": "FastAPI application factory",
+      "config.py": "Configuration management",
+      "core/": "Business logic interfaces",
+      "models/": "Data models",
+      "services/": "Service implementations",
+      "api/v1/": "API endpoints",
+      "utils/": "Utility functions"
+    }
+  },
+  
+  "api_router_structure": {
+    "router_imports": {
+      "pattern": "from src.api.v1.domain import router as domain_router",
+      "examples": {
+        "jobs": "from src.api.v1.jobs import router as jobs_router",
+        "resumes": "from src.api.v1.resumes import router as resumes_router",
+        "applications": "from src.api.v1.applications import router as applications_router",
+        "ai": "from src.api.v1.ai import router as ai_router"
+      }
+    },
+    "router_inclusion": {
+      "pattern": "app.include_router(domain_router, prefix='/api/v1/domain', tags=['domain'])",
+      "examples": {
+        "jobs": "app.include_router(jobs_router, prefix='/api/v1/jobs', tags=['jobs'])",
+        "resumes": "app.include_router(resumes_router, prefix='/api/v1/resumes', tags=['resumes'])",
+        "applications": "app.include_router(applications_router, prefix='/api/v1/applications', tags=['applications'])",
+        "ai": "app.include_router(ai_router, prefix='/api/v1/ai', tags=['ai'])"
+      }
+    }
+  },
+  
+  "error_handling": {
+    "import_errors": {
+      "strategy": "Graceful degradation when routers can't be loaded",
+      "fallback": "Provide basic endpoints when advanced features unavailable",
+      "logging": "Log import failures with clear error messages"
+    },
+    "startup_errors": {
+      "strategy": "Fail fast for critical configuration issues",
+      "validation": "Validate all required imports and configuration on startup",
+      "user_feedback": "Clear error messages for configuration issues"
+    }
+  },
+  
+  "testing_imports": {
+    "test_imports": {
+      "command": "python -c 'from src.api import app; print(\"Success\")'",
+      "expected": "No import errors, app object created successfully",
+      "failure_indicators": [
+        "ModuleNotFoundError",
+        "ImportError",
+        "AttributeError"
+      ]
+    },
+    "test_routers": {
+      "command": "python -c 'from src.api.v1.jobs import router; print(\"Router loaded\")'",
+      "expected": "Router object imported successfully",
+      "failure_indicators": [
+        "ModuleNotFoundError",
+        "ImportError"
+      ]
+    }
+  },
+  
+  "verification_steps": {
+    "step_1": "Remove src/main.py to eliminate conflicts",
+    "step_2": "Fix all import paths to use absolute imports from project root",
+    "step_3": "Test imports: python -c 'from src.api import app'",
+    "step_4": "Test router imports: python -c 'from src.api.v1.jobs import router'",
+    "step_5": "Start application: python main.py",
+    "step_6": "Verify endpoints: curl http://localhost:8000/health",
+    "step_7": "Test API routers: curl http://localhost:8000/api/v1/jobs"
+  },
+  
+  "prevention_rules": {
+    "no_duplicate_entry_points": {
+      "rule": "Only one main.py file at project root",
+      "reason": "Prevents import conflicts and confusion"
+    },
+    "consistent_import_strategy": {
+      "rule": "Always use absolute imports from project root",
+      "reason": "Eliminates import path resolution issues"
+    },
+    "clear_architecture": {
+      "rule": "Each file has a single, well-defined purpose",
+      "reason": "Prevents mixing of concerns and import complexity"
+    }
+  }
+}

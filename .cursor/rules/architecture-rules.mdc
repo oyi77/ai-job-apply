@@ -1,0 +1,382 @@
+---
+description: >
+  Enterprise-grade, dynamic, and adaptable architecture rules for the AI Job Application Assistant project.
+  These rules ensure consistent, future-proof, and AI/human-friendly architecture, enforcing SOLID, DRY, and separation of concerns.
+  All code, configuration, and documentation must be easily extensible, maintainable, and optimized for both AI and human agents.
+  Rules are always applied and should be reviewed and updated as the project evolves.
+globs:
+  - "**/*.py"
+  - "**/*.md"
+  - "**/*.yaml"
+  - "**/*.yml"
+  - "**/*.json"
+  - "**/*.toml"
+  - "**/*.js"
+  - "**/*.ts"
+alwaysApply: true
+---
+{
+  "project_name": "AI Job Application Assistant",
+  "version": "1.0.0",
+  "description": "Comprehensive architecture and development rules for enterprise-grade AI-powered job application system",
+  
+  "core_principles": {
+    "solid_principles": {
+      "single_responsibility": "Each class/module has exactly one reason to change",
+      "open_closed": "Open for extension, closed for modification",
+      "liskov_substitution": "Derived classes must be substitutable for base classes",
+      "interface_segregation": "Clients should not depend on interfaces they don't use",
+      "dependency_inversion": "High-level modules should not depend on low-level modules"
+    },
+    "dry_principle": "Don't Repeat Yourself - eliminate duplication at all levels",
+    "separation_of_concerns": "Each module has a single, well-defined responsibility",
+    "ai_compatibility": "All code must be easily understandable and modifiable by AI agents"
+  },
+  
+  "project_structure": {
+    "root_level": {
+      "main.py": "Single entry point for the application",
+      "start.sh": "Automated setup and launch script",
+      "requirements.txt": "Python dependencies",
+      ".env": "Environment configuration (not in git)",
+      "config.env.example": "Environment template"
+    },
+    "src_directory": {
+      "purpose": "Main application source code",
+      "structure": {
+        "api.py": "FastAPI application factory and configuration",
+        "config.py": "Configuration management and validation",
+        "main.py": "Application entry point (should be removed - conflicts with root main.py)",
+        "core/": "Business logic interfaces and abstractions",
+        "models/": "Data models and Pydantic schemas",
+        "services/": "Concrete service implementations",
+        "api/v1/": "API version 1 endpoints",
+        "utils/": "Utility functions and helpers"
+      }
+    }
+  },
+  
+  "import_rules": {
+    "absolute_imports": {
+      "rule": "Use absolute imports from project root when running from root directory",
+      "example": "from src.models.job import Job",
+      "when_to_use": "Running main application from project root"
+    },
+    "relative_imports": {
+      "rule": "Use relative imports when importing within the same package",
+      "example": "from .models.job import Job",
+      "when_to_use": "Importing within src/ package"
+    },
+    "import_path_resolution": {
+      "rule": "Import paths must be consistent with execution context",
+      "contexts": {
+        "root_execution": "python main.py (from project root)",
+        "src_execution": "cd src && python main.py (from src directory)",
+        "module_import": "from src.api import app (importing as module)"
+      }
+    }
+  },
+  
+  "api_architecture": {
+    "fastapi_structure": {
+      "app_factory": "Use create_app() function pattern for testability",
+      "router_organization": "Organize endpoints by domain in separate router files",
+      "versioning": "Use /api/v1/ prefix for all endpoints",
+      "error_handling": "Consistent HTTP error responses with proper status codes"
+    },
+    "endpoint_patterns": {
+      "crud_operations": "GET, POST, PUT, DELETE for resource management",
+      "search_endpoints": "POST /search for complex queries",
+      "health_checks": "GET /health for service monitoring",
+      "documentation": "Automatic OpenAPI/Swagger generation"
+    },
+    "router_inclusion": {
+      "pattern": "Include routers in main app with proper prefix and tags",
+      "error_handling": "Gracefully handle router import failures",
+      "fallback": "Provide basic endpoints when advanced features unavailable"
+    }
+  },
+  
+  "service_architecture": {
+    "interface_pattern": {
+      "rule": "Define abstract base classes for all services",
+      "purpose": "Enable dependency injection and testing",
+      "structure": "ABC with @abstractmethod decorators"
+    },
+    "service_implementation": {
+      "rule": "Implement concrete services that inherit from interfaces",
+      "location": "src/services/ directory",
+      "naming": "ServiceName + 'Service' suffix"
+    },
+    "dependency_injection": {
+      "rule": "Inject service dependencies through constructor or function parameters",
+      "benefits": "Testability, flexibility, loose coupling"
+    }
+  },
+  
+  "model_architecture": {
+    "pydantic_models": {
+      "rule": "Use Pydantic v2 for all data models",
+      "features": "Automatic validation, serialization, documentation",
+      "naming": "Descriptive names with proper type hints"
+    },
+    "model_organization": {
+      "request_models": "Input validation and API contracts",
+      "response_models": "Output formatting and API responses",
+      "domain_models": "Core business entities"
+    },
+    "validation_rules": {
+      "rule": "Comprehensive input validation with clear error messages",
+      "types": "Type validation, range validation, custom validators"
+    }
+  },
+  
+  "configuration_management": {
+    "environment_variables": {
+      "rule": "All configuration through environment variables",
+      "file": ".env for local development",
+      "validation": "Validate required configuration on startup"
+    },
+    "config_class": {
+      "rule": "Single Config class that loads and validates all settings",
+      "features": "Type conversion, validation, default values",
+      "access": "Global config instance for application-wide access"
+    },
+    "secrets_management": {
+      "rule": "Never hardcode sensitive information",
+      "storage": "Environment variables or secure secret managers",
+      "validation": "Fail fast if required secrets missing"
+    }
+  },
+  
+  "logging_and_monitoring": {
+    "logging_strategy": {
+      "rule": "Structured logging with consistent format",
+      "levels": "DEBUG, INFO, WARNING, ERROR, CRITICAL",
+      "output": "Both console and file output",
+      "rotation": "Daily log files with timestamp naming"
+    },
+    "log_format": {
+      "pattern": "timestamp - module - level - message",
+      "example": "2024-01-01 12:00:00 - src.api - INFO - Application started"
+    },
+    "monitoring": {
+      "health_endpoints": "Service health checks",
+      "metrics": "Performance and usage metrics",
+      "tracing": "Request tracing for debugging"
+    }
+  },
+  
+  "error_handling": {
+    "exception_strategy": {
+      "rule": "Custom exception classes for different error types",
+      "hierarchy": "Base exception class with specific subclasses",
+      "logging": "Log all exceptions with context and stack traces"
+    },
+    "http_errors": {
+      "rule": "Consistent HTTP error responses",
+      "status_codes": "Proper HTTP status codes for different error types",
+      "error_format": "Structured error responses with details"
+    },
+    "graceful_degradation": {
+      "rule": "Application continues working with reduced functionality",
+      "fallbacks": "Mock data or simplified processing when services unavailable"
+    }
+  },
+  
+  "testing_strategy": {
+    "test_coverage": {
+      "rule": "100% unit test coverage for all business logic",
+      "exclusions": "Only exclude integration points and external dependencies"
+    },
+    "test_organization": {
+      "unit_tests": "tests/unit/ for individual component testing",
+      "integration_tests": "tests/integration/ for component interaction testing",
+      "test_data": "Mock data and fixtures for consistent testing"
+    },
+    "testing_patterns": {
+      "rule": "Use dependency injection for testability",
+      "mocking": "Mock external dependencies and services",
+      "assertions": "Comprehensive assertions for all expected behaviors"
+    }
+  },
+  
+  "code_quality": {
+    "style_guide": {
+      "rule": "Follow PEP 8 for Python code style",
+      "tools": "Black for formatting, isort for import sorting",
+      "enforcement": "Pre-commit hooks and CI/CD validation"
+    },
+    "type_hints": {
+      "rule": "Use type hints for all function parameters and return values",
+      "coverage": "100% type hint coverage",
+      "tools": "mypy for static type checking"
+    },
+    "documentation": {
+      "rule": "Comprehensive docstrings for all public APIs",
+      "format": "Google-style docstrings",
+      "coverage": "All public functions, classes, and modules"
+    }
+  },
+  
+  "performance_requirements": {
+    "response_times": {
+      "health_check": "< 100ms",
+      "api_endpoints": "< 500ms for simple operations, < 2s for complex operations",
+      "file_operations": "< 1s for files up to 10MB"
+    },
+    "resource_usage": {
+      "memory": "Efficient memory usage, no memory leaks",
+      "cpu": "Minimal CPU overhead for basic operations",
+      "disk": "Efficient file handling and storage"
+    },
+    "scalability": {
+      "concurrent_requests": "Handle multiple simultaneous requests",
+      "load_handling": "Graceful degradation under high load"
+    }
+  },
+  
+  "security_requirements": {
+    "input_validation": {
+      "rule": "Validate and sanitize all user inputs",
+      "file_uploads": "Validate file types, sizes, and content",
+      "api_inputs": "Validate all API request parameters"
+    },
+    "authentication": {
+      "rule": "Implement proper authentication for protected endpoints",
+      "methods": "JWT tokens, API keys, or OAuth2",
+      "security": "Secure token storage and transmission"
+    },
+    "authorization": {
+      "rule": "Implement role-based access control",
+      "permissions": "Granular permissions for different operations",
+      "audit": "Log all access attempts and operations"
+    }
+  },
+  
+  "deployment_requirements": {
+    "containerization": {
+      "rule": "Docker containerization for consistent deployment",
+      "multi_stage": "Multi-stage builds for optimized images",
+      "security": "Non-root user, minimal attack surface"
+    },
+    "environment_management": {
+      "rule": "Environment-specific configuration",
+      "stages": "Development, staging, production",
+      "secrets": "Secure secret management in production"
+    },
+    "monitoring": {
+      "rule": "Health checks and metrics collection",
+      "logging": "Centralized logging and log aggregation",
+      "alerting": "Proactive monitoring and alerting"
+    }
+  },
+  
+  "ai_integration": {
+    "gemini_api": {
+      "rule": "Integrate with Google Gemini AI for intelligent features",
+      "services": "Resume optimization, cover letter generation, job matching",
+      "fallback": "Mock implementations when AI service unavailable"
+    },
+    "ai_service_pattern": {
+      "rule": "Abstract AI service interface with concrete implementations",
+      "methods": "Optimize resume, generate cover letter, analyze job match",
+      "error_handling": "Graceful fallback when AI service fails"
+    },
+    "prompt_engineering": {
+      "rule": "Well-structured prompts for consistent AI responses",
+      "templates": "Reusable prompt templates for different use cases",
+      "validation": "Validate AI responses before returning to users"
+    }
+  },
+  
+  "file_management": {
+    "file_operations": {
+      "rule": "Secure file upload, storage, and retrieval",
+      "validation": "File type, size, and content validation",
+      "storage": "Organized file storage with proper permissions"
+    },
+    "file_types": {
+      "supported": "PDF, DOCX, TXT for resumes and documents",
+      "validation": "MIME type and extension validation",
+      "processing": "Text extraction and content analysis"
+    },
+    "security": {
+      "rule": "Prevent file-based attacks and unauthorized access",
+      "sanitization": "Filename sanitization and path validation",
+      "quarantine": "Scan uploaded files for malicious content"
+    }
+  },
+  
+  "job_search_integration": {
+    "external_apis": {
+      "rule": "Integrate with job search platforms",
+      "platforms": "LinkedIn, Indeed, Glassdoor, Google Jobs",
+      "rate_limiting": "Respect API rate limits and terms of service"
+    },
+    "web_scraping": {
+      "rule": "Ethical web scraping with proper delays and headers",
+      "robots_txt": "Respect robots.txt and website terms",
+      "data_extraction": "Structured data extraction and parsing"
+    },
+    "job_matching": {
+      "rule": "AI-powered job matching based on resume and preferences",
+      "algorithms": "Skills matching, experience level, location preferences",
+      "ranking": "Intelligent ranking of job opportunities"
+    }
+  },
+  
+  "application_tracking": {
+    "data_model": {
+      "rule": "Comprehensive application tracking system",
+      "entities": "Applications, companies, positions, follow-ups",
+      "relationships": "Clear relationships between entities"
+    },
+    "workflow": {
+      "rule": "Defined application workflow with status tracking",
+      "stages": "Draft, submitted, under review, interview, offer",
+      "transitions": "Valid state transitions with business rules"
+    },
+    "analytics": {
+      "rule": "Application analytics and insights",
+      "metrics": "Success rates, response times, interview performance",
+      "reporting": "Regular reports and dashboards"
+    }
+  },
+  
+  "development_workflow": {
+    "version_control": {
+      "rule": "Git-based version control with clear branching strategy",
+      "branches": "main, develop, feature branches",
+      "commits": "Atomic commits with clear messages"
+    },
+    "code_review": {
+      "rule": "Mandatory code review for all changes",
+      "reviewers": "Both human and AI code review",
+      "standards": "Enforce coding standards and best practices"
+    },
+    "continuous_integration": {
+      "rule": "Automated testing and validation",
+      "pipeline": "Build, test, lint, and security scan",
+      "quality_gates": "Quality gates before deployment"
+    }
+  },
+  
+  "maintenance_and_operations": {
+    "monitoring": {
+      "rule": "Comprehensive application monitoring",
+      "metrics": "Performance, availability, and business metrics",
+      "alerting": "Proactive alerting for issues"
+    },
+    "logging": {
+      "rule": "Centralized logging with proper rotation",
+      "retention": "Appropriate log retention policies",
+      "analysis": "Log analysis and troubleshooting tools"
+    },
+    "backup": {
+      "rule": "Regular backup of application data",
+      "strategy": "Automated backup with verification",
+      "recovery": "Documented recovery procedures"
+    }
+  }
+}

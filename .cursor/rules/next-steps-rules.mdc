@@ -1,0 +1,194 @@
+---
+description: >
+  Enforces import path and entry point standards for the AI Job Application Assistant project.
+  - All Python imports must use absolute paths from the project root.
+  - Duplicate entry points are not allowed.
+  - Import architecture must be consistent, dynamic, and maintainable.
+  These rules help prevent import conflicts, support SOLID and DRY principles, and ensure the codebase remains adaptable for both human and AI contributors.
+globs:
+  - "**/*.py"
+alwaysApply: true
+---
+# 🚀 **Next Development Phase Rules**
+
+## 📋 **Current Status: PRODUCTION READY SERVICES**
+- ✅ Complete service layer implemented
+- ✅ All API endpoints functional
+- ✅ Service registry and dependency injection working
+- ✅ Comprehensive testing completed
+
+## 🎯 **Next Priority Steps**
+
+### **1. Database Integration (HIGH PRIORITY)**
+- **Goal**: Replace in-memory storage with persistent database
+- **Technology**: SQLAlchemy + PostgreSQL/SQLite
+- **Implementation**: 
+  - Database models for all entities
+  - Migration system
+  - Repository pattern for data access
+  - Connection pooling and optimization
+
+### **2. Enhanced Testing Suite (HIGH PRIORITY)**
+- **Goal**: 100% test coverage with professional testing
+- **Framework**: pytest + pytest-asyncio
+- **Coverage**: Unit tests, integration tests, performance tests
+- **CI/CD**: Automated testing pipeline
+
+### **3. Real AI Integration (MEDIUM PRIORITY)**
+- **Goal**: Configure actual Gemini API for production use
+- **Requirements**: API key management, rate limiting, error handling
+- **Fallback**: Maintain mock responses for development
+
+### **4. Performance Monitoring (MEDIUM PRIORITY)**
+- **Goal**: Add metrics collection and monitoring
+- **Tools**: Prometheus, Grafana, or built-in FastAPI metrics
+- **Metrics**: Response times, throughput, error rates
+
+## 🏗️ **Architecture Guidelines**
+
+### **Database Design Principles**
+- **Normalization**: Proper database normalization (3NF)
+- **Indexing**: Strategic indexing for performance
+- **Relationships**: Clear foreign key relationships
+- **Constraints**: Data integrity constraints
+- **Migrations**: Version-controlled schema changes
+
+### **Testing Architecture**
+- **Test Database**: Separate test database with fixtures
+- **Mocking Strategy**: Mock external dependencies
+- **Test Data**: Realistic test data generation
+- **Performance Tests**: Load testing and benchmarking
+
+### **Code Quality Standards**
+- **Type Hints**: 100% type coverage
+- **Documentation**: Comprehensive docstrings
+- **Error Handling**: Graceful error handling with logging
+- **Security**: Input validation and sanitization
+
+## 🔧 **Implementation Patterns**
+
+### **Repository Pattern**
+```python
+class ApplicationRepository:
+    async def create(self, application: JobApplication) -> JobApplication:
+        pass
+    
+    async def get_by_id(self, id: str) -> Optional[JobApplication]:
+        pass
+    
+    async def update(self, application: JobApplication) -> JobApplication:
+        pass
+    
+    async def delete(self, id: str) -> bool:
+        pass
+```
+
+### **Database Models**
+```python
+class JobApplication(Base):
+    __tablename__ = "job_applications"
+    
+    id = Column(String, primary_key=True)
+    job_id = Column(String, nullable=False)
+    job_title = Column(String, nullable=False)
+    company = Column(String, nullable=False)
+    status = Column(Enum(ApplicationStatus), nullable=False)
+    created_at = Column(DateTime, default=datetime.utcnow)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+```
+
+### **Testing Patterns**
+```python
+@pytest.mark.asyncio
+async def test_create_application():
+    # Arrange
+    app_data = {"job_title": "Test", "company": "Test Corp"}
+    
+    # Act
+    result = await application_service.create_application(app_data)
+    
+    # Assert
+    assert result.job_title == "Test"
+    assert result.company == "Test Corp"
+```
+
+## 📁 **File Organization**
+
+### **New Directory Structure**
+```
+src/
+├── database/           # Database configuration and models
+│   ├── __init__.py
+│   ├── config.py      # Database configuration
+│   ├── models.py      # SQLAlchemy models
+│   ├── repositories/  # Repository implementations
+│   └── migrations/    # Database migrations
+├── tests/             # Comprehensive test suite
+│   ├── unit/         # Unit tests
+│   ├── integration/  # Integration tests
+│   ├── fixtures/     # Test data fixtures
+│   └── conftest.py   # Test configuration
+└── monitoring/        # Performance monitoring
+    ├── metrics.py     # Metrics collection
+    └── health.py      # Enhanced health checks
+```
+
+## 🚦 **Development Workflow**
+
+### **Phase 1: Database Foundation**
+1. Set up database configuration
+2. Create SQLAlchemy models
+3. Implement repository pattern
+4. Add database migrations
+5. Update services to use repositories
+
+### **Phase 2: Testing Infrastructure**
+1. Set up pytest framework
+2. Create test database configuration
+3. Implement unit tests for all services
+4. Add integration tests
+5. Set up CI/CD pipeline
+
+### **Phase 3: Production Features**
+1. Configure real AI API integration
+2. Add performance monitoring
+3. Implement caching strategies
+4. Add security enhancements
+5. Performance optimization
+
+## 📊 **Success Metrics**
+
+### **Database Integration**
+- ✅ All entities have database models
+- ✅ Repository pattern implemented
+- ✅ Migration system working
+- ✅ Performance benchmarks met
+
+### **Testing Coverage**
+- ✅ 100% unit test coverage
+- ✅ Integration tests passing
+- ✅ Performance tests within limits
+- ✅ CI/CD pipeline automated
+
+### **Production Readiness**
+- ✅ Real AI integration configured
+- ✅ Monitoring and alerting active
+- ✅ Security measures implemented
+- ✅ Performance optimized
+
+## 🎯 **Immediate Next Actions**
+
+1. **Create database configuration** (`src/database/config.py`)
+2. **Design database models** (`src/database/models.py`)
+3. **Set up testing framework** (`tests/conftest.py`)
+4. **Implement first repository** (`src/database/repositories/`)
+5. **Create database migrations** (`src/database/migrations/`)
+
+## 🔒 **Quality Gates**
+
+- **Code Review**: All changes must be reviewed
+- **Test Coverage**: Minimum 95% coverage required
+- **Performance**: Response times under 500ms
+- **Security**: No security vulnerabilities
+- **Documentation**: All public APIs documented
+

@@ -1,0 +1,243 @@
+---
+description: >
+  Rules for Python import paths and entry points in the AI Job Application Assistant project.
+  - All Python imports must use absolute paths from the project root.
+  - Duplicate entry points are not allowed.
+  - Import structure must be consistent and maintainable.
+  - Follows SOLID and DRY principles to prevent import conflicts and ensure adaptability.
+  - Supports both human and AI maintainers.
+globs:
+  - "**/*.py"
+alwaysApply: true
+---
+{
+  "service_layer_architecture": {
+    "current_state": {
+      "interfaces": "Abstract base classes defined in src/core/",
+      "implementations": "Missing concrete implementations",
+      "location": "src/services/ directory is empty",
+      "status": "Only mock data in API endpoints"
+    },
+    "target_state": {
+      "interfaces": "Well-defined abstract base classes",
+      "implementations": "Concrete services implementing interfaces",
+      "location": "src/services/ with proper implementations",
+      "status": "Full functionality with AI integration"
+    }
+  },
+  
+  "service_implementation_pattern": {
+    "interface_definition": {
+      "location": "src/core/service_name.py",
+      "pattern": "ABC with @abstractmethod decorators",
+      "example": "class AIService(ABC):"
+    },
+    "concrete_implementation": {
+      "location": "src/services/service_name_service.py",
+      "pattern": "class ConcreteService(ServiceInterface):",
+      "naming": "ServiceName + 'Service' suffix"
+    },
+    "dependency_injection": {
+      "pattern": "Inject dependencies through constructor",
+      "example": "def __init__(self, config: Config, logger: Logger):",
+      "benefits": "Testability, flexibility, loose coupling"
+    }
+  },
+  
+  "required_services": {
+    "ai_service": {
+      "interface": "src/core/ai_service.py",
+      "implementation": "src/services/gemini_ai_service.py",
+      "responsibilities": [
+        "Resume optimization using Gemini AI",
+        "Cover letter generation",
+        "Job matching analysis",
+        "Skills extraction"
+      ],
+      "dependencies": ["Gemini API client", "Configuration", "Logger"]
+    },
+    "job_search_service": {
+      "interface": "src/core/job_search.py",
+      "implementation": "src/services/multi_platform_job_service.py",
+      "responsibilities": [
+        "Search jobs across multiple platforms",
+        "Web scraping with ethical practices",
+        "Job data extraction and normalization",
+        "Rate limiting and respect for terms of service"
+      ],
+      "dependencies": ["Playwright", "BeautifulSoup", "Configuration", "Logger"]
+    },
+    "resume_service": {
+      "interface": "src/core/resume_service.py",
+      "implementation": "src/services/file_based_resume_service.py",
+      "responsibilities": [
+        "Resume file upload and storage",
+        "Text extraction from various formats",
+        "Resume metadata management",
+        "Default resume handling"
+      ],
+      "dependencies": ["File system", "PDF/DOCX processors", "Configuration", "Logger"]
+    },
+    "application_service": {
+      "interface": "src/core/application_service.py",
+      "implementation": "src/services/memory_based_application_service.py",
+      "responsibilities": [
+        "Job application tracking",
+        "Status management and transitions",
+        "Follow-up scheduling",
+        "Application analytics"
+      ],
+      "dependencies": ["In-memory storage", "Configuration", "Logger"]
+    },
+    "file_service": {
+      "interface": "src/core/file_service.py",
+      "implementation": "src/services/local_file_service.py",
+      "responsibilities": [
+        "Secure file operations",
+        "File validation and sanitization",
+        "Directory management",
+        "File metadata handling"
+      ],
+      "dependencies": ["File system", "Configuration", "Logger"]
+    }
+  },
+  
+  "implementation_guidelines": {
+    "error_handling": {
+      "rule": "Comprehensive error handling with custom exceptions",
+      "pattern": "Try-catch blocks with specific exception types",
+      "logging": "Log all errors with context and stack traces",
+      "user_feedback": "Clear error messages for end users"
+    },
+    "validation": {
+      "rule": "Validate all inputs and outputs",
+      "input_validation": "Validate parameters and data before processing",
+      "output_validation": "Validate results before returning",
+      "fallbacks": "Provide fallback behavior when validation fails"
+    },
+    "logging": {
+      "rule": "Structured logging for all operations",
+      "levels": "Use appropriate log levels (DEBUG, INFO, WARNING, ERROR)",
+      "context": "Include relevant context in log messages",
+      "performance": "Log timing information for performance monitoring"
+    },
+    "testing": {
+      "rule": "100% unit test coverage for all business logic",
+      "mocking": "Mock external dependencies for isolated testing",
+      "fixtures": "Use consistent test data and fixtures",
+      "assertions": "Comprehensive assertions for all expected behaviors"
+    }
+  },
+  
+  "ai_service_implementation": {
+    "gemini_integration": {
+      "client": "google.generativeai.GenerativeModel",
+      "configuration": "API key, model name, temperature, max tokens",
+      "error_handling": "Handle API rate limits, timeouts, and errors",
+      "fallback": "Mock responses when AI service unavailable"
+    },
+    "prompt_engineering": {
+      "rule": "Well-structured prompts for consistent responses",
+      "templates": "Reusable prompt templates for different use cases",
+      "context": "Include relevant context in prompts",
+      "validation": "Validate AI responses before returning to users"
+    },
+    "methods": {
+      "optimize_resume": "AI-powered resume optimization",
+      "generate_cover_letter": "Personalized cover letter generation",
+      "analyze_job_match": "Resume-job matching analysis",
+      "extract_skills": "Skills extraction from text content"
+    }
+  },
+  
+  "job_search_implementation": {
+    "platform_integration": {
+      "linkedin": "Respect rate limits and terms of service",
+      "indeed": "Use official API when available",
+      "glassdoor": "Ethical web scraping practices",
+      "google_jobs": "Search result parsing and extraction"
+    },
+    "web_scraping": {
+      "rule": "Ethical scraping with proper delays and headers",
+      "delays": "Respect robots.txt and implement delays",
+      "headers": "Use realistic user agent strings",
+      "error_handling": "Handle network errors and timeouts gracefully"
+    },
+    "data_processing": {
+      "extraction": "Extract structured data from HTML",
+      "normalization": "Normalize job data across platforms",
+      "validation": "Validate extracted data before storage",
+      "deduplication": "Remove duplicate job postings"
+    }
+  },
+  
+  "file_service_implementation": {
+    "security": {
+      "rule": "Secure file operations with proper validation",
+      "upload_validation": "File type, size, and content validation",
+      "path_sanitization": "Sanitize file paths to prevent directory traversal",
+      "permissions": "Set appropriate file permissions"
+    },
+    "storage": {
+      "organization": "Organized file storage with clear directory structure",
+      "naming": "Unique and descriptive file names",
+      "backup": "Regular backup of important files",
+      "cleanup": "Automatic cleanup of temporary files"
+    },
+    "processing": {
+      "text_extraction": "Extract text from PDF, DOCX, and other formats",
+      "metadata": "Extract and store file metadata",
+      "conversion": "Convert files between formats when needed",
+      "compression": "Compress large files for storage efficiency"
+    }
+  },
+  
+  "service_registration": {
+    "pattern": "Register services in dependency injection container",
+    "location": "src/api.py or dedicated service registry",
+    "method": "Service factory pattern or dependency injection framework",
+    "benefits": "Centralized service management and testing"
+  },
+  
+  "testing_services": {
+    "unit_tests": {
+      "location": "tests/unit/services/",
+      "coverage": "100% coverage for all business logic",
+      "mocking": "Mock external dependencies",
+      "fixtures": "Use consistent test data"
+    },
+    "integration_tests": {
+      "location": "tests/integration/services/",
+      "scope": "Test service interactions",
+      "data": "Use test databases and file systems",
+      "cleanup": "Clean up test data after tests"
+    },
+    "performance_tests": {
+      "location": "tests/performance/services/",
+      "metrics": "Response time, throughput, resource usage",
+      "load": "Test under various load conditions",
+      "benchmarks": "Establish performance baselines"
+    }
+  },
+  
+  "deployment_considerations": {
+    "configuration": {
+      "rule": "Environment-specific configuration for all services",
+      "development": "Mock services and local file storage",
+      "staging": "Real services with test data",
+      "production": "Production services with real data"
+    },
+    "monitoring": {
+      "rule": "Comprehensive monitoring for all services",
+      "health_checks": "Service health endpoints",
+      "metrics": "Performance and usage metrics",
+      "alerting": "Proactive alerting for service issues"
+    },
+    "scalability": {
+      "rule": "Design services for horizontal scaling",
+      "stateless": "Services should be stateless when possible",
+      "caching": "Implement appropriate caching strategies",
+      "load_balancing": "Support load balancing across multiple instances"
+    }
+  }
+}

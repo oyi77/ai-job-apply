@@ -1,0 +1,78 @@
+---
+description: >
+  Project structure and file organization documentation for the AI Job Application Assistant.
+  Documents the clear separation of entry points, file organization, and usage flow for the project.
+  Provides guidance on project structure, entry points, and best practices for development and deployment.
+globs:
+  - "**/*.py"
+  - "**/*.md"
+  - "**/*.yaml"
+  - "**/*.yml"
+  - "**/*.json"
+  - "**/*.toml"
+alwaysApply: true
+---
+
+# Project Structure
+
+## Entry Points
+
+### 🎯 Main Application: `main.py`
+**Single entry point for the full application**
+
+- **Purpose**: Run the complete AI Job Application Assistant
+- **Requirements**: Gemini API key in `.env` file
+- **Features**: Web interface, API endpoints, job search, resume optimization
+- **Usage**: `python main.py` or `./start.sh`
+
+### 🎭 Demo Script: `demo.py`
+**Showcase features without API key**
+
+- **Purpose**: Demonstrate core functionality without setup
+- **Requirements**: None (no API key needed)
+- **Features**: Mock data examples of all features
+- **Usage**: `python demo.py`
+
+### 🚀 Startup Script: `start.sh`
+**Automated setup and launch**
+
+- **Purpose**: Handle environment setup and launch application
+- **Requirements**: None (handles setup automatically)
+- **Features**: Virtual environment, dependencies, .env creation
+- **Usage**: `./start.sh`
+
+## File Organization
+
+```
+ai-job-apply/
+├── main.py              # 🎯 Single main entry point
+├── demo.py              # 🎭 Demo script (no API key needed)
+├── start.sh             # 🚀 Automated startup script
+├── requirements.txt     # Python dependencies
+├── config.env.example   # Environment template
+├── src/                 # Application source code
+│   ├── api.py          # FastAPI application
+│   ├── config.py       # Configuration management
+│   ├── ai_agent.py     # AI integration
+│   ├── job_search.py   # Job search functionality
+│   └── application_manager.py # Application management
+├── templates/          # Cover letter templates
+├── resumes/           # Resume storage
+├── output/            # Generated files
+└── logs/              # Application logs
+```
+
+## Why This Structure?
+
+1. **Single Entry Point**: `main.py` is the only way to run the full application
+2. **Clear Separation**: Demo script for testing, main script for production
+3. **Automated Setup**: Startup script handles all environment setup
+4. **No Confusion**: Each file has a clear, single purpose
+5. **Best Practices**: Follows Python project structure conventions
+
+## Usage Flow
+
+1. **First Time**: Run `./start.sh` (handles everything)
+2. **Demo**: Run `python demo.py` (see features without setup)
+3. **Production**: Run `python main.py` (full application)
+4. **Development**: Use `./start.sh` (includes reload mode) 

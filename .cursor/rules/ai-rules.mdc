@@ -1,0 +1,82 @@
+---
+description: >
+  Comprehensive, AI-optimized development rules and standards for the AI Job Apply Project.
+  Ensures all code, processes, and architecture are future-proof, dynamic, and adaptable for both human and AI contributors.
+globs:
+  - "**/*.py"
+  - "**/*.md"
+  - "**/*.yaml"
+  - "**/*.yml"
+  - "**/*.json"
+  - "**/*.toml"
+  - "**/*.js"
+  - "**/*.ts"
+alwaysApply: true
+---
+
+# AI-First Development Rules & Standards
+
+## 1. Core Principles
+
+- **SOLID Principles**: Enforce Single Responsibility, Open/Closed, Liskov Substitution, Interface Segregation, Dependency Inversion.
+- **DRY**: Eliminate code duplication at all levels (logic, config, docs).
+- **Enterprise Grade**: All code must be production-ready, scalable, and maintainable.
+- **Dynamic & Adaptable**: Architect for change—minimize future refactoring.
+- **AI-Compatibility**: All code, configs, and docs must be easily understandable and modifiable by both humans and AI agents.
+
+## 2. Code Standards
+
+- Use type hints and static typing everywhere.
+- Adhere to PEP 8 (Python) or relevant language style guides.
+- Implement robust error handling and custom exception classes.
+- Integrate structured logging for debugging, monitoring, and AI traceability.
+- Use dependency injection for all external dependencies.
+- Abstract all business logic behind interfaces or abstract base classes.
+- Write self-documenting code and include docstrings for all public APIs.
+- Ensure all code is AI-readable and can be parsed or modified by LLMs.
+
+## 3. Architecture Guidelines
+
+- **Modular Design**: Each module/class/function has a single, clear responsibility.
+- **Interface-Driven**: Use abstract base classes or interfaces for extensibility and AI code generation.
+- **Configuration-Driven**: All configurable values must be externalized (env, config files, or secrets managers).
+- **Testable**: 100% unit test coverage for all logic; use mocks/fakes for external dependencies.
+- **Async-Ready**: Use async/await where concurrency or I/O is involved.
+- **AI-Extensible**: Design APIs and modules so AI agents can easily extend or refactor them.
+
+## 4. File & Project Organization
+
+- Remove all unused files, dependencies, and legacy code.
+- Organize code into logical, discoverable modules and packages.
+- Use consistent, descriptive naming conventions for files, classes, functions, and variables.
+- Maintain a clear, hierarchical package structure.
+- Provide a machine-readable manifest (e.g., `pyproject.toml`, `package.json`) for all dependencies and scripts.
+- Include AI-friendly documentation (markdown, YAML, or JSON) for all modules.
+
+## 5. Quality Assurance
+
+- No unused imports, variables, or dead code.
+- Comprehensive error handling and fallback strategies.
+- Input validation and sanitization at all entry points.
+- Optimize for performance and resource efficiency.
+- Apply security best practices (OWASP, secrets management, etc.).
+- All code must pass static analysis, linting, and type checking.
+- All changes must be reviewed by both human and AI reviewers.
+
+## 6. Development & Collaboration Process
+
+- Implement features incrementally with clear, atomic commits.
+- Continuously refactor for clarity, simplicity, and maintainability.
+- Document all public APIs, endpoints, and configuration options.
+- Create and maintain reusable, composable components.
+- Follow the principle of least surprise—code should be intuitive for both humans and AI.
+- Use AI agents for code review, refactoring, and documentation generation where possible.
+- Maintain a changelog and clear versioning for all releases.
+
+## 7. AI Collaboration & Automation
+
+- All code, configs, and docs must be easily ingestible and modifiable by AI agents.
+- Provide clear prompts and instructions for AI code generation or modification tasks.
+- Use structured comments and metadata to guide AI understanding and automation.
+- Automate repetitive tasks (testing, linting, formatting, deployment) using CI/CD pipelines.
+- Encourage and document best practices for human-AI collaboration.
