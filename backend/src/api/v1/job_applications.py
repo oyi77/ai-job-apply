@@ -86,17 +86,14 @@ async def apply_to_job(
             await application_service.create_application(application)
             
             logger.info(f"Successfully applied to job: {job.title} at {job.company}")
-            return success_response(
-                data=result,
-                message="Job application submitted successfully"
-            )
+            return {
+                "success": True,
+                "data": result,
+                "message": "Job application submitted successfully"
+            }
         else:
             logger.error(f"Job application failed: {result.get('error')}")
-            return error_response(
-                message="Job application failed",
-                details=result.get("error"),
-                status_code=400
-            )
+            raise HTTPException(status_code=400, detail=f"Job application failed: {result.get('error')}")
             
     except HTTPException:
         raise
@@ -215,10 +212,7 @@ async def validate_application_data(
         )
         
         logger.info(f"Application validation completed: valid={validation.get('valid')}")
-        return success_response(
-            data=validation,
-            message="Application validation completed"
-        )
+        return validation
         
     except HTTPException:
         raise
@@ -271,18 +265,11 @@ async def get_application_service_health() -> Dict[str, Any]:
         health = await application_service.health_check()
         
         logger.info(f"Application service health: {health.get('status')}")
-        return success_response(
-            data=health,
-            message="Application service health check completed"
-        )
+        return health
         
     except Exception as e:
         logger.error(f"Error checking application service health: {e}", exc_info=True)
-        return error_response(
-            message="Failed to check application service health",
-            details=str(e),
-            status_code=500
-        )
+        raise HTTPException(status_code=500, detail=f"Failed to check application service health: {str(e)}")
 
 
 @router.post("/bulk-apply", response_model=Dict[str, Any])
@@ -389,10 +376,7 @@ async def bulk_apply_to_jobs(
         }
         
         logger.info(f"Bulk application completed: {successful_applications} successful, {failed_applications} failed")
-        return success_response(
-            data=response_data,
-            message=f"Bulk application completed: {successful_applications} successful, {failed_applications} failed"
-        )
+        return response_data
         
     except HTTPException:
         raise
