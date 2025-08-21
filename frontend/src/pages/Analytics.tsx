@@ -23,6 +23,7 @@ import {
   XCircleIcon,
   ClockIcon,
 } from '@heroicons/react/24/outline';
+import { ApplicationStatus } from '../types';
 
 const Analytics: React.FC = () => {
   const [timeRange, setTimeRange] = useState('30d');
@@ -52,7 +53,7 @@ const Analytics: React.FC = () => {
 
   // Calculate analytics data
   const statusData = [
-    { label: 'Applied', value: applications.filter(a => a.status === 'applied').length, color: '#3B82F6' },
+    { label: 'Applied', value: applications.filter(a => a.status === ApplicationStatus.APPLIED).length, color: '#3B82F6' },
     { label: 'Under Review', value: applications.filter(a => a.status === 'under_review').length, color: '#F59E0B' },
     { label: 'Interview', value: applications.filter(a => a.status === 'interview_scheduled').length, color: '#8B5CF6' },
     { label: 'Offer', value: applications.filter(a => a.status === 'offer_received').length, color: '#10B981' },

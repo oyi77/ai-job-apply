@@ -10,104 +10,100 @@ import {
   Spinner,
   Alert,
   Form,
-  FormField
+  FormField,
+  Select
 } from '../components';
 import { useAppStore } from '../stores/appStore';
 import { resumeService, fileService } from '../services/api';
-import type { Resume, FileMetadata } from '../types';
+import type { Resume } from '../types';
 import {
   PlusIcon,
-  DocumentTextIcon,
-  EyeIcon,
-  PencilIcon,
   TrashIcon,
-  CloudArrowUpIcon,
   StarIcon,
   DocumentMagnifyingGlassIcon,
+  DocumentTextIcon,
+  EyeIcon,
+  CloudArrowUpIcon,
 } from '@heroicons/react/24/outline';
 
 const Resumes: React.FC = () => {
   const [isUploadModalOpen, setIsUploadModalOpen] = useState(false);
-  const [isViewModalOpen, setIsViewModalOpen] = useState(false);
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [selectedResume, setSelectedResume] = useState<Resume | null>(null);
-  const [uploadingFile, setUploadingFile] = useState<File | null>(null);
-  const [uploadProgress, setUploadProgress] = useState(0);
+  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
+  const [isViewModalOpen, setIsViewModalOpen] = useState(false);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [filterStatus, setFilterStatus] = useState<string>('all');
   
   const fileInputRef = useRef<HTMLInputElement>(null);
   const queryClient = useQueryClient();
-  const { resumes, setResumes, addResume, updateResume, deleteResume } = useAppStore();
+  const { setResumes, addResume, updateResume, deleteResume } = useAppStore();
 
   // Fetch resumes
-  const { data: fetchedResumes, isLoading, error } = useQuery({
+  const { data: resumes = [], isLoading } = useQuery({
     queryKey: ['resumes'],
-    queryFn: () => resumeService.getResumes(),
-    onSuccess: (data) => {
-      if (data.data) {
-        setResumes(data.data);
-      }
-    },
+    queryFn: resumeService.getResumes,
   });
 
   // Upload resume mutation
   const uploadMutation = useMutation({
     mutationFn: async (file: File) => {
-      // First upload the file
-      const uploadResponse = await fileService.uploadFile(file);
-      
-      // Then create resume record
-      const resumeData = {
-        title: file.name.replace(/\.[^/.]+$/, ''), // Remove file extension
-        file_path: uploadResponse.file_path,
-        file_type: file.type,
-        file_size: file.size,
-        skills: [], // Will be extracted by AI
-        experience_years: 0,
-        education: [],
-        certifications: [],
-        is_default: resumes.length === 0, // First resume becomes default
-      };
-      
-      return resumeService.createResume(resumeData);
+      try {
+        const uploadResponse = await fileService.uploadFile(file, 'resume');
+        
+        const resumeData: Partial<Resume> = {
+          filename: uploadResponse.filename,
+          original_filename: file.name,
+          file_path: uploadResponse.url,
+          file_size: file.size,
+          mime_type: file.type,
+          file_type: file.type.split('/')[1],
+          skills: [],
+          experience_years: 0,
+          education: [],
+          certifications: [],
+          is_default: resumes.length === 0,
+        };
+
+        return resumeService.uploadResume(file, resumeData);
+      } catch (error) {
+        console.error('Error uploading resume:', error);
+        throw error;
+      }
     },
-    onSuccess: (newResume) => {
-      addResume(newResume);
-      setIsUploadModalOpen(false);
-      setUploadingFile(null);
-      setUploadProgress(0);
-      queryClient.invalidateQueries(['resumes']);
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['resumes'] });
+      console.log('Resume uploaded successfully!');
     },
     onError: (error) => {
-      console.error('Upload failed:', error);
-      setUploadingFile(null);
-      setUploadProgress(0);
+      console.error('Upload error:', error);
+      console.error('Failed to upload resume. Please try again.');
     },
   });
 
   // Delete resume mutation
   const deleteMutation = useMutation({
     mutationFn: resumeService.deleteResume,
-    onSuccess: (_, deletedId) => {
-      deleteResume(deletedId);
-      queryClient.invalidateQueries(['resumes']);
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['resumes'] });
+      console.log('Resume deleted successfully!');
+    },
+    onError: (error) => {
+      console.error('Delete error:', error);
+      console.error('Failed to delete resume. Please try again.');
     },
   });
 
   // Set default resume mutation
   const setDefaultMutation = useMutation({
-    mutationFn: async (resumeId: string) => {
-      // Update all resumes to not default
-      await Promise.all(
-        resumes.map(resume => 
-          resumeService.updateResume(resume.id, { is_default: false })
-        )
-      );
-      
-      // Set the selected resume as default
-      return resumeService.updateResume(resumeId, { is_default: true });
+    mutationFn: resumeService.setDefaultResume,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['resumes'] });
+      console.log('Default resume updated!');
     },
-    onSuccess: (updatedResume) => {
-      updateResume(updatedResume.id, updatedResume);
-      queryClient.invalidateQueries(['resumes']);
+    onError: (error) => {
+      console.error('Set default error:', error);
+      console.error('Failed to update default resume. Please try again.');
     },
   });
 
@@ -127,13 +123,13 @@ const Resumes: React.FC = () => {
         return;
       }
       
-      setUploadingFile(file);
+      setSelectedFile(file);
     }
   };
 
   const handleUpload = async () => {
-    if (uploadingFile) {
-      uploadMutation.mutate(uploadingFile);
+    if (selectedFile) {
+      uploadMutation.mutate(selectedFile);
     }
   };
 
@@ -166,18 +162,6 @@ const Resumes: React.FC = () => {
     return (
       <div className="flex items-center justify-center h-64">
         <Spinner size="lg" />
-      </div>
-    );
-  }
-
-  if (error) {
-    return (
-      <div className="space-y-6">
-        <Alert 
-          type="error" 
-          title="Error Loading Resumes"
-          message="Failed to load resumes. Please try again later."
-        />
       </div>
     );
   }
@@ -234,7 +218,7 @@ const Resumes: React.FC = () => {
                     <div className="flex items-center space-x-4">
                       <div className="flex-shrink-0">
                         <div className="w-12 h-12 bg-primary-100 rounded-lg flex items-center justify-center text-2xl">
-                          {getFileTypeIcon(resume.file_type)}
+                          {getFileTypeIcon(resume.file_type || 'pdf')}
                         </div>
                       </div>
                       <div className="flex-1">
@@ -324,7 +308,7 @@ const Resumes: React.FC = () => {
               className="hidden"
             />
             
-            {!uploadingFile ? (
+            {!selectedFile ? (
               <div>
                 <CloudArrowUpIcon className="mx-auto h-12 w-12 text-gray-400" />
                 <div className="mt-4">
@@ -347,22 +331,22 @@ const Resumes: React.FC = () => {
                 <DocumentTextIcon className="mx-auto h-12 w-12 text-primary-600" />
                 <div className="mt-4">
                   <p className="text-sm font-medium text-gray-900">
-                    {uploadingFile.name}
+                    {selectedFile.name}
                   </p>
                   <p className="text-sm text-gray-500">
-                    {formatFileSize(uploadingFile.size)}
+                    {formatFileSize(selectedFile.size)}
                   </p>
                   <div className="mt-4">
                     <Button
                       variant="primary"
                       onClick={handleUpload}
-                      loading={uploadMutation.isLoading}
+                      loading={uploadMutation.isPending}
                     >
                       Upload Resume
                     </Button>
                     <Button
                       variant="secondary"
-                      onClick={() => setUploadingFile(null)}
+                      onClick={() => setSelectedFile(null)}
                       className="ml-2"
                     >
                       Change File
@@ -374,17 +358,11 @@ const Resumes: React.FC = () => {
           </div>
 
           {/* Upload Progress */}
-          {uploadMutation.isLoading && (
-            <div className="space-y-2">
-              <div className="flex justify-between text-sm text-gray-600">
-                <span>Uploading...</span>
-                <span>{uploadProgress}%</span>
-              </div>
-              <div className="w-full bg-gray-200 rounded-full h-2">
-                <div 
-                  className="bg-primary-600 h-2 rounded-full transition-all duration-300"
-                  style={{ width: `${uploadProgress}%` }}
-                />
+          {uploadMutation.isPending && (
+            <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+              <div className="bg-white p-6 rounded-lg">
+                <Spinner size="lg" />
+                <p className="mt-4 text-center">Uploading resume...</p>
               </div>
             </div>
           )}
@@ -404,7 +382,7 @@ const Resumes: React.FC = () => {
             <div className="border-b border-gray-200 pb-4">
               <div className="flex items-center space-x-4">
                 <div className="w-16 h-16 bg-primary-100 rounded-lg flex items-center justify-center text-3xl">
-                  {getFileTypeIcon(selectedResume.file_type)}
+                  {getFileTypeIcon(selectedResume.file_type || 'pdf')}
                 </div>
                 <div>
                   <h3 className="text-xl font-medium text-gray-900">

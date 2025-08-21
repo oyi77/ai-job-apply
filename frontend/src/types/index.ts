@@ -19,7 +19,7 @@ export interface JobApplication {
 
 export const ApplicationStatus = {
   DRAFT: 'draft',
-  SUBMITTED: 'submitted',
+  APPLIED: 'applied',
   UNDER_REVIEW: 'under_review',
   INTERVIEW_SCHEDULED: 'interview_scheduled',
   INTERVIEW_COMPLETED: 'interview_completed',
@@ -41,6 +41,7 @@ export interface Resume {
   file_path: string;
   file_size: number;
   mime_type: string;
+  file_type?: string;
   skills: string[];
   experience_years: number;
   education: Education[];
@@ -68,11 +69,13 @@ export interface Certification {
 export interface CoverLetter {
   id?: string;
   job_title: string;
+  company: string;
   company_name: string;
   content: string;
   file_path?: string;
   tone: string;
   word_count: number;
+  status?: 'draft' | 'final' | 'sent';
   generated_at?: string;
   created_at?: string;
   updated_at?: string;
@@ -163,6 +166,11 @@ export interface User {
   id: string;
   email: string;
   name: string;
+  first_name?: string;
+  last_name?: string;
+  phone?: string;
+  location?: string;
+  bio?: string;
   avatar?: string;
   preferences: UserPreferences;
   created_at: string;

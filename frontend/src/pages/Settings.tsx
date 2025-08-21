@@ -277,14 +277,12 @@ const Settings: React.FC = () => {
               <FormField
                 name="first_name"
                 label="First Name"
-                value={user?.first_name || ''}
                 placeholder="Enter your first name"
                 required
               />
               <FormField
                 name="last_name"
                 label="Last Name"
-                value={user?.last_name || ''}
                 placeholder="Enter your last name"
                 required
               />
@@ -293,28 +291,24 @@ const Settings: React.FC = () => {
               name="email"
               label="Email"
               type="email"
-              value={user?.email || ''}
-              placeholder="Enter your email address"
+              placeholder="Enter your email"
               required
             />
             <FormField
               name="phone"
               label="Phone"
-              value={user?.phone || ''}
               placeholder="Enter your phone number"
             />
             <FormField
               name="location"
               label="Location"
-              value={user?.location || ''}
-              placeholder="Enter your city and state"
+              placeholder="Enter your location"
             />
             <FormField
               name="bio"
               label="Bio"
               type="textarea"
-              value={user?.bio || ''}
-              placeholder="Tell us about yourself..."
+              placeholder="Tell us about yourself"
             />
           </div>
           
