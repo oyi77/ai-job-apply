@@ -228,7 +228,7 @@ export interface FormField {
 
 export interface ValidationRule {
   type: 'required' | 'min' | 'max' | 'pattern' | 'custom';
-  value?: any;
+  value?: string | number | RegExp | ((value: string) => boolean);
   message: string;
 }
 
@@ -300,7 +300,7 @@ export interface FileMetadata {
 export interface AppError {
   code: string;
   message: string;
-  details?: any;
+  details?: Record<string, unknown>;
   timestamp: string;
 }
 

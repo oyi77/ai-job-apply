@@ -20,7 +20,6 @@ import { ApplicationStatus } from '../types';
 import {
   PlusIcon,
   EyeIcon,
-  PencilIcon,
   TrashIcon,
   FunnelIcon,
 } from '@heroicons/react/24/outline';
@@ -76,7 +75,17 @@ const Applications: React.FC = () => {
     },
   });
 
-  const handleCreateApplication = (data: any) => {
+  const handleCreateApplication = (data: { 
+    job_title: string; 
+    company: string; 
+    location?: string; 
+    description?: string; 
+    salary_range?: string; 
+    contact_person?: string; 
+    contact_email?: string; 
+    contact_phone?: string; 
+    notes?: string; 
+  }) => {
     createMutation.mutate({
       ...data,
       applied_date: new Date().toISOString(),
@@ -226,7 +235,7 @@ const Applications: React.FC = () => {
                         <h4 className="text-lg font-medium text-gray-900">
                           {application.job_title}
                         </h4>
-                        <Badge variant={getStatusColor(application.status) as any}>
+                        <Badge variant={getStatusColor(application.status)}>
                           {application.status.replace('_', ' ')}
                         </Badge>
                       </div>
@@ -352,7 +361,7 @@ const Applications: React.FC = () => {
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <label className="block text-sm font-medium text-gray-700">Status</label>
-                <Badge variant={getStatusColor(selectedApplication.status) as any} className="mt-1">
+                <Badge variant={getStatusColor(selectedApplication.status)} className="mt-1">
                   {selectedApplication.status.replace('_', ' ')}
                 </Badge>
               </div>

@@ -7,17 +7,13 @@ import {
   Button, 
   Badge, 
   Select,
-  Chart,
-  Alert
+  Chart
 } from '../components';
 import { useAppStore } from '../stores/appStore';
 import { applicationService } from '../services/api';
 import {
-  ChartBarIcon,
   DocumentArrowDownIcon,
-  CalendarIcon,
   ArrowTrendingUpIcon,
-  UserGroupIcon,
   BriefcaseIcon,
   CheckCircleIcon,
   XCircleIcon,
@@ -222,7 +218,7 @@ const Analytics: React.FC = () => {
                 className="w-32"
               />
             </div>
-            <Chart data={statusData} type={chartType as any} height={250} />
+            <Chart data={statusData} type={chartType as 'bar' | 'line' | 'pie' | 'doughnut'} height={250} />
           </CardBody>
         </Card>
 

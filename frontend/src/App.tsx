@@ -61,9 +61,10 @@ function App() {
         // Monitor First Input Delay (FID)
         const fidObserver = new PerformanceObserver((list) => {
           const entries = list.getEntries();
-          entries.forEach((entry: any) => {
-            if (entry.processingStart && entry.startTime) {
-              console.log('FID:', entry.processingStart - entry.startTime);
+          entries.forEach((entry: PerformanceEntry) => {
+            if ('processingStart' in entry && 'startTime' in entry) {
+              const firstInputEntry = entry as PerformanceEventTiming;
+              console.log('FID:', firstInputEntry.processingStart - firstInputEntry.startTime);
             }
           });
         });
@@ -73,9 +74,12 @@ function App() {
         const clsObserver = new PerformanceObserver((list) => {
           let clsValue = 0;
           const entries = list.getEntries();
-          entries.forEach((entry: any) => {
-            if (!entry.hadRecentInput) {
-              clsValue += entry.value;
+          entries.forEach((entry: PerformanceEntry) => {
+            if ('hadRecentInput' in entry && 'value' in entry) {
+              const layoutShiftEntry = entry as LayoutShift;
+              if (!layoutShiftEntry.hadRecentInput) {
+                clsValue += layoutShiftEntry.value;
+              }
             }
           });
           console.log('CLS:', clsValue);
