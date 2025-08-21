@@ -15,7 +15,8 @@ import {
 } from '../components';
 import { useAppStore } from '../stores/appStore';
 import { applicationService } from '../services/api';
-import type { JobApplication, ApplicationStatus } from '../types';
+import type { JobApplication } from '../types';
+import { ApplicationStatus } from '../types';
 import {
   PlusIcon,
   EyeIcon,
@@ -111,18 +112,18 @@ const Applications: React.FC = () => {
   ];
 
   const getStatusColor = (status: ApplicationStatus) => {
-    const colorMap = {
-      draft: 'default',
-      applied: 'primary',
-      under_review: 'warning',
-      interview_scheduled: 'primary',
-      interview_completed: 'primary',
-      offer_received: 'success',
-      offer_accepted: 'success',
-      offer_declined: 'warning',
-      rejected: 'danger',
-      withdrawn: 'danger',
-    } as const;
+    const colorMap: Record<ApplicationStatus, string> = {
+      [ApplicationStatus.DRAFT]: 'default',
+      [ApplicationStatus.APPLIED]: 'primary',
+      [ApplicationStatus.UNDER_REVIEW]: 'warning',
+      [ApplicationStatus.INTERVIEW_SCHEDULED]: 'primary',
+      [ApplicationStatus.INTERVIEW_COMPLETED]: 'primary',
+      [ApplicationStatus.OFFER_RECEIVED]: 'success',
+      [ApplicationStatus.OFFER_ACCEPTED]: 'success',
+      [ApplicationStatus.OFFER_DECLINED]: 'warning',
+      [ApplicationStatus.REJECTED]: 'danger',
+      [ApplicationStatus.WITHDRAWN]: 'default',
+    };
     return colorMap[status] || 'default';
   };
 
@@ -225,7 +226,7 @@ const Applications: React.FC = () => {
                         <h4 className="text-lg font-medium text-gray-900">
                           {application.job_title}
                         </h4>
-                        <Badge variant={getStatusColor(application.status)}>
+                        <Badge variant={getStatusColor(application.status) as any}>
                           {application.status.replace('_', ' ')}
                         </Badge>
                       </div>
@@ -351,7 +352,7 @@ const Applications: React.FC = () => {
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <label className="block text-sm font-medium text-gray-700">Status</label>
-                <Badge variant={getStatusColor(selectedApplication.status)} className="mt-1">
+                <Badge variant={getStatusColor(selectedApplication.status) as any} className="mt-1">
                   {selectedApplication.status.replace('_', ' ')}
                 </Badge>
               </div>

@@ -29,7 +29,7 @@ const Search: React.FC<SearchProps> = ({
   const [debouncedValue, setDebouncedValue] = useState(value);
   const inputRef = useRef<HTMLInputElement>(null);
   const suggestionsRef = useRef<HTMLDivElement>(null);
-  const debounceTimeoutRef = useRef<NodeJS.Timeout>();
+  const debounceTimeoutRef = useRef<NodeJS.Timeout | undefined>(undefined);
 
   const sizeClasses = {
     sm: 'px-3 py-2 text-sm',

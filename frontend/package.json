@@ -6,12 +6,16 @@
   "scripts": {
     "dev": "vite",
     "build": "tsc -b && vite build",
-    "lint": "eslint .",
+    "build:analyze": "tsc -b && vite build --mode analyze",
+    "build:prod": "tsc -b && vite build --mode production",
     "preview": "vite preview",
     "test": "vitest",
     "test:ui": "vitest --ui",
     "test:run": "vitest run",
-    "test:coverage": "vitest run --coverage"
+    "test:coverage": "vitest run --coverage",
+    "bundle:analyze": "npm run build:analyze && npx vite-bundle-analyzer dist/stats.html",
+    "lighthouse": "npx lighthouse http://localhost:5173 --output=html --output-path=./lighthouse-report.html",
+    "performance:check": "npm run build && npm run lighthouse"
   },
   "dependencies": {
     "@headlessui/react": "^2.2.7",
@@ -27,7 +31,6 @@
   },
   "devDependencies": {
     "@eslint/js": "^9.33.0",
-    "tailwindcss": "^3.4.0",
     "@testing-library/jest-dom": "^6.6.3",
     "@testing-library/react": "^16.1.0",
     "@testing-library/user-event": "^14.5.2",
@@ -45,11 +48,16 @@
     "eslint-plugin-react-refresh": "^0.4.20",
     "globals": "^16.3.0",
     "jsdom": "^25.0.1",
+    "lighthouse": "^11.6.0",
     "postcss": "^8.5.6",
     "prettier": "^3.6.2",
+    "rollup-plugin-visualizer": "^5.12.0",
+    "tailwindcss": "^3.4.0",
+    "terser": "^5.43.1",
     "typescript": "~5.8.3",
     "typescript-eslint": "^8.39.1",
     "vite": "^7.1.2",
+    "vite-bundle-analyzer": "^0.7.0",
     "vitest": "^2.1.8"
   }
 }

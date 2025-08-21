@@ -279,7 +279,10 @@ export const jobSearchService = {
     const allJobs: Job[] = [];
     if (response.data.jobs) {
       Object.values(response.data.jobs).forEach(portalJobs => {
-        allJobs.push(...portalJobs);
+        // Add jobs from each portal
+        if (portalJobs && Array.isArray(portalJobs)) {
+          allJobs.push(...portalJobs);
+        }
       });
     }
     

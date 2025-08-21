@@ -343,7 +343,7 @@ const CoverLetters: React.FC = () => {
                         {coverLetter.content.substring(0, 150)}...
                       </p>
                       <div className="flex items-center space-x-2 text-xs text-gray-400">
-                        <span>Created: {new Date(coverLetter.created_at).toLocaleDateString()}</span>
+                        <span>Created: {coverLetter.created_at ? new Date(coverLetter.created_at).toLocaleDateString() : 'N/A'}</span>
                         {coverLetter.updated_at && (
                           <span>• Updated: {new Date(coverLetter.updated_at).toLocaleDateString()}</span>
                         )}
@@ -565,7 +565,7 @@ const CoverLetters: React.FC = () => {
               </div>
             </div>
             <div className="flex justify-between items-center text-sm text-gray-500">
-              <span>Created: {new Date(selectedCoverLetter.created_at).toLocaleDateString()}</span>
+              <span>Created: {selectedCoverLetter.created_at ? new Date(selectedCoverLetter.created_at).toLocaleDateString() : 'N/A'}</span>
               {selectedCoverLetter.updated_at && (
                 <span>Updated: {new Date(selectedCoverLetter.updated_at).toLocaleDateString()}</span>
               )}
