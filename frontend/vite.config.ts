@@ -56,7 +56,7 @@ export default defineConfig({
     // CSS optimization
     cssCodeSplit: true,
     
-    // Target modern browsers for better optimization
+    // Target modern browsers for better optimization (ES2020)
     target: 'es2020',
     
     // Bundle analysis
@@ -67,6 +67,8 @@ export default defineConfig({
   server: {
     hmr: true,
     port: 5173,
+    // Add host configuration for better development experience
+    host: true,
   },
   
   // Resolve aliases for better imports
@@ -95,5 +97,11 @@ export default defineConfig({
       'axios',
       'react-hook-form',
     ],
+  },
+  
+  // Preview configuration for testing builds
+  preview: {
+    port: 4173,
+    host: true,
   },
 })
