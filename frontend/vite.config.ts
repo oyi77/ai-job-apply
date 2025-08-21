@@ -57,7 +57,7 @@ export default defineConfig({
     cssCodeSplit: true,
     
     // Target modern browsers for better optimization
-    target: 'es2015',
+    target: 'es2020',
     
     // Bundle analysis
     reportCompressedSize: true,
