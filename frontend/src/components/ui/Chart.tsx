@@ -13,11 +13,20 @@ const Chart: React.FC<ChartProps> = ({
   height = 300, 
   className = '' 
 }) => {
+  // Handle empty data gracefully
+  if (!data || data.length === 0) {
+    return (
+      <div className={`flex items-center justify-center ${className}`} style={{ height }}>
+        <p className="text-gray-500">No data available</p>
+      </div>
+    );
+  }
+  
   const maxValue = Math.max(...data.map(d => d.value));
   
   if (type === 'bar') {
     return (
-      <div className={`space-y-2 ${className}`} style={{ height }}>
+      <div className={`space-y-2 ${className}`} style={{ height: `${height}px` }}>
         {data.map((item, index) => (
           <div key={index} className="flex items-center space-x-3">
             <div className="w-20 text-sm text-gray-600 truncate">
@@ -43,7 +52,7 @@ const Chart: React.FC<ChartProps> = ({
   
   if (type === 'line') {
     return (
-      <div className={`relative ${className}`} style={{ height }}>
+      <div className={`relative ${className}`} style={{ height: `${height}px` }}>
         <svg width="100%" height="100%" className="overflow-visible">
           <polyline
             fill="none"
@@ -72,7 +81,7 @@ const Chart: React.FC<ChartProps> = ({
     let currentAngle = 0;
     
     return (
-      <div className={`relative ${className}`} style={{ height }}>
+      <div className={`relative ${className}`} style={{ height: `${height}px` }}>
         <svg width="100%" height="100%" viewBox="0 0 100 100">
           {data.map((item, index) => {
             const percentage = item.value / total;

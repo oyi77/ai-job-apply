@@ -51,12 +51,7 @@ const Select: React.FC<SelectProps> = ({
     return option?.label || placeholder;
   };
 
-  const isSelected = (optionValue: string | number) => {
-    if (multiple && Array.isArray(value)) {
-      return value.includes(optionValue);
-    }
-    return value === optionValue;
-  };
+
 
   const handleChange = (newValue: string | number | (string | number)[]) => {
     onChange(newValue);

@@ -7,20 +7,15 @@ import {
   Button, 
   Badge, 
   Modal, 
-  Spinner,
-  Alert,
-  Form,
-  FormField,
-  Select
+  Spinner
 } from '../components';
-import { useAppStore } from '../stores/appStore';
+
 import { resumeService, fileService } from '../services/api';
 import type { Resume } from '../types';
 import {
   PlusIcon,
   TrashIcon,
   StarIcon,
-  DocumentMagnifyingGlassIcon,
   DocumentTextIcon,
   EyeIcon,
   CloudArrowUpIcon,
@@ -30,14 +25,13 @@ const Resumes: React.FC = () => {
   const [isUploadModalOpen, setIsUploadModalOpen] = useState(false);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [selectedResume, setSelectedResume] = useState<Resume | null>(null);
-  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
+
   const [isViewModalOpen, setIsViewModalOpen] = useState(false);
-  const [searchTerm, setSearchTerm] = useState('');
-  const [filterStatus, setFilterStatus] = useState<string>('all');
+
   
   const fileInputRef = useRef<HTMLInputElement>(null);
   const queryClient = useQueryClient();
-  const { setResumes, addResume, updateResume, deleteResume } = useAppStore();
+
 
   // Fetch resumes
   const { data: resumes = [], isLoading } = useQuery({

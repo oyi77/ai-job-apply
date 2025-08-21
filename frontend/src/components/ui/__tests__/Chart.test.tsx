@@ -20,7 +20,7 @@ describe('Chart', () => {
 
   it('renders bar chart with custom height', () => {
     render(<Chart data={mockData} height={400} />);
-    const chartContainer = screen.getByText('A').closest('div');
+    const chartContainer = screen.getByText('A').closest('div')?.parentElement?.parentElement;
     expect(chartContainer).toHaveStyle({ height: '400px' });
   });
 
@@ -47,13 +47,13 @@ describe('Chart', () => {
 
   it('applies custom className', () => {
     render(<Chart data={mockData} className="custom-chart" />);
-    const chartContainer = screen.getByText('A').closest('div');
+    const chartContainer = screen.getByText('A').closest('div')?.parentElement?.parentElement;
     expect(chartContainer).toHaveClass('custom-chart');
   });
 
   it('handles empty data gracefully', () => {
     render(<Chart data={[]} />);
-    expect(screen.getByText('A')).not.toBeInTheDocument();
+    expect(screen.getByText('No data available')).toBeInTheDocument();
   });
 
   it('uses default colors when not provided', () => {

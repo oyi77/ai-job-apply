@@ -10,7 +10,6 @@ import {
   Form,
   FormField,
   Select,
-  Input,
   Alert,
   Search,
   Pagination,
@@ -30,7 +29,6 @@ import {
   SparklesIcon,
   ClockIcon,
   CheckCircleIcon,
-  XCircleIcon,
 } from '@heroicons/react/24/outline';
 
 const CoverLetters: React.FC = () => {
@@ -50,7 +48,7 @@ const CoverLetters: React.FC = () => {
   const itemsPerPage = 10;
 
   // Fetch cover letters
-  const { data: coverLettersData, isLoading: coverLettersLoading } = useQuery({
+  const { isLoading: coverLettersLoading } = useQuery({
     queryKey: ['cover-letters'],
     queryFn: () => coverLetterService.getCoverLetters(),
     staleTime: 5 * 60 * 1000, // 5 minutes
@@ -81,7 +79,7 @@ const CoverLetters: React.FC = () => {
       setGenerationResult(result.cover_letter || 'Cover letter generated successfully!');
       setGenerationProgress(100);
     },
-    onError: (error) => {
+    onError: () => {
       setGenerationResult('Cover letter generation failed. Please try again.');
       setGenerationProgress(0);
     },
@@ -101,17 +99,21 @@ const CoverLetters: React.FC = () => {
     currentPage * itemsPerPage
   );
 
-  const handleCreateCoverLetter = (data: any) => {
+  const handleCreateCoverLetter = () => {
     // TODO: Implement cover letter creation
     setIsCreateModalOpen(false);
   };
 
-  const handleEditCoverLetter = (data: any) => {
+  const handleEditCoverLetter = () => {
     // TODO: Implement cover letter editing
     setIsEditModalOpen(false);
   };
 
-  const handleGenerateCoverLetter = (data: any) => {
+  const handleGenerateCoverLetter = (data: { 
+    job_title?: string; 
+    company?: string; 
+    job_description?: string; 
+  }) => {
     if (selectedResume && selectedJob) {
       setGenerationProgress(0);
       const interval = setInterval(() => {
@@ -331,7 +333,7 @@ const CoverLetters: React.FC = () => {
                         <h4 className="text-lg font-medium text-gray-900">
                           {coverLetter.job_title}
                         </h4>
-                        <Badge variant={getStatusColor(coverLetter.status || 'draft') as any}>
+                        <Badge variant={getStatusColor(coverLetter.status || 'draft')}>
                           <div className="flex items-center space-x-1">
                             {getStatusIcon(coverLetter.status || 'draft')}
                             <span>{coverLetter.status || 'draft'}</span>
@@ -554,7 +556,7 @@ const CoverLetters: React.FC = () => {
                   </h3>
                   <p className="text-gray-600">{selectedCoverLetter.company}</p>
                 </div>
-                <Badge variant={getStatusColor(selectedCoverLetter.status || 'draft') as any}>
+                <Badge variant={getStatusColor(selectedCoverLetter.status || 'draft')}>
                   {selectedCoverLetter.status || 'draft'}
                 </Badge>
               </div>

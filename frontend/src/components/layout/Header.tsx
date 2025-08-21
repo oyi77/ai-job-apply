@@ -17,11 +17,11 @@ const Header: React.FC = () => {
     window.location.href = '/login';
   };
 
-  const handleMarkAsRead = (id: string) => {
+  const handleMarkAsRead = () => {
     // TODO: Implement mark as read
   };
 
-  const handleDeleteNotification = (id: string) => {
+  const handleDeleteNotification = () => {
     // TODO: Implement delete notification
   };
 

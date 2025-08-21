@@ -64,7 +64,7 @@ const Login: React.FC = () => {
       } else {
         setError('Please enter both email and password');
       }
-    } catch (err) {
+    } catch {
       setError('Login failed. Please try again.');
     } finally {
       setLoading(false);

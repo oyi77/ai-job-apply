@@ -26,7 +26,7 @@ const Search: React.FC<SearchProps> = ({
 }) => {
   const [isFocused, setIsFocused] = useState(false);
   const [showSuggestions, setShowSuggestions] = useState(false);
-  const [debouncedValue, setDebouncedValue] = useState(value);
+
   const inputRef = useRef<HTMLInputElement>(null);
   const suggestionsRef = useRef<HTMLDivElement>(null);
   const debounceTimeoutRef = useRef<NodeJS.Timeout | undefined>(undefined);
@@ -43,7 +43,6 @@ const Search: React.FC<SearchProps> = ({
     }
 
     debounceTimeoutRef.current = setTimeout(() => {
-      setDebouncedValue(value);
       if (onSearch && typeof onSearch === 'function') {
         onSearch(value);
       }

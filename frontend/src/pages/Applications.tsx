@@ -20,7 +20,6 @@ import { ApplicationStatus } from '../types';
 import {
   PlusIcon,
   EyeIcon,
-  PencilIcon,
   TrashIcon,
   FunnelIcon,
 } from '@heroicons/react/24/outline';
@@ -45,7 +44,7 @@ const Applications: React.FC = () => {
     if (fetchedApplications?.data) {
       setApplications(fetchedApplications.data);
     }
-  }, [fetchedApplications]);
+  }, [fetchedApplications, setApplications]);
 
   // Create application mutation
   const createMutation = useMutation({
@@ -76,9 +75,21 @@ const Applications: React.FC = () => {
     },
   });
 
-  const handleCreateApplication = (data: any) => {
+  const handleCreateApplication = (data: { 
+    job_title: string; 
+    company: string; 
+    location?: string; 
+    description?: string; 
+    salary_range?: string; 
+    contact_person?: string; 
+    contact_email?: string; 
+    contact_phone?: string; 
+    notes?: string; 
+  }) => {
     createMutation.mutate({
       ...data,
+      job_id: `job_${Date.now()}`, // Generate a unique job ID
+      location: data.location || 'Remote', // Provide default location if not specified
       applied_date: new Date().toISOString(),
       status: 'draft' as ApplicationStatus,
     });
@@ -111,8 +122,8 @@ const Applications: React.FC = () => {
     { value: 'withdrawn', label: 'Withdrawn' },
   ];
 
-  const getStatusColor = (status: ApplicationStatus) => {
-    const colorMap: Record<ApplicationStatus, string> = {
+  const getStatusColor = (status: ApplicationStatus): 'default' | 'primary' | 'secondary' | 'success' | 'warning' | 'danger' => {
+    const colorMap: Record<ApplicationStatus, 'default' | 'primary' | 'secondary' | 'success' | 'warning' | 'danger'> = {
       [ApplicationStatus.DRAFT]: 'default',
       [ApplicationStatus.APPLIED]: 'primary',
       [ApplicationStatus.UNDER_REVIEW]: 'warning',
@@ -226,7 +237,7 @@ const Applications: React.FC = () => {
                         <h4 className="text-lg font-medium text-gray-900">
                           {application.job_title}
                         </h4>
-                        <Badge variant={getStatusColor(application.status) as any}>
+                        <Badge variant={getStatusColor(application.status)}>
                           {application.status.replace('_', ' ')}
                         </Badge>
                       </div>
@@ -352,7 +363,7 @@ const Applications: React.FC = () => {
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <label className="block text-sm font-medium text-gray-700">Status</label>
-                <Badge variant={getStatusColor(selectedApplication.status) as any} className="mt-1">
+                <Badge variant={getStatusColor(selectedApplication.status)} className="mt-1">
                   {selectedApplication.status.replace('_', ' ')}
                 </Badge>
               </div>

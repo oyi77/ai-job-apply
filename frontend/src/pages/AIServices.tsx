@@ -14,8 +14,8 @@ import {
   Select
 } from '../components';
 import { useAppStore } from '../stores/appStore';
-import { aiService, resumeService } from '../services/api';
-import type { Resume, JobApplication } from '../types';
+import { aiService } from '../services/api';
+import type { Resume } from '../types';
 import {
   SparklesIcon,
   DocumentTextIcon,
@@ -24,7 +24,6 @@ import {
   ChartBarIcon,
   LightBulbIcon,
   CheckCircleIcon,
-  ClockIcon,
 } from '@heroicons/react/24/outline';
 
 const AIServices: React.FC = () => {
@@ -32,12 +31,18 @@ const AIServices: React.FC = () => {
   const [isCoverLetterOpen, setIsCoverLetterOpen] = useState(false);
   const [isJobMatchingOpen, setIsJobMatchingOpen] = useState(false);
   const [selectedResume, setSelectedResume] = useState<Resume | null>(null);
-  const [selectedJob, setSelectedJob] = useState<JobApplication | null>(null);
+
   const [optimizationResult, setOptimizationResult] = useState<string>('');
   const [coverLetterResult, setCoverLetterResult] = useState<string>('');
-  const [jobMatchResult, setJobMatchResult] = useState<any>(null);
+  const [jobMatchResult, setJobMatchResult] = useState<{ 
+    error?: string; 
+    match_score?: number; 
+    skills_gap?: string[];
+    skills_analysis?: Array<{ name: string; matched: boolean }>;
+    recommendations?: string[];
+  } | null>(null);
   
-  const { resumes, applications } = useAppStore();
+  const { resumes } = useAppStore();
 
   // Fetch AI service status
   const { data: aiStatus, isLoading: statusLoading } = useQuery({
@@ -57,7 +62,7 @@ const AIServices: React.FC = () => {
     onSuccess: (result) => {
       setOptimizationResult(result.optimized_content || 'Optimization completed successfully!');
     },
-    onError: (error) => {
+    onError: () => {
       setOptimizationResult('Optimization failed. Please try again.');
     },
   });
@@ -86,7 +91,7 @@ const AIServices: React.FC = () => {
     onSuccess: (result) => {
       setCoverLetterResult(result.cover_letter || 'Cover letter generated successfully!');
     },
-    onError: (error) => {
+    onError: () => {
       setCoverLetterResult('Cover letter generation failed. Please try again.');
     },
   });
@@ -99,12 +104,12 @@ const AIServices: React.FC = () => {
     onSuccess: (result) => {
       setJobMatchResult(result);
     },
-    onError: (error) => {
+    onError: () => {
       setJobMatchResult({ error: 'Job matching analysis failed. Please try again.' });
     },
   });
 
-  const handleResumeOptimization = (data: any) => {
+  const handleResumeOptimization = (data: { job_description: string }) => {
     if (selectedResume) {
       optimizationMutation.mutate({
         resumeId: selectedResume.id,
@@ -113,7 +118,7 @@ const AIServices: React.FC = () => {
     }
   };
 
-  const handleCoverLetterGeneration = (data: any) => {
+  const handleCoverLetterGeneration = (data: { job_title: string; company: string; job_description: string }) => {
     if (selectedResume) {
       coverLetterMutation.mutate({
         resumeId: selectedResume.id,
@@ -124,7 +129,7 @@ const AIServices: React.FC = () => {
     }
   };
 
-  const handleJobMatching = (data: any) => {
+  const handleJobMatching = (data: { job_description: string }) => {
     if (selectedResume) {
       jobMatchingMutation.mutate({
         resumeId: selectedResume.id,
@@ -537,7 +542,7 @@ const AIServices: React.FC = () => {
                     <div className="p-4 bg-primary-50 border border-primary-200 rounded-lg">
                       <h4 className="font-medium text-primary-900 mb-3">Skills Analysis</h4>
                       <div className="space-y-2">
-                        {jobMatchResult.skills_analysis.map((skill: any, index: number) => (
+                        {jobMatchResult.skills_analysis.map((skill: { name: string; matched: boolean }, index: number) => (
                           <div key={index} className="flex items-center justify-between">
                             <span className="text-primary-800">{skill.name}</span>
                             <Badge variant={skill.matched ? 'success' : 'danger'} size="sm">
