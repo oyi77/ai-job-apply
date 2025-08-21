@@ -7,8 +7,6 @@ import {
   Button, 
   Badge, 
   Modal, 
-  Spinner,
-  Alert,
   Form,
   FormField,
   Select,
@@ -42,11 +40,11 @@ const JobSearch: React.FC = () => {
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
   
   const queryClient = useQueryClient();
-  const { applications, addApplication } = useAppStore();
+  const { addApplication } = useAppStore();
 
   // Search jobs
   // Search jobs
-  const { data: searchResults = { data: [] }, isLoading, error, refetch } = useQuery({
+  const { data: searchResults = { data: [] }, isLoading, refetch } = useQuery({
     queryKey: ['job-search', searchQuery, location, selectedJobType, selectedExperience],
     queryFn: () => jobSearchService.searchJobs({
       query: searchQuery,
@@ -82,7 +80,12 @@ const JobSearch: React.FC = () => {
     setIsJobDetailOpen(true);
   };
 
-  const handleCreateApplication = (data: any) => {
+  const handleCreateApplication = (data: { 
+    notes?: string; 
+    contact_person?: string; 
+    contact_email?: string; 
+    contact_phone?: string; 
+  }) => {
     if (selectedJob) {
       createApplicationMutation.mutate({
         ...data,
@@ -143,7 +146,7 @@ const JobSearch: React.FC = () => {
       if (diffDays === 2) return 'Yesterday';
       if (diffDays <= 7) return `${diffDays - 1} days ago`;
       return date.toLocaleDateString();
-    } catch (error) {
+    } catch {
       return 'Recently';
     }
   };

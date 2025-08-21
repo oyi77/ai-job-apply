@@ -4,6 +4,7 @@ import { Card, CardHeader, CardBody } from '../components/ui/Card';
 import Badge from '../components/ui/Badge';
 import { useAppStore } from '../stores/appStore';
 import { applicationService } from '../services/api';
+import type { JobApplication } from '../types';
 import {
   BriefcaseIcon,
   DocumentTextIcon,
@@ -127,7 +128,7 @@ const Dashboard: React.FC = () => {
               <div className="ml-4">
                 <p className="text-sm font-medium text-gray-500">Success Rate</p>
                 <p className="text-2xl font-semibold text-gray-900">
-                                     {statsLoading ? '...' : `${(stats as any)?.success_rate || 0}%`}
+                                     {statsLoading ? '...' : `${stats?.success_rate || 0}%`}
                 </p>
               </div>
             </div>
@@ -151,7 +152,7 @@ const Dashboard: React.FC = () => {
             </div>
           ) : (
             <div className="space-y-4">
-                             {recentApplications.map((application: any) => (
+                             {recentApplications.map((application: JobApplication) => (
                 <div
                   key={application.id}
                   className="flex items-center justify-between p-4 border border-gray-200 rounded-lg hover:bg-gray-50"

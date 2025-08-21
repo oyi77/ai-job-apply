@@ -79,7 +79,7 @@ const CoverLetters: React.FC = () => {
       setGenerationResult(result.cover_letter || 'Cover letter generated successfully!');
       setGenerationProgress(100);
     },
-    onError: (error) => {
+    onError: () => {
       setGenerationResult('Cover letter generation failed. Please try again.');
       setGenerationProgress(0);
     },
@@ -99,22 +99,12 @@ const CoverLetters: React.FC = () => {
     currentPage * itemsPerPage
   );
 
-  const handleCreateCoverLetter = (data: { 
-    job_title: string; 
-    company: string; 
-    content: string; 
-    status?: string; 
-  }) => {
+  const handleCreateCoverLetter = () => {
     // TODO: Implement cover letter creation
     setIsCreateModalOpen(false);
   };
 
-  const handleEditCoverLetter = (data: { 
-    job_title: string; 
-    company: string; 
-    content: string; 
-    status?: string; 
-  }) => {
+  const handleEditCoverLetter = () => {
     // TODO: Implement cover letter editing
     setIsEditModalOpen(false);
   };

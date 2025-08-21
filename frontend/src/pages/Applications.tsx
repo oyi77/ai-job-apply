@@ -44,7 +44,7 @@ const Applications: React.FC = () => {
     if (fetchedApplications?.data) {
       setApplications(fetchedApplications.data);
     }
-  }, [fetchedApplications]);
+  }, [fetchedApplications, setApplications]);
 
   // Create application mutation
   const createMutation = useMutation({
@@ -88,6 +88,8 @@ const Applications: React.FC = () => {
   }) => {
     createMutation.mutate({
       ...data,
+      job_id: `job_${Date.now()}`, // Generate a unique job ID
+      location: data.location || 'Remote', // Provide default location if not specified
       applied_date: new Date().toISOString(),
       status: 'draft' as ApplicationStatus,
     });
@@ -120,8 +122,8 @@ const Applications: React.FC = () => {
     { value: 'withdrawn', label: 'Withdrawn' },
   ];
 
-  const getStatusColor = (status: ApplicationStatus) => {
-    const colorMap: Record<ApplicationStatus, string> = {
+  const getStatusColor = (status: ApplicationStatus): 'default' | 'primary' | 'secondary' | 'success' | 'warning' | 'danger' => {
+    const colorMap: Record<ApplicationStatus, 'default' | 'primary' | 'secondary' | 'success' | 'warning' | 'danger'> = {
       [ApplicationStatus.DRAFT]: 'default',
       [ApplicationStatus.APPLIED]: 'primary',
       [ApplicationStatus.UNDER_REVIEW]: 'warning',

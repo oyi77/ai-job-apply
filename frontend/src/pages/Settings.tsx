@@ -9,7 +9,6 @@ import {
   Form,
   FormField,
   Select,
-  Input,
   Alert
 } from '../components';
 import { useAppStore } from '../stores/appStore';
@@ -21,7 +20,6 @@ import {
   GlobeAltIcon,
   DocumentArrowDownIcon,
   TrashIcon,
-  Cog6ToothIcon,
 } from '@heroicons/react/24/outline';
 
 const Settings: React.FC = () => {
@@ -35,9 +33,17 @@ const Settings: React.FC = () => {
   
   const { user, setUser, theme, setTheme, setAuthenticated } = useAppStore();
 
-  const handleProfileUpdate = (data: any) => {
+  const handleProfileUpdate = (data: { 
+    name?: string; 
+    email?: string; 
+    phone?: string; 
+    location?: string; 
+    bio?: string; 
+  }) => {
     // TODO: Implement profile update
-    setUser({ ...user, ...data });
+    if (user) {
+      setUser({ ...user, ...data });
+    }
     setIsProfileModalOpen(false);
     setShowSuccessMessage(true);
     setTimeout(() => setShowSuccessMessage(false), 3000);
@@ -84,14 +90,7 @@ const Settings: React.FC = () => {
     { value: 'system', label: 'System Default' },
   ];
 
-  const languageOptions = [
-    { value: 'en', label: 'English' },
-    { value: 'es', label: 'Spanish' },
-    { value: 'fr', label: 'French' },
-    { value: 'de', label: 'German' },
-    { value: 'ja', label: 'Japanese' },
-    { value: 'zh', label: 'Chinese' },
-  ];
+
 
   return (
     <div className="space-y-6">

@@ -42,7 +42,8 @@ describe('Button', () => {
     const button = screen.getByRole('button');
     
     expect(button).toBeDisabled();
-    expect(button).toHaveClass('opacity-50 cursor-not-allowed');
+    expect(button).toHaveClass('opacity-50');
+    expect(button).toHaveClass('cursor-not-allowed');
   });
 
   it('renders with custom className', () => {
@@ -63,7 +64,8 @@ describe('Button', () => {
     const button = screen.getByRole('button');
     
     expect(button).toBeDisabled();
-    expect(button).toHaveClass('opacity-50 cursor-not-allowed');
-    expect(screen.getByText('Loading...')).toBeInTheDocument();
+    expect(button).toHaveClass('opacity-50');
+    expect(button).toHaveClass('cursor-not-allowed');
+    expect(screen.getByText('Loading')).toBeInTheDocument();
   });
 });

@@ -76,7 +76,7 @@ function App() {
           const entries = list.getEntries();
           entries.forEach((entry: PerformanceEntry) => {
             if ('hadRecentInput' in entry && 'value' in entry) {
-              const layoutShiftEntry = entry as LayoutShift;
+              const layoutShiftEntry = entry as any;
               if (!layoutShiftEntry.hadRecentInput) {
                 clsValue += layoutShiftEntry.value;
               }
