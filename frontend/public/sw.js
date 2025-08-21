@@ -103,7 +103,7 @@ self.addEventListener('fetch', (event) => {
   }
 
   // Handle HTML pages
-  if (request.headers.get('accept').includes('text/html')) {
+  if (request.headers.get('accept')?.includes('text/html')) {
     event.respondWith(
       fetch(request)
         .then((response) => {
