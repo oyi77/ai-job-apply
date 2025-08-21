@@ -13,7 +13,7 @@
     "test:ui": "vitest --ui",
     "test:run": "vitest run",
     "test:coverage": "vitest run --coverage",
-    "bundle:analyze": "npm run build:analyze && npx vite-bundle-analyzer dist/stats.html",
+    "bundle:analyze": "npm run build:analyze && npx vite-bundle-analyzer dist/visualizer.html",
     "lighthouse": "npx lighthouse http://localhost:5173 --output=html --output-path=./lighthouse-report.html",
     "performance:check": "npm run build && npm run lighthouse"
   },
