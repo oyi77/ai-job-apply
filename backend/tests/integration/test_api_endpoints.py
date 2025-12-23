@@ -1,8 +1,8 @@
 """Integration tests for API endpoints."""
 
 import pytest
-from httpx import AsyncClient
-from unittest.mock import AsyncMock, patch
+from httpx import AsyncClient, ASGITransport
+from unittest.mock import AsyncMock, patch, MagicMock
 import tempfile
 import io
 from pathlib import Path
@@ -10,20 +10,89 @@ from pathlib import Path
 from src.api.app import create_app
 
 
+@pytest.fixture
+def mock_service_registry():
+    """Create a mock service registry with all required services."""
+    mock_registry = MagicMock()
+    
+    # Mock file service
+    mock_file_service = AsyncMock()
+    mock_file_service.save_file.return_value = True
+    mock_file_service.read_file.return_value = b"test content"
+    
+    # Mock resume service
+    mock_resume_service = AsyncMock()
+    mock_resume_service.get_all_resumes.return_value = []
+    mock_resume_service.get_resume.return_value = None
+    
+    # Mock application service
+    mock_app_service = AsyncMock()
+    mock_app_service.get_all_applications.return_value = []
+    mock_app_service.get_application_stats.return_value = {
+        "total_applications": 0,
+        "status_counts": {},
+        "success_rate": 0.0
+    }
+    
+    # Mock AI service
+    mock_ai_service = AsyncMock()
+    mock_ai_service.is_available.return_value = True
+    mock_ai_service.optimize_resume.return_value = MagicMock(
+        optimized_content="optimized",
+        suggestions=["suggestion1"],
+        confidence_score=0.85
+    )
+    mock_ai_service.generate_cover_letter.return_value = MagicMock(
+        content="cover letter content",
+        job_title="Test Job",
+        company_name="Test Company"
+    )
+    
+    # Mock cover letter service
+    mock_cover_letter_service = AsyncMock()
+    
+    # Mock job search service
+    mock_job_search_service = AsyncMock()
+    mock_job_search_service.search_jobs.return_value = {"jobs": {}}
+    mock_job_search_service.get_available_sites.return_value = ["linkedin", "indeed"]
+    
+    # Mock job application service
+    mock_job_app_service = AsyncMock()
+    
+    # Configure registry methods
+    mock_registry.initialize = AsyncMock()
+    mock_registry.health_check = AsyncMock(return_value={
+        "service_registry": "healthy",
+        "services": {}
+    })
+    mock_registry.get_file_service = AsyncMock(return_value=mock_file_service)
+    mock_registry.get_resume_service = AsyncMock(return_value=mock_resume_service)
+    mock_registry.get_application_service = AsyncMock(return_value=mock_app_service)
+    mock_registry.get_ai_service = AsyncMock(return_value=mock_ai_service)
+    mock_registry.get_cover_letter_service = AsyncMock(return_value=mock_cover_letter_service)
+    mock_registry.get_job_search_service = AsyncMock(return_value=mock_job_search_service)
+    mock_registry.get_job_application_service = AsyncMock(return_value=mock_job_app_service)
+    
+    return mock_registry
+
+
 class TestResumeEndpoints:
     """Integration tests for resume endpoints."""
     
     @pytest.fixture
-    async def client(self):
-        """Create test client."""
-        app = create_app()
-        async with AsyncClient(app=app, base_url="http://test") as ac:
-            yield ac
+    async def client(self, mock_service_registry):
+        """Create test client with mocked service registry."""
+        with patch('src.services.service_registry.service_registry', mock_service_registry):
+            with patch('src.api.app.service_registry', mock_service_registry):
+                app = create_app()
+                transport = ASGITransport(app=app)
+                async with AsyncClient(transport=transport, base_url="http://test") as ac:
+                    yield ac
     
     @pytest.mark.asyncio
     async def test_get_all_resumes(self, client):
         """Test getting all resumes."""
-        response = await client.get("/api/v1/resumes/")
+        response = await client.get("/api/v1/resumes")
         
         assert response.status_code == 200
         data = response.json()
@@ -166,16 +235,19 @@ class TestApplicationEndpoints:
     """Integration tests for application endpoints."""
     
     @pytest.fixture
-    async def client(self):
-        """Create test client."""
-        app = create_app()
-        async with AsyncClient(app=app, base_url="http://test") as ac:
-            yield ac
+    async def client(self, mock_service_registry):
+        """Create test client with mocked service registry."""
+        with patch('src.services.service_registry.service_registry', mock_service_registry):
+            with patch('src.api.app.service_registry', mock_service_registry):
+                app = create_app()
+                transport = ASGITransport(app=app)
+                async with AsyncClient(transport=transport, base_url="http://test") as ac:
+                    yield ac
     
     @pytest.mark.asyncio
     async def test_get_all_applications(self, client):
         """Test getting all applications."""
-        response = await client.get("/api/v1/applications/")
+        response = await client.get("/api/v1/applications")
         
         assert response.status_code == 200
         data = response.json()
@@ -219,11 +291,14 @@ class TestAIEndpoints:
     """Integration tests for AI endpoints."""
     
     @pytest.fixture
-    async def client(self):
-        """Create test client."""
-        app = create_app()
-        async with AsyncClient(app=app, base_url="http://test") as ac:
-            yield ac
+    async def client(self, mock_service_registry):
+        """Create test client with mocked service registry."""
+        with patch('src.services.service_registry.service_registry', mock_service_registry):
+            with patch('src.api.app.service_registry', mock_service_registry):
+                app = create_app()
+                transport = ASGITransport(app=app)
+                async with AsyncClient(transport=transport, base_url="http://test") as ac:
+                    yield ac
     
     @pytest.mark.asyncio
     async def test_ai_health_check(self, client):
@@ -281,11 +356,14 @@ class TestJobSearchEndpoints:
     """Integration tests for job search endpoints."""
     
     @pytest.fixture
-    async def client(self):
-        """Create test client."""
-        app = create_app()
-        async with AsyncClient(app=app, base_url="http://test") as ac:
-            yield ac
+    async def client(self, mock_service_registry):
+        """Create test client with mocked service registry."""
+        with patch('src.services.service_registry.service_registry', mock_service_registry):
+            with patch('src.api.app.service_registry', mock_service_registry):
+                app = create_app()
+                transport = ASGITransport(app=app)
+                async with AsyncClient(transport=transport, base_url="http://test") as ac:
+                    yield ac
     
     @pytest.mark.asyncio
     async def test_search_jobs(self, client):
