@@ -84,6 +84,10 @@ class ServiceRegistry:
     
     async def _initialize_business_services(self) -> None:
         """Initialize business logic services."""
+        # Initialize repository factory
+        from .repository_factory import repository_factory
+        await repository_factory.initialize()
+        
         # Resume service (depends on file service)
         from .resume_service import ResumeService
         resume_provider = ResumeServiceProvider(self._instances['file_service'])
@@ -260,13 +264,25 @@ class ResumeServiceProvider(ServiceProvider):
     
     def __init__(self, file_service: FileService):
         self.file_service = file_service
+        self._logger = logger.bind(module="ResumeServiceProvider")
     
     def get_service(self) -> ResumeService:
         return self._service
     
     async def initialize(self) -> None:
         from .resume_service import ResumeService
-        self._service = ResumeService(self.file_service)
+        from .repository_factory import repository_factory
+        from ..database.repositories.resume_repository import ResumeRepository
+        
+        # Try to create repository if database is available
+        repository = None
+        if repository_factory.is_available():
+            try:
+                repository = await repository_factory.create_repository(ResumeRepository)
+            except Exception as e:
+                self._logger.warning(f"Could not create resume repository, using in-memory storage: {e}")
+        
+        self._service = ResumeService(self.file_service, repository)
     
     async def cleanup(self) -> None:
         if hasattr(self._service, 'cleanup'):
@@ -278,13 +294,25 @@ class ApplicationServiceProvider(ServiceProvider):
     
     def __init__(self, file_service: FileService):
         self.file_service = file_service
+        self._logger = logger.bind(module="ApplicationServiceProvider")
     
     def get_service(self) -> ApplicationService:
         return self._service
     
     async def initialize(self) -> None:
         from .application_service import ApplicationService
-        self._service = ApplicationService(self.file_service)
+        from .repository_factory import repository_factory
+        from ..database.repositories.application_repository import ApplicationRepository
+        
+        # Try to create repository if database is available
+        repository = None
+        if repository_factory.is_available():
+            try:
+                repository = await repository_factory.create_repository(ApplicationRepository)
+            except Exception as e:
+                self._logger.warning(f"Could not create application repository, using in-memory storage: {e}")
+        
+        self._service = ApplicationService(self.file_service, repository)
     
     async def cleanup(self) -> None:
         if hasattr(self._service, 'cleanup'):
@@ -296,13 +324,25 @@ class CoverLetterServiceProvider(ServiceProvider):
     
     def __init__(self, ai_service: AIService):
         self.ai_service = ai_service
+        self._logger = logger.bind(module="CoverLetterServiceProvider")
     
     def get_service(self) -> CoverLetterService:
         return self._service
     
     async def initialize(self) -> None:
         from .cover_letter_service import CoverLetterService
-        self._service = CoverLetterService(self.ai_service)
+        from .repository_factory import repository_factory
+        from ..database.repositories.cover_letter_repository import CoverLetterRepository
+        
+        # Try to create repository if database is available
+        repository = None
+        if repository_factory.is_available():
+            try:
+                repository = await repository_factory.create_repository(CoverLetterRepository)
+            except Exception as e:
+                self._logger.warning(f"Could not create cover letter repository, using in-memory storage: {e}")
+        
+        self._service = CoverLetterService(self.ai_service, repository)
     
     async def cleanup(self) -> None:
         if hasattr(self._service, 'cleanup'):
