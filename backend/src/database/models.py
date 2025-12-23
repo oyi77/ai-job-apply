@@ -102,11 +102,14 @@ class DBCoverLetter(Base):
     def to_model(self) -> CoverLetter:
         """Convert database model to domain model."""
         return CoverLetter(
+            id=self.id,
             job_title=self.job_title,
             company_name=self.company_name,
             content=self.content,
             tone=self.tone,
             word_count=self.word_count,
+            created_at=self.created_at,
+            updated_at=self.updated_at,
         )
     
     @classmethod
