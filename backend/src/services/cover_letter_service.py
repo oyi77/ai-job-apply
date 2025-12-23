@@ -7,24 +7,31 @@ from datetime import datetime
 from ..core.cover_letter_service import CoverLetterService
 from ..models.cover_letter import CoverLetter, CoverLetterCreate, CoverLetterUpdate
 from ..core.ai_service import AIService
+from ..database.repositories.cover_letter_repository import CoverLetterRepository
 from loguru import logger
 
 
 class CoverLetterService(CoverLetterService):
     """Unified cover letter service implementation with AI and template support."""
     
-    def __init__(self, ai_service: AIService):
+    def __init__(self, ai_service: AIService, repository: Optional[CoverLetterRepository] = None):
         """Initialize the unified cover letter service."""
         self.logger = logger.bind(module="CoverLetterService")
         self.ai_service = ai_service
-        self.cover_letters: Dict[str, CoverLetter] = {}  # In-memory storage
+        self.repository = repository
+        # Fallback to in-memory if no repository provided (for backward compatibility)
+        if not self.repository:
+            self.cover_letters: Dict[str, CoverLetter] = {}  # In-memory storage
     
     async def get_all_cover_letters(self) -> List[CoverLetter]:
         """Get all cover letters."""
         try:
-            cover_letters = list(self.cover_letters.values())
-            # Sort by creation date, most recent first
-            cover_letters.sort(key=lambda c: c.created_at, reverse=True)
+            if self.repository:
+                cover_letters = await self.repository.get_all()
+            else:
+                cover_letters = list(self.cover_letters.values())
+                # Sort by creation date, most recent first
+                cover_letters.sort(key=lambda c: c.created_at, reverse=True)
             
             self.logger.debug(f"Retrieved {len(cover_letters)} cover letters")
             return cover_letters
@@ -36,7 +43,11 @@ class CoverLetterService(CoverLetterService):
     async def get_cover_letter(self, cover_letter_id: str) -> Optional[CoverLetter]:
         """Get a specific cover letter by ID."""
         try:
-            cover_letter = self.cover_letters.get(cover_letter_id)
+            if self.repository:
+                cover_letter = await self.repository.get_by_id(cover_letter_id)
+            else:
+                cover_letter = self.cover_letters.get(cover_letter_id)
+            
             if cover_letter:
                 self.logger.debug(f"Retrieved cover letter: {cover_letter.job_title} at {cover_letter.company_name}")
             else:
@@ -66,9 +77,12 @@ class CoverLetterService(CoverLetterService):
             )
             
             # Store cover letter
-            self.cover_letters[cover_letter_id] = cover_letter
+            if self.repository:
+                cover_letter = await self.repository.create(cover_letter)
+            else:
+                self.cover_letters[cover_letter_id] = cover_letter
             
-            self.logger.info(f"Cover letter created: {cover_letter.job_title} at {cover_letter.company_name} (ID: {cover_letter_id})")
+            self.logger.info(f"Cover letter created: {cover_letter.job_title} at {cover_letter.company_name} (ID: {cover_letter.id})")
             return cover_letter
             
         except Exception as e:
@@ -90,14 +104,36 @@ class CoverLetterService(CoverLetterService):
                 cover_letter.company_name = updates.company_name
             if hasattr(updates, 'content') and updates.content is not None:
                 cover_letter.content = updates.content
+                # Update word count when content changes
+                cover_letter.word_count = len(updates.content.split())
             if hasattr(updates, 'tone') and updates.tone is not None:
                 cover_letter.tone = updates.tone
+            if hasattr(updates, 'word_count') and updates.word_count is not None:
+                cover_letter.word_count = updates.word_count
             if hasattr(updates, 'job_description') and updates.job_description is not None:
                 cover_letter.job_description = updates.job_description
             if hasattr(updates, 'resume_summary') and updates.resume_summary is not None:
                 cover_letter.resume_summary = updates.resume_summary
             
             cover_letter.updated_at = datetime.utcnow()
+            
+            # Save to repository if available
+            if self.repository:
+                update_dict = {}
+                if hasattr(updates, 'job_title') and updates.job_title is not None:
+                    update_dict['job_title'] = updates.job_title
+                if hasattr(updates, 'company_name') and updates.company_name is not None:
+                    update_dict['company_name'] = updates.company_name
+                if hasattr(updates, 'content') and updates.content is not None:
+                    update_dict['content'] = updates.content
+                    # Update word count when content changes
+                    update_dict['word_count'] = len(updates.content.split())
+                if hasattr(updates, 'tone') and updates.tone is not None:
+                    update_dict['tone'] = updates.tone
+                if hasattr(updates, 'word_count') and updates.word_count is not None:
+                    update_dict['word_count'] = updates.word_count
+                if update_dict:
+                    cover_letter = await self.repository.update(cover_letter_id, update_dict)
             
             self.logger.info(f"Cover letter updated: {cover_letter.job_title} at {cover_letter.company_name} (ID: {cover_letter_id})")
             return cover_letter
@@ -114,11 +150,16 @@ class CoverLetterService(CoverLetterService):
                 self.logger.warning(f"Cannot delete, cover letter not found: {cover_letter_id}")
                 return False
             
-            # Remove from memory
-            del self.cover_letters[cover_letter_id]
+            # Delete from repository if available
+            if self.repository:
+                success = await self.repository.delete(cover_letter_id)
+            else:
+                # Remove from memory
+                del self.cover_letters[cover_letter_id]
+                success = True
             
             self.logger.info(f"Cover letter deleted: {cover_letter.job_title} at {cover_letter.company_name} (ID: {cover_letter_id})")
-            return True
+            return success
             
         except Exception as e:
             self.logger.error(f"Error deleting cover letter {cover_letter_id}: {e}", exc_info=True)
@@ -159,9 +200,7 @@ class CoverLetterService(CoverLetterService):
                         company_name=company_name,
                         content=generated_cover_letter.content,
                         tone=tone,
-                        job_description=job_description,
-                        resume_summary=resume_summary,
-                        template_used="ai_generated"
+                        word_count=generated_cover_letter.word_count
                     )
                     
                     cover_letter = await self.create_cover_letter(cover_letter_data)
@@ -200,14 +239,13 @@ class CoverLetterService(CoverLetterService):
                 content = self._get_professional_template(job_title, company_name, job_description, resume_summary)
             
             # Create cover letter
+            word_count = len(content.split())
             cover_letter_data = CoverLetterCreate(
                 job_title=job_title,
                 company_name=company_name,
                 content=content,
                 tone=tone,
-                job_description=job_description,
-                resume_summary=resume_summary,
-                template_used="template_based"
+                word_count=word_count
             )
             
             cover_letter = await self.create_cover_letter(cover_letter_data)
@@ -259,7 +297,8 @@ Best regards,
                 "status": "healthy",
                 "available": True,
                 "cover_letter_count": len(cover_letters),
-                "ai_service_available": ai_available
+                "ai_service_available": ai_available,
+                "using_database": self.repository is not None
             }
         except Exception as e:
             self.logger.error(f"Health check failed: {e}", exc_info=True)

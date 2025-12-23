@@ -12,6 +12,7 @@ import json
 from ..core.resume_service import ResumeService
 from ..models.resume import Resume
 from ..services.local_file_service import LocalFileService
+from ..database.repositories.resume_repository import ResumeRepository
 from ..config import config
 from loguru import logger
 from ..utils.text_processing import extract_skills, clean_text
@@ -20,13 +21,16 @@ from ..utils.text_processing import extract_skills, clean_text
 class ResumeService(ResumeService):
     """Unified implementation of ResumeService with file and database support."""
     
-    def __init__(self, file_service: LocalFileService):
+    def __init__(self, file_service: LocalFileService, repository: Optional[ResumeRepository] = None):
         """Initialize the unified resume service."""
         self.logger = logger.bind(module="ResumeService")
         self.file_service = file_service
-        self.resumes: Dict[str, Resume] = {}  # In-memory cache
-        self.default_resume_id: Optional[str] = None
-        self._initialize_sample_data()
+        self.repository = repository
+        # Fallback to in-memory if no repository provided (for backward compatibility)
+        if not self.repository:
+            self.resumes: Dict[str, Resume] = {}  # In-memory cache
+            self.default_resume_id: Optional[str] = None
+            self._initialize_sample_data()
     
     def _initialize_sample_data(self) -> None:
         """Initialize with sample data for demonstration."""
@@ -70,15 +74,24 @@ class ResumeService(ResumeService):
             
             # Validate file size
             file_size = await self.file_service.get_file_size(file_path)
-            max_size_bytes = config.MAX_FILE_SIZE_MB * 1024 * 1024
+            max_size_bytes = getattr(config, 'max_file_size', 10 * 1024 * 1024)  # Default 10MB
             if file_size and file_size > max_size_bytes:
-                raise ValueError(f"File too large. Maximum size: {config.MAX_FILE_SIZE_MB}MB")
+                max_size_mb = max_size_bytes // (1024 * 1024)
+                raise ValueError(f"File too large. Maximum size: {max_size_mb}MB")
             
             # Extract text content
             content = await self.extract_text_from_file(file_path)
             
             # Extract skills from content
             skills = extract_skills(content) if content else []
+            
+            # Check if this is the first resume (for default setting)
+            is_first_resume = False
+            if self.repository:
+                all_resumes = await self.repository.get_all()
+                is_first_resume = len(all_resumes) == 0
+            else:
+                is_first_resume = len(self.resumes) == 0
             
             # Create resume object
             resume_id = str(uuid.uuid4())
@@ -92,19 +105,21 @@ class ResumeService(ResumeService):
                 experience_years=self._estimate_experience_years(content) if content else None,
                 education=self._extract_education(content) if content else None,
                 certifications=self._extract_certifications(content) if content else None,
-                is_default=len(self.resumes) == 0,  # First resume is default
+                is_default=is_first_resume,  # First resume is default
                 created_at=datetime.utcnow(),
                 updated_at=datetime.utcnow()
             )
             
             # Store resume
-            self.resumes[resume_id] = resume
+            if self.repository:
+                resume = await self.repository.create(resume)
+            else:
+                self.resumes[resume_id] = resume
+                # Set as default if it's the first resume
+                if resume.is_default:
+                    self.default_resume_id = resume_id
             
-            # Set as default if it's the first resume
-            if resume.is_default:
-                self.default_resume_id = resume_id
-            
-            self.logger.info(f"Resume uploaded successfully: {resume.name} (ID: {resume_id})")
+            self.logger.info(f"Resume uploaded successfully: {resume.name} (ID: {resume.id})")
             return resume
             
         except Exception as e:
@@ -114,7 +129,11 @@ class ResumeService(ResumeService):
     async def get_resume(self, resume_id: str) -> Optional[Resume]:
         """Get a resume by ID."""
         try:
-            resume = self.resumes.get(resume_id)
+            if self.repository:
+                resume = await self.repository.get_by_id(resume_id)
+            else:
+                resume = self.resumes.get(resume_id)
+            
             if resume:
                 self.logger.debug(f"Retrieved resume: {resume.name} (ID: {resume_id})")
             else:
@@ -128,9 +147,12 @@ class ResumeService(ResumeService):
     async def get_all_resumes(self) -> List[Resume]:
         """Get all available resumes."""
         try:
-            resumes = list(self.resumes.values())
-            # Sort by creation date, most recent first
-            resumes.sort(key=lambda r: r.created_at, reverse=True)
+            if self.repository:
+                resumes = await self.repository.get_all()
+            else:
+                resumes = list(self.resumes.values())
+                # Sort by creation date, most recent first
+                resumes.sort(key=lambda r: r.created_at, reverse=True)
             
             self.logger.debug(f"Retrieved {len(resumes)} resumes")
             return resumes
@@ -142,6 +164,10 @@ class ResumeService(ResumeService):
     async def get_default_resume(self) -> Optional[Resume]:
         """Get the default resume."""
         try:
+            if self.repository:
+                return await self.repository.get_default_resume()
+            
+            # Fallback to in-memory
             if self.default_resume_id:
                 return await self.get_resume(self.default_resume_id)
             
@@ -164,6 +190,10 @@ class ResumeService(ResumeService):
                 self.logger.warning(f"Cannot set default, resume not found: {resume_id}")
                 return False
             
+            if self.repository:
+                return await self.repository.set_default_resume(resume_id)
+            
+            # Fallback to in-memory
             # Unset current default
             if self.default_resume_id:
                 current_default = self.resumes.get(self.default_resume_id)
@@ -194,19 +224,24 @@ class ResumeService(ResumeService):
             if await self.file_service.file_exists(resume.file_path):
                 await self.file_service.delete_file(resume.file_path)
             
-            # Remove from memory
-            del self.resumes[resume_id]
-            
-            # Update default if necessary
-            if self.default_resume_id == resume_id:
-                self.default_resume_id = None
-                # Set another resume as default if available
-                remaining_resumes = await self.get_all_resumes()
-                if remaining_resumes:
-                    await self.set_default_resume(remaining_resumes[0].id)
+            # Delete from repository if available
+            if self.repository:
+                success = await self.repository.delete(resume_id)
+            else:
+                # Remove from memory
+                del self.resumes[resume_id]
+                
+                # Update default if necessary
+                if self.default_resume_id == resume_id:
+                    self.default_resume_id = None
+                    # Set another resume as default if available
+                    remaining_resumes = await self.get_all_resumes()
+                    if remaining_resumes:
+                        await self.set_default_resume(remaining_resumes[0].id)
+                success = True
             
             self.logger.info(f"Resume deleted: {resume.name} (ID: {resume_id})")
-            return True
+            return success
             
         except Exception as e:
             self.logger.error(f"Error deleting resume {resume_id}: {e}", exc_info=True)
@@ -258,6 +293,14 @@ class ResumeService(ResumeService):
                 await self.set_default_resume(resume_id)
             
             resume.updated_at = datetime.utcnow()
+            
+            # Save to repository if available
+            if self.repository:
+                update_dict = {}
+                if 'name' in updates:
+                    update_dict['name'] = updates['name']
+                if update_dict:
+                    resume = await self.repository.update(resume_id, update_dict)
             
             self.logger.info(f"Resume updated: {resume.name} (ID: {resume_id})")
             return resume
@@ -436,11 +479,13 @@ class ResumeService(ResumeService):
         """Check service health."""
         try:
             resumes = await self.get_all_resumes()
+            default_resume = await self.get_default_resume()
             return {
                 "status": "healthy",
                 "available": True,
                 "resume_count": len(resumes),
-                "default_resume": self.default_resume_id is not None
+                "default_resume": default_resume is not None,
+                "using_database": self.repository is not None
             }
         except Exception as e:
             self.logger.error(f"Health check failed: {e}", exc_info=True)

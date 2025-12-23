@@ -8,19 +8,23 @@ from collections import defaultdict
 from ..core.application_service import ApplicationService
 from ..models.application import JobApplication, ApplicationUpdateRequest, ApplicationStatus
 from ..services.local_file_service import LocalFileService
+from ..database.repositories.application_repository import ApplicationRepository
 from loguru import logger
 
 
 class ApplicationService(ApplicationService):
-    """Unified implementation of ApplicationService with memory and database support."""
+    """Unified implementation of ApplicationService with database support."""
     
-    def __init__(self, file_service: LocalFileService):
+    def __init__(self, file_service: LocalFileService, repository: Optional[ApplicationRepository] = None):
         """Initialize the unified application service."""
         self.logger = logger.bind(module="ApplicationService")
         self.file_service = file_service
-        self.applications: Dict[str, JobApplication] = {}
-        self.follow_ups: Dict[str, datetime] = {}  # application_id -> follow_up_date
-        self._initialize_sample_data()
+        self.repository = repository
+        # Fallback to in-memory if no repository provided (for backward compatibility)
+        if not self.repository:
+            self.applications: Dict[str, JobApplication] = {}
+            self.follow_ups: Dict[str, datetime] = {}  # application_id -> follow_up_date
+            self._initialize_sample_data()
     
     def _initialize_sample_data(self) -> None:
         """Initialize with some sample data for demonstration."""
@@ -80,9 +84,13 @@ class ApplicationService(ApplicationService):
                 notes=job_info.get("notes", ""),
             )
             
-            self.applications[app_id] = application
+            # Use repository if available, otherwise use in-memory storage
+            if self.repository:
+                application = await self.repository.create(application)
+            else:
+                self.applications[app_id] = application
             
-            self.logger.info(f"Created application: {application.job_title} at {application.company} (ID: {app_id})")
+            self.logger.info(f"Created application: {application.job_title} at {application.company} (ID: {application.id})")
             return application
             
         except Exception as e:
@@ -92,7 +100,11 @@ class ApplicationService(ApplicationService):
     async def get_application(self, application_id: str) -> Optional[JobApplication]:
         """Get an application by ID."""
         try:
-            application = self.applications.get(application_id)
+            if self.repository:
+                application = await self.repository.get_by_id(application_id)
+            else:
+                application = self.applications.get(application_id)
+            
             if application:
                 self.logger.debug(f"Retrieved application: {application.job_title} (ID: {application_id})")
             else:
@@ -106,9 +118,12 @@ class ApplicationService(ApplicationService):
     async def get_all_applications(self) -> List[JobApplication]:
         """Get all applications."""
         try:
-            applications = list(self.applications.values())
-            # Sort by creation date, most recent first
-            applications.sort(key=lambda app: app.created_at, reverse=True)
+            if self.repository:
+                applications = await self.repository.get_all()
+            else:
+                applications = list(self.applications.values())
+                # Sort by creation date, most recent first
+                applications.sort(key=lambda app: app.created_at, reverse=True)
             
             self.logger.debug(f"Retrieved {len(applications)} applications")
             return applications
@@ -120,13 +135,15 @@ class ApplicationService(ApplicationService):
     async def get_applications_by_status(self, status: ApplicationStatus) -> List[JobApplication]:
         """Get applications by status."""
         try:
-            applications = [
-                app for app in self.applications.values() 
-                if app.status == status
-            ]
-            
-            # Sort by creation date, most recent first
-            applications.sort(key=lambda app: app.created_at, reverse=True)
+            if self.repository:
+                applications = await self.repository.get_by_status(status)
+            else:
+                applications = [
+                    app for app in self.applications.values() 
+                    if app.status == status
+                ]
+                # Sort by creation date, most recent first
+                applications.sort(key=lambda app: app.created_at, reverse=True)
             
             self.logger.debug(f"Retrieved {len(applications)} applications with status {status}")
             return applications
@@ -158,7 +175,8 @@ class ApplicationService(ApplicationService):
             
             if updates.follow_up_date is not None:
                 application.follow_up_date = updates.follow_up_date
-                self.follow_ups[application_id] = updates.follow_up_date
+                if not self.repository:
+                    self.follow_ups[application_id] = updates.follow_up_date
             
             if updates.interview_date is not None:
                 application.interview_date = updates.interview_date
@@ -167,6 +185,11 @@ class ApplicationService(ApplicationService):
                     application.status = ApplicationStatus.INTERVIEW_SCHEDULED
             
             application.updated_at = datetime.utcnow()
+            
+            # Save to repository if available
+            if self.repository:
+                application = await self.repository.update(application_id, updates)
+            # For in-memory, application is already updated in place
             
             self.logger.info(f"Updated application: {application.job_title} (ID: {application_id})")
             return application
@@ -183,15 +206,19 @@ class ApplicationService(ApplicationService):
                 self.logger.warning(f"Cannot delete, application not found: {application_id}")
                 return False
             
-            # Remove from storage
-            del self.applications[application_id]
-            
-            # Remove follow-up if exists
-            if application_id in self.follow_ups:
-                del self.follow_ups[application_id]
+            # Delete from repository if available
+            if self.repository:
+                success = await self.repository.delete(application_id)
+            else:
+                # Remove from storage
+                del self.applications[application_id]
+                # Remove follow-up if exists
+                if application_id in self.follow_ups:
+                    del self.follow_ups[application_id]
+                success = True
             
             self.logger.info(f"Deleted application: {application.job_title} (ID: {application_id})")
-            return True
+            return success
             
         except Exception as e:
             self.logger.error(f"Error deleting application {application_id}: {e}", exc_info=True)
@@ -200,6 +227,18 @@ class ApplicationService(ApplicationService):
     async def get_application_stats(self) -> Dict[str, Any]:
         """Get application statistics."""
         try:
+            if self.repository:
+                stats = await self.repository.get_statistics()
+                # Convert status enum keys to string values for consistency
+                if "status_breakdown" in stats:
+                    status_breakdown = {}
+                    for status, count in stats["status_breakdown"].items():
+                        status_key = status.value if hasattr(status, 'value') else str(status)
+                        status_breakdown[status_key] = count
+                    stats["status_breakdown"] = status_breakdown
+                return stats
+            
+            # Fallback to in-memory calculation
             applications = await self.get_all_applications()
             
             # Count by status
@@ -307,17 +346,20 @@ class ApplicationService(ApplicationService):
     async def get_upcoming_follow_ups(self) -> List[JobApplication]:
         """Get applications with upcoming follow-ups."""
         try:
-            upcoming_applications = []
-            cutoff_date = datetime.utcnow() + timedelta(days=7)  # Next 7 days
-            
-            for app_id, follow_up_date in self.follow_ups.items():
-                if follow_up_date <= cutoff_date:
-                    application = await self.get_application(app_id)
-                    if application:
-                        upcoming_applications.append(application)
-            
-            # Sort by follow-up date
-            upcoming_applications.sort(key=lambda app: app.follow_up_date or datetime.max)
+            if self.repository:
+                upcoming_applications = await self.repository.get_upcoming_follow_ups()
+            else:
+                upcoming_applications = []
+                cutoff_date = datetime.utcnow() + timedelta(days=7)  # Next 7 days
+                
+                for app_id, follow_up_date in self.follow_ups.items():
+                    if follow_up_date <= cutoff_date:
+                        application = await self.get_application(app_id)
+                        if application:
+                            upcoming_applications.append(application)
+                
+                # Sort by follow-up date
+                upcoming_applications.sort(key=lambda app: app.follow_up_date or datetime.max)
             
             self.logger.debug(f"Retrieved {len(upcoming_applications)} upcoming follow-ups")
             return upcoming_applications
@@ -329,12 +371,14 @@ class ApplicationService(ApplicationService):
     async def get_applications_by_company(self, company: str) -> List[JobApplication]:
         """Get all applications for a specific company."""
         try:
-            applications = [
-                app for app in self.applications.values()
-                if app.company.lower() == company.lower()
-            ]
-            
-            applications.sort(key=lambda app: app.created_at, reverse=True)
+            if self.repository:
+                applications = await self.repository.get_by_company(company)
+            else:
+                applications = [
+                    app for app in self.applications.values()
+                    if app.company.lower() == company.lower()
+                ]
+                applications.sort(key=lambda app: app.created_at, reverse=True)
             
             self.logger.debug(f"Retrieved {len(applications)} applications for {company}")
             return applications
@@ -346,17 +390,20 @@ class ApplicationService(ApplicationService):
     async def search_applications(self, query: str) -> List[JobApplication]:
         """Search applications by job title, company, or notes."""
         try:
-            query_lower = query.lower()
-            matching_applications = []
-            
-            for application in self.applications.values():
-                # Search in job title, company, and notes
-                searchable_text = f"{application.job_title} {application.company} {application.notes or ''}".lower()
+            if self.repository:
+                matching_applications = await self.repository.search(query)
+            else:
+                query_lower = query.lower()
+                matching_applications = []
                 
-                if query_lower in searchable_text:
-                    matching_applications.append(application)
-            
-            matching_applications.sort(key=lambda app: app.created_at, reverse=True)
+                for application in self.applications.values():
+                    # Search in job title, company, and notes
+                    searchable_text = f"{application.job_title} {application.company} {application.notes or ''}".lower()
+                    
+                    if query_lower in searchable_text:
+                        matching_applications.append(application)
+                
+                matching_applications.sort(key=lambda app: app.created_at, reverse=True)
             
             self.logger.debug(f"Found {len(matching_applications)} applications matching '{query}'")
             return matching_applications
@@ -423,11 +470,13 @@ class ApplicationService(ApplicationService):
         """Check service health."""
         try:
             applications = await self.get_all_applications()
+            follow_ups_count = len(self.follow_ups) if not self.repository else 0
             return {
                 "status": "healthy",
                 "available": True,
                 "application_count": len(applications),
-                "follow_ups_scheduled": len(self.follow_ups)
+                "follow_ups_scheduled": follow_ups_count,
+                "using_database": self.repository is not None
             }
         except Exception as e:
             self.logger.error(f"Health check failed: {e}", exc_info=True)
