@@ -66,6 +66,7 @@ interface AppState {
   
   // UI actions
   setSidebarOpen: (open: boolean) => void;
+  setNotifications: (notifications: Notification[]) => void;
   addNotification: (notification: Notification) => void;
   removeNotification: (id: string) => void;
   setLoading: (loading: boolean) => void;
@@ -185,6 +186,7 @@ export const useAppStore = create<AppState>()(
         
         // UI actions
         setSidebarOpen: (sidebarOpen) => set({ sidebarOpen }),
+        setNotifications: (notifications) => set({ notifications }),
         addNotification: (notification) => set((state) => ({
           notifications: [...state.notifications, notification],
         })),

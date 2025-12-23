@@ -50,10 +50,36 @@ const CoverLetters: React.FC = () => {
   const itemsPerPage = 10;
 
   // Fetch cover letters
-  const { data: coverLettersData, isLoading: coverLettersLoading } = useQuery({
+  const { data: coverLettersData, isLoading: coverLettersLoading, refetch: refetchCoverLetters } = useQuery({
     queryKey: ['cover-letters'],
     queryFn: () => coverLetterService.getCoverLetters(),
     staleTime: 5 * 60 * 1000, // 5 minutes
+  });
+
+  // Create cover letter mutation
+  const createCoverLetterMutation = useMutation({
+    mutationFn: coverLetterService.createCoverLetter,
+    onSuccess: () => {
+      refetchCoverLetters();
+      setIsCreateModalOpen(false);
+    },
+  });
+
+  // Update cover letter mutation
+  const updateCoverLetterMutation = useMutation({
+    mutationFn: ({ id, data }: { id: string; data: any }) => coverLetterService.updateCoverLetter(id, data),
+    onSuccess: () => {
+      refetchCoverLetters();
+      setIsEditModalOpen(false);
+    },
+  });
+
+  // Delete cover letter mutation
+  const deleteCoverLetterMutation = useMutation({
+    mutationFn: coverLetterService.deleteCoverLetter,
+    onSuccess: () => {
+      refetchCoverLetters();
+    },
   });
 
   // Cover letter generation mutation
@@ -101,14 +127,35 @@ const CoverLetters: React.FC = () => {
     currentPage * itemsPerPage
   );
 
-  const handleCreateCoverLetter = (data: any) => {
-    // TODO: Implement cover letter creation
-    setIsCreateModalOpen(false);
+  const handleCreateCoverLetter = async (data: any) => {
+    try {
+      await createCoverLetterMutation.mutateAsync({
+        job_title: data.job_title,
+        company_name: data.company_name,
+        content: data.content,
+        tone: data.tone || 'professional',
+      });
+    } catch (error) {
+      console.error('Error creating cover letter:', error);
+    }
   };
 
-  const handleEditCoverLetter = (data: any) => {
-    // TODO: Implement cover letter editing
-    setIsEditModalOpen(false);
+  const handleEditCoverLetter = async (data: any) => {
+    if (selectedCoverLetter) {
+      try {
+        await updateCoverLetterMutation.mutateAsync({
+          id: selectedCoverLetter.id,
+          data: {
+            job_title: data.job_title,
+            company_name: data.company_name,
+            content: data.content,
+            tone: data.tone,
+          },
+        });
+      } catch (error) {
+        console.error('Error updating cover letter:', error);
+      }
+    }
   };
 
   const handleGenerateCoverLetter = (data: any) => {
@@ -385,8 +432,15 @@ const CoverLetters: React.FC = () => {
                       </Tooltip>
                       <Tooltip content="Delete cover letter">
                         <Button
-                          onClick={() => {
-                            // TODO: Implement delete
+                          onClick={async () => {
+                            if (window.confirm('Are you sure you want to delete this cover letter?')) {
+                              try {
+                                await deleteCoverLetterMutation.mutateAsync(coverLetter.id);
+                              } catch (error) {
+                                console.error('Error deleting cover letter:', error);
+                                alert('Failed to delete cover letter. Please try again.');
+                              }
+                            }
                           }}
                           variant="ghost"
                           size="sm"
@@ -679,17 +733,42 @@ const CoverLetters: React.FC = () => {
 
           {generationResult && (
             <div className="mt-4">
-              <Alert type="success" title="Generation Complete!" message={generationResult} />
-              <div className="mt-4">
+              <Alert type="success" title="Generation Complete!" message={generationResult.substring(0, 200) + '...'} />
+              <div className="mt-4 flex space-x-2">
                 <Button
-                  onClick={() => {
-                    // TODO: Save generated cover letter
-                    setIsGenerateModalOpen(false);
+                  onClick={async () => {
+                    try {
+                      const jobTitle = selectedJob?.job_title || '';
+                      const company = selectedJob?.company || '';
+                      await createCoverLetterMutation.mutateAsync({
+                        job_title: jobTitle,
+                        company_name: company,
+                        content: generationResult,
+                        tone: 'professional',
+                      });
+                      setIsGenerateModalOpen(false);
+                      setGenerationResult('');
+                      setGenerationProgress(0);
+                    } catch (error) {
+                      console.error('Error saving cover letter:', error);
+                      alert('Failed to save cover letter. Please try again.');
+                    }
                   }}
                   variant="primary"
                   size="sm"
                 >
                   Save Cover Letter
+                </Button>
+                <Button
+                  onClick={() => {
+                    setIsGenerateModalOpen(false);
+                    setGenerationResult('');
+                    setGenerationProgress(0);
+                  }}
+                  variant="secondary"
+                  size="sm"
+                >
+                  Close
                 </Button>
               </div>
             </div>

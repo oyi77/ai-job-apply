@@ -8,7 +8,7 @@ import {
 } from '@heroicons/react/24/outline';
 
 const Header: React.FC = () => {
-  const { user, setUser, setAuthenticated, notifications, theme, setTheme } = useAppStore();
+  const { user, setUser, setAuthenticated, notifications, setNotifications, theme, setTheme } = useAppStore();
 
   const handleLogout = () => {
     localStorage.removeItem('auth_token');
@@ -18,15 +18,19 @@ const Header: React.FC = () => {
   };
 
   const handleMarkAsRead = (id: string) => {
-    // TODO: Implement mark as read
+    setNotifications(
+      notifications.map(notif => 
+        notif.id === id ? { ...notif, read: true } : notif
+      )
+    );
   };
 
   const handleDeleteNotification = (id: string) => {
-    // TODO: Implement delete notification
+    setNotifications(notifications.filter(notif => notif.id !== id));
   };
 
   const handleMarkAllAsRead = () => {
-    // TODO: Implement mark all as read
+    setNotifications(notifications.map(notif => ({ ...notif, read: true })));
   };
 
   return (

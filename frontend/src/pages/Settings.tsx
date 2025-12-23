@@ -10,9 +10,11 @@ import {
   FormField,
   Select,
   Input,
-  Alert
+  Alert,
+  Spinner
 } from '../components';
 import { useAppStore } from '../stores/appStore';
+import { applicationService, resumeService, coverLetterService } from '../services/api';
 import {
   UserCircleIcon,
   BellIcon,
@@ -32,15 +34,23 @@ const Settings: React.FC = () => {
   const [isExportModalOpen, setIsExportModalOpen] = useState(false);
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const [showSuccessMessage, setShowSuccessMessage] = useState(false);
+  const [isExporting, setIsExporting] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
+  const [deleteConfirmation, setDeleteConfirmation] = useState('');
   
   const { user, setUser, theme, setTheme, setAuthenticated } = useAppStore();
 
-  const handleProfileUpdate = (data: any) => {
-    // TODO: Implement profile update
-    setUser({ ...user, ...data });
-    setIsProfileModalOpen(false);
-    setShowSuccessMessage(true);
-    setTimeout(() => setShowSuccessMessage(false), 3000);
+  const handleProfileUpdate = async (data: any) => {
+    try {
+      // Update local user state
+      // TODO: Add API endpoint for profile update when backend auth is implemented
+      setUser({ ...user, ...data });
+      setIsProfileModalOpen(false);
+      setShowSuccessMessage(true);
+      setTimeout(() => setShowSuccessMessage(false), 3000);
+    } catch (error) {
+      console.error('Error updating profile:', error);
+    }
   };
 
   const handleThemeChange = (newTheme: string) => {
@@ -48,34 +58,73 @@ const Settings: React.FC = () => {
     setIsThemeModalOpen(false);
   };
 
-  const handleExportData = () => {
-    // TODO: Implement data export
-    const exportData = {
-      user: user,
-      timestamp: new Date().toISOString(),
-    };
-    
-    const blob = new Blob([JSON.stringify(exportData, null, 2)], { type: 'application/json' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `ai-job-apply-data-${new Date().toISOString().split('T')[0]}.json`;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    URL.revokeObjectURL(url);
-    
-    setIsExportModalOpen(false);
-    setShowSuccessMessage(true);
-    setTimeout(() => setShowSuccessMessage(false), 3000);
+  const handleExportData = async () => {
+    setIsExporting(true);
+    try {
+      // Fetch all data from API
+      const [applications, resumes, coverLetters] = await Promise.all([
+        applicationService.getApplications().catch(() => ({ data: [], total: 0 })),
+        resumeService.getResumes().catch(() => []),
+        coverLetterService.getCoverLetters().catch(() => [])
+      ]);
+      
+      const exportData = {
+        user: user,
+        applications: applications.data || applications,
+        resumes: resumes,
+        coverLetters: coverLetters,
+        settings: {
+          theme: theme,
+        },
+        exportDate: new Date().toISOString(),
+        version: '1.0.0'
+      };
+      
+      // Create and download JSON file
+      const blob = new Blob([JSON.stringify(exportData, null, 2)], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `ai-job-apply-data-${new Date().toISOString().split('T')[0]}.json`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+      
+      setIsExportModalOpen(false);
+      setShowSuccessMessage(true);
+      setTimeout(() => setShowSuccessMessage(false), 3000);
+    } catch (error) {
+      console.error('Error exporting data:', error);
+      alert('Failed to export data. Please try again.');
+    } finally {
+      setIsExporting(false);
+    }
   };
 
-  const handleDeleteAccount = () => {
-    // TODO: Implement account deletion
-    setAuthenticated(false);
-    setUser(null);
-    localStorage.removeItem('token');
-    setIsDeleteModalOpen(false);
+  const handleDeleteAccount = async () => {
+    if (deleteConfirmation !== 'DELETE') {
+      alert('Please type DELETE to confirm account deletion');
+      return;
+    }
+    
+    setIsDeleting(true);
+    try {
+      // TODO: Add API endpoint for account deletion when backend auth is implemented
+      // For now, just clear local data
+      setAuthenticated(false);
+      setUser(null);
+      localStorage.removeItem('auth_token');
+      localStorage.removeItem('token');
+      setIsDeleteModalOpen(false);
+      // Redirect to login
+      window.location.href = '/login';
+    } catch (error) {
+      console.error('Error deleting account:', error);
+      alert('Failed to delete account. Please try again.');
+    } finally {
+      setIsDeleting(false);
+    }
   };
 
   const themeOptions = [
@@ -534,9 +583,19 @@ const Settings: React.FC = () => {
             <Button
               variant="success"
               onClick={handleExportData}
+              disabled={isExporting}
             >
-              <DocumentArrowDownIcon className="h-4 w-4 mr-2" />
-              Export Data
+              {isExporting ? (
+                <>
+                  <Spinner size="sm" className="mr-2" />
+                  Exporting...
+                </>
+              ) : (
+                <>
+                  <DocumentArrowDownIcon className="h-4 w-4 mr-2" />
+                  Export Data
+                </>
+              )}
             </Button>
           </div>
         </div>
@@ -567,19 +626,48 @@ const Settings: React.FC = () => {
             </p>
           </div>
           
+          <div className="space-y-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Type <strong>DELETE</strong> to confirm:
+              </label>
+              <Input
+                type="text"
+                value={deleteConfirmation}
+                onChange={(e) => setDeleteConfirmation(e.target.value)}
+                placeholder="Type DELETE to confirm"
+                className="w-full"
+              />
+            </div>
+          </div>
+          
           <div className="flex justify-end space-x-3">
             <Button
               variant="secondary"
-              onClick={() => setIsDeleteModalOpen(false)}
+              onClick={() => {
+                setIsDeleteModalOpen(false);
+                setDeleteConfirmation('');
+              }}
+              disabled={isDeleting}
             >
               Cancel
             </Button>
             <Button
               variant="danger"
               onClick={handleDeleteAccount}
+              disabled={isDeleting || deleteConfirmation !== 'DELETE'}
             >
-              <TrashIcon className="h-4 w-4 mr-2" />
-              Delete Account
+              {isDeleting ? (
+                <>
+                  <Spinner size="sm" className="mr-2" />
+                  Deleting...
+                </>
+              ) : (
+                <>
+                  <TrashIcon className="h-4 w-4 mr-2" />
+                  Delete Account
+                </>
+              )}
             </Button>
           </div>
         </div>

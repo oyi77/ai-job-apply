@@ -96,9 +96,20 @@ const JobSearch: React.FC = () => {
     }
   };
 
-  const handleSaveJob = (job: Job) => {
-    // TODO: Implement job saving functionality
-    console.log('Saving job:', job);
+  const handleSaveJob = async (job: Job) => {
+    try {
+      // Create a draft application for the saved job
+      await createApplicationMutation.mutateAsync({
+        job_id: job.id || `job_${Date.now()}`,
+        job_title: job.title || 'Unknown Job',
+        company: job.company || 'Unknown Company',
+        location: job.location || 'Unknown Location',
+        status: 'draft' as ApplicationStatus,
+        notes: `Saved from job search: ${job.description?.substring(0, 100)}...`,
+      });
+    } catch (error) {
+      console.error('Error saving job:', error);
+    }
   };
 
   const jobTypeOptions = [

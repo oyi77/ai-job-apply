@@ -36,6 +36,12 @@ const AIServices: React.FC = () => {
   const [optimizationResult, setOptimizationResult] = useState<string>('');
   const [coverLetterResult, setCoverLetterResult] = useState<string>('');
   const [jobMatchResult, setJobMatchResult] = useState<any>(null);
+  const [isSkillsExtractionOpen, setIsSkillsExtractionOpen] = useState(false);
+  const [isInterviewPrepOpen, setIsInterviewPrepOpen] = useState(false);
+  const [isCareerInsightsOpen, setIsCareerInsightsOpen] = useState(false);
+  const [skillsResult, setSkillsResult] = useState<{ skills: string[]; confidence: number } | null>(null);
+  const [interviewPrepResult, setInterviewPrepResult] = useState<string>('');
+  const [careerInsightsResult, setCareerInsightsResult] = useState<string>('');
   
   const { resumes, applications } = useAppStore();
 
@@ -101,6 +107,19 @@ const AIServices: React.FC = () => {
     },
     onError: (error) => {
       setJobMatchResult({ error: 'Job matching analysis failed. Please try again.' });
+    },
+  });
+
+  // Skills extraction mutation
+  const skillsExtractionMutation = useMutation({
+    mutationFn: async (text: string) => {
+      return aiService.extractSkills(text);
+    },
+    onSuccess: (result) => {
+      setSkillsResult(result);
+    },
+    onError: () => {
+      setSkillsResult({ skills: [], confidence: 0 });
     },
   });
 
@@ -274,9 +293,8 @@ const AIServices: React.FC = () => {
             </p>
             <Button
               variant="info"
-              onClick={() => {}} // TODO: Implement skills extraction
+              onClick={() => setIsSkillsExtractionOpen(true)}
               className="w-full"
-              disabled
             >
               <SparklesIcon className="h-4 w-4 mr-2" />
               Extract Skills
@@ -298,9 +316,8 @@ const AIServices: React.FC = () => {
             </p>
             <Button
               variant="secondary"
-              onClick={() => {}} // TODO: Implement interview prep
+              onClick={() => setIsInterviewPrepOpen(true)}
               className="w-full"
-              disabled
             >
               <SparklesIcon className="h-4 w-4 mr-2" />
               Prepare for Interview
@@ -322,9 +339,8 @@ const AIServices: React.FC = () => {
             </p>
             <Button
               variant="secondary"
-              onClick={() => {}} // TODO: Implement career insights
+              onClick={() => setIsCareerInsightsOpen(true)}
               className="w-full"
-              disabled
             >
               <SparklesIcon className="h-4 w-4 mr-2" />
               Get Insights
@@ -565,6 +581,122 @@ const AIServices: React.FC = () => {
                   )}
                 </>
               )}
+            </div>
+          )}
+        </div>
+      </Modal>
+
+      {/* Skills Extraction Modal */}
+      <Modal
+        isOpen={isSkillsExtractionOpen}
+        onClose={() => {
+          setIsSkillsExtractionOpen(false);
+          setSkillsResult(null);
+        }}
+        title="Extract Skills from Resume"
+        size="lg"
+      >
+        <div className="space-y-4">
+          <Select
+            name="resume"
+            label="Select Resume"
+            value=""
+            onChange={(value) => {
+              const resume = resumes.find(r => r.id === value);
+              if (resume && resume.content) {
+                skillsExtractionMutation.mutate(resume.content);
+              }
+            }}
+            options={[
+              { value: '', label: 'Select a resume' },
+              ...resumes.map(r => ({ value: r.id, label: r.name }))
+            ]}
+          />
+          {skillsResult && (
+            <div className="mt-4">
+              <Alert 
+                type="success" 
+                title={`Extracted ${skillsResult.skills.length} skills`}
+                message={`Confidence: ${(skillsResult.confidence * 100).toFixed(1)}%`}
+              />
+              <div className="mt-4 flex flex-wrap gap-2">
+                {skillsResult.skills.map((skill, index) => (
+                  <Badge key={index} variant="primary" size="sm">
+                    {skill}
+                  </Badge>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
+      </Modal>
+
+      {/* Interview Prep Modal */}
+      <Modal
+        isOpen={isInterviewPrepOpen}
+        onClose={() => {
+          setIsInterviewPrepOpen(false);
+          setInterviewPrepResult('');
+        }}
+        title="Interview Preparation"
+        size="lg"
+      >
+        <div className="space-y-4">
+          <FormField
+            name="job_application"
+            label="Select Job Application"
+            type="select"
+            options={[
+              { value: '', label: 'Select a job application' },
+              ...applications.map(app => ({ 
+                value: app.id, 
+                label: `${app.job_title} at ${app.company}` 
+              }))
+            ]}
+            onChange={(value) => {
+              const app = applications.find(a => a.id === value);
+              if (app) {
+                // TODO: Implement interview prep API call when backend endpoint is available
+                setInterviewPrepResult('Interview preparation feature coming soon. This will provide AI-generated interview questions and preparation tips based on the job description.');
+              }
+            }}
+          />
+          {interviewPrepResult && (
+            <div className="mt-4">
+              <Alert type="info" message={interviewPrepResult} />
+            </div>
+          )}
+        </div>
+      </Modal>
+
+      {/* Career Insights Modal */}
+      <Modal
+        isOpen={isCareerInsightsOpen}
+        onClose={() => {
+          setIsCareerInsightsOpen(false);
+          setCareerInsightsResult('');
+        }}
+        title="Career Insights"
+        size="lg"
+      >
+        <div className="space-y-4">
+          <p className="text-gray-600">
+            Get personalized career advice based on your application history and skills.
+          </p>
+          <Button
+            variant="primary"
+            onClick={() => {
+              // TODO: Implement career insights API call when backend endpoint is available
+              setCareerInsightsResult('Career insights feature coming soon. This will analyze your application history, skills, and provide personalized career growth recommendations.');
+            }}
+            className="w-full"
+          >
+            <ChartBarIcon className="h-4 w-4 mr-2" />
+            Generate Career Insights
+          </Button>
+          {careerInsightsResult && (
+            <div className="mt-4">
+              <Alert type="info" message={careerInsightsResult} />
             </div>
           )}
         </div>
