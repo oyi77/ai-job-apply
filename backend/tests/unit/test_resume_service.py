@@ -3,13 +3,20 @@
 import pytest
 from unittest.mock import AsyncMock, MagicMock
 from pathlib import Path
+import sys
 
-from src.services.file_based_resume_service import FileBasedResumeService
+# Mock dependencies before importing services
+sys.modules['google'] = MagicMock()
+sys.modules['google.generativeai'] = MagicMock()
+sys.modules['PyPDF2'] = MagicMock()
+sys.modules['docx'] = MagicMock()
+
+from src.services.resume_service import ResumeService as ResumeServiceImpl
 from src.models.resume import Resume
 
 
 class TestFileBasedResumeService:
-    """Test cases for FileBasedResumeService."""
+    """Test cases for ResumeService."""
     
     @pytest.fixture
     def mock_file_service(self):
@@ -30,13 +37,18 @@ class TestFileBasedResumeService:
     @pytest.fixture
     def resume_service(self, mock_file_service):
         """Create resume service with mocked dependencies."""
-        return FileBasedResumeService(file_service=mock_file_service)
+        return ResumeServiceImpl(file_service=mock_file_service)
     
     @pytest.mark.asyncio
     async def test_upload_resume_success(self, resume_service, mock_file_service):
         """Test successful resume upload."""
         file_path = "/test/resume.pdf"
         name = "Test Resume"
+        
+        # Clear sample data to test first resume being default
+        if hasattr(resume_service, 'resumes'):
+            resume_service.resumes.clear()
+            resume_service.default_resume_id = None
         
         # Mock text extraction
         resume_service.extract_text_from_file = AsyncMock(return_value="Software Engineer with 5 years experience")
@@ -95,6 +107,11 @@ class TestFileBasedResumeService:
     @pytest.mark.asyncio
     async def test_get_all_resumes(self, resume_service):
         """Test getting all resumes."""
+        # Clear sample data
+        if hasattr(resume_service, 'resumes'):
+            resume_service.resumes.clear()
+            resume_service.default_resume_id = None
+        
         # Upload multiple resumes
         resume_service.extract_text_from_file = AsyncMock(return_value="test content")
         
@@ -112,6 +129,11 @@ class TestFileBasedResumeService:
     @pytest.mark.asyncio
     async def test_set_default_resume(self, resume_service):
         """Test setting a resume as default."""
+        # Clear sample data
+        if hasattr(resume_service, 'resumes'):
+            resume_service.resumes.clear()
+            resume_service.default_resume_id = None
+        
         # Upload two resumes
         resume_service.extract_text_from_file = AsyncMock(return_value="test content")
         
@@ -127,8 +149,11 @@ class TestFileBasedResumeService:
         
         # Assertions
         assert success is True
-        assert resume1.is_default is False
-        assert resume2.is_default is True
+        # Re-fetch resumes to get updated state
+        updated_resume1 = await resume_service.get_resume(resume1.id)
+        updated_resume2 = await resume_service.get_resume(resume2.id)
+        assert updated_resume1.is_default is False
+        assert updated_resume2.is_default is True
     
     @pytest.mark.asyncio
     async def test_delete_resume(self, resume_service, mock_file_service):

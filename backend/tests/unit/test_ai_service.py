@@ -2,6 +2,13 @@
 
 import pytest
 from unittest.mock import AsyncMock, MagicMock, patch
+import sys
+
+# Mock dependencies before importing services
+sys.modules['google'] = MagicMock()
+sys.modules['google.generativeai'] = MagicMock()
+sys.modules['PyPDF2'] = MagicMock()
+sys.modules['docx'] = MagicMock()
 
 from src.services.gemini_ai_service import GeminiAIService
 from src.models.resume import ResumeOptimizationRequest, ResumeOptimizationResponse
