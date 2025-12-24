@@ -53,7 +53,7 @@ class ResumeService(ResumeService):
         self.default_resume_id = sample_resume.id
         self.logger.info("Initialized with sample resume data")
     
-    async def upload_resume(self, file_path: str, name: str) -> Resume:
+    async def upload_resume(self, file_path: str, name: str, user_id: Optional[str] = None) -> Resume:
         """Upload and process a new resume."""
         try:
             self.logger.info(f"Uploading resume: {name}")
@@ -112,7 +112,7 @@ class ResumeService(ResumeService):
             
             # Store resume
             if self.repository:
-                resume = await self.repository.create(resume)
+                resume = await self.repository.create(resume, user_id=user_id)
             else:
                 self.resumes[resume_id] = resume
                 # Set as default if it's the first resume
@@ -126,11 +126,11 @@ class ResumeService(ResumeService):
             self.logger.error(f"Error uploading resume {name}: {e}", exc_info=True)
             raise
     
-    async def get_resume(self, resume_id: str) -> Optional[Resume]:
-        """Get a resume by ID."""
+    async def get_resume(self, resume_id: str, user_id: Optional[str] = None) -> Optional[Resume]:
+        """Get a resume by ID, optionally filtered by user."""
         try:
             if self.repository:
-                resume = await self.repository.get_by_id(resume_id)
+                resume = await self.repository.get_by_id(resume_id, user_id=user_id)
             else:
                 resume = self.resumes.get(resume_id)
             
@@ -144,11 +144,11 @@ class ResumeService(ResumeService):
             self.logger.error(f"Error getting resume {resume_id}: {e}", exc_info=True)
             return None
     
-    async def get_all_resumes(self) -> List[Resume]:
-        """Get all available resumes."""
+    async def get_all_resumes(self, user_id: Optional[str] = None) -> List[Resume]:
+        """Get all available resumes, optionally filtered by user."""
         try:
             if self.repository:
-                resumes = await self.repository.get_all()
+                resumes = await self.repository.get_all(user_id=user_id)
             else:
                 resumes = list(self.resumes.values())
                 # Sort by creation date, most recent first
@@ -161,11 +161,11 @@ class ResumeService(ResumeService):
             self.logger.error(f"Error getting all resumes: {e}", exc_info=True)
             return []
     
-    async def get_default_resume(self) -> Optional[Resume]:
-        """Get the default resume."""
+    async def get_default_resume(self, user_id: Optional[str] = None) -> Optional[Resume]:
+        """Get the default resume, optionally filtered by user."""
         try:
             if self.repository:
-                return await self.repository.get_default_resume()
+                return await self.repository.get_default_resume(user_id=user_id)
             
             # Fallback to in-memory
             if self.default_resume_id:
@@ -215,7 +215,7 @@ class ResumeService(ResumeService):
     async def delete_resume(self, resume_id: str) -> bool:
         """Delete a resume."""
         try:
-            resume = await self.get_resume(resume_id)
+            resume = await self.get_resume(resume_id, user_id=user_id)
             if not resume:
                 self.logger.warning(f"Cannot delete, resume not found: {resume_id}")
                 return False
@@ -226,7 +226,7 @@ class ResumeService(ResumeService):
             
             # Delete from repository if available
             if self.repository:
-                success = await self.repository.delete(resume_id)
+                success = await self.repository.delete(resume_id, user_id=user_id)
             else:
                 # Remove from memory
                 del self.resumes[resume_id]
@@ -281,7 +281,7 @@ class ResumeService(ResumeService):
     async def update_resume(self, resume_id: str, updates: dict) -> Optional[Resume]:
         """Update resume information."""
         try:
-            resume = await self.get_resume(resume_id)
+            resume = await self.get_resume(resume_id, user_id=user_id)
             if not resume:
                 self.logger.warning(f"Cannot update, resume not found: {resume_id}")
                 return None
@@ -300,7 +300,7 @@ class ResumeService(ResumeService):
                 if 'name' in updates:
                     update_dict['name'] = updates['name']
                 if update_dict:
-                    resume = await self.repository.update(resume_id, update_dict)
+                    resume = await self.repository.update(resume_id, update_dict, user_id=user_id)
             
             self.logger.info(f"Resume updated: {resume.name} (ID: {resume_id})")
             return resume

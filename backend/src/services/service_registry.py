@@ -11,6 +11,7 @@ from ..core.application_service import ApplicationService
 from ..core.job_search import JobSearchService
 from ..core.cover_letter_service import CoverLetterService
 from ..core.job_application import JobApplicationService
+from ..core.auth_service import AuthService
 
 
 class ServiceProvider(ABC):
@@ -68,6 +69,13 @@ class ServiceRegistry:
     
     async def _initialize_core_services(self) -> None:
         """Initialize core infrastructure services."""
+        # Auth service (no dependencies, but needs database)
+        from .auth_service import JWTAuthService
+        auth_provider = JWTAuthServiceProvider()
+        self.register_service('auth_service', auth_provider)
+        await auth_provider.initialize()
+        self._instances['auth_service'] = auth_provider.get_service()
+        
         # File service (no dependencies)
         from .local_file_service import LocalFileService
         file_provider = LocalFileServiceProvider()
@@ -162,6 +170,10 @@ class ServiceRegistry:
     async def get_job_application_service(self) -> JobApplicationService:
         """Get the job application service instance."""
         return await self.get_service('job_application_service')
+    
+    async def get_auth_service(self) -> AuthService:
+        """Get the authentication service instance."""
+        return await self.get_service('auth_service')
     
     async def health_check(self) -> Dict[str, Any]:
         """Check the health of all services."""
@@ -375,6 +387,22 @@ class JobApplicationServiceProvider(ServiceProvider):
     async def initialize(self) -> None:
         from .job_application_service import MultiPlatformJobApplicationService
         self._service = MultiPlatformJobApplicationService()
+        await self._service.initialize()
+    
+    async def cleanup(self) -> None:
+        if hasattr(self._service, 'cleanup'):
+            await self._service.cleanup()
+
+
+class JWTAuthServiceProvider(ServiceProvider):
+    """Provider for JWT authentication service."""
+    
+    def get_service(self) -> AuthService:
+        return self._service
+    
+    async def initialize(self) -> None:
+        from .auth_service import JWTAuthService
+        self._service = JWTAuthService()
         await self._service.initialize()
     
     async def cleanup(self) -> None:

@@ -1,8 +1,10 @@
 """Cover Letters API endpoints for the AI Job Application Assistant."""
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Depends
 from typing import List, Dict, Any
 from ...models.cover_letter import CoverLetter, CoverLetterCreate, CoverLetterUpdate
+from ...models.user import UserProfile
+from ...api.dependencies import get_current_user
 from ...utils.logger import get_logger
 from ...services.service_registry import service_registry
 from ...utils.response_wrapper import success_response, error_response
@@ -13,7 +15,9 @@ router = APIRouter()
 
 
 @router.get("", response_model=List[CoverLetter])
-async def get_all_cover_letters() -> List[CoverLetter]:
+async def get_all_cover_letters(
+    current_user: UserProfile = Depends(get_current_user)
+) -> List[CoverLetter]:
     """
     Get all cover letters.
     
@@ -35,7 +39,10 @@ async def get_all_cover_letters() -> List[CoverLetter]:
 
 
 @router.get("/{cover_letter_id}", response_model=CoverLetter)
-async def get_cover_letter(cover_letter_id: str) -> CoverLetter:
+async def get_cover_letter(
+    cover_letter_id: str,
+    current_user: UserProfile = Depends(get_current_user)
+) -> CoverLetter:
     """
     Get a specific cover letter by ID.
     
@@ -49,8 +56,8 @@ async def get_cover_letter(cover_letter_id: str) -> CoverLetter:
         # Get cover letter service from unified registry
         cover_letter_service = await service_registry.get_cover_letter_service()
         
-        # Get cover letter by ID
-        cover_letter = await cover_letter_service.get_cover_letter(cover_letter_id)
+        # Get cover letter by ID (filtered by user)
+        cover_letter = await cover_letter_service.get_cover_letter(cover_letter_id, user_id=current_user.id)
         
         if not cover_letter:
             raise HTTPException(status_code=404, detail=f"Cover letter {cover_letter_id} not found")
@@ -65,7 +72,10 @@ async def get_cover_letter(cover_letter_id: str) -> CoverLetter:
 
 
 @router.post("/", response_model=Dict[str, Any])
-async def create_cover_letter(cover_letter: CoverLetterCreate) -> Dict[str, Any]:
+async def create_cover_letter(
+    cover_letter: CoverLetterCreate,
+    current_user: UserProfile = Depends(get_current_user)
+) -> Dict[str, Any]:
     """
     Create a new cover letter.
     
@@ -79,8 +89,8 @@ async def create_cover_letter(cover_letter: CoverLetterCreate) -> Dict[str, Any]
         # Get cover letter service from unified registry
         cover_letter_service = await service_registry.get_cover_letter_service()
         
-        # Create cover letter
-        created_cover_letter = await cover_letter_service.create_cover_letter(cover_letter)
+        # Create cover letter (associated with user)
+        created_cover_letter = await cover_letter_service.create_cover_letter(cover_letter, user_id=current_user.id)
         
         logger.info(f"Cover letter created for {created_cover_letter.job_title} at {created_cover_letter.company_name}")
         return success_response(created_cover_letter.dict(), "Cover letter created successfully").dict()
@@ -95,7 +105,8 @@ async def create_cover_letter(cover_letter: CoverLetterCreate) -> Dict[str, Any]
 @router.put("/{cover_letter_id}", response_model=CoverLetter)
 async def update_cover_letter(
     cover_letter_id: str,
-    cover_letter_update: CoverLetterUpdate
+    cover_letter_update: CoverLetterUpdate,
+    current_user: UserProfile = Depends(get_current_user)
 ) -> CoverLetter:
     """
     Update an existing cover letter.
@@ -111,8 +122,8 @@ async def update_cover_letter(
         # Get cover letter service from unified registry
         cover_letter_service = await service_registry.get_cover_letter_service()
         
-        # Update cover letter
-        updated_cover_letter = await cover_letter_service.update_cover_letter(cover_letter_id, cover_letter_update)
+        # Update cover letter (filtered by user)
+        updated_cover_letter = await cover_letter_service.update_cover_letter(cover_letter_id, cover_letter_update, user_id=current_user.id)
         
         if not updated_cover_letter:
             raise HTTPException(status_code=404, detail=f"Cover letter {cover_letter_id} not found")
@@ -128,7 +139,10 @@ async def update_cover_letter(
 
 
 @router.delete("/{cover_letter_id}")
-async def delete_cover_letter(cover_letter_id: str) -> Dict[str, str]:
+async def delete_cover_letter(
+    cover_letter_id: str,
+    current_user: UserProfile = Depends(get_current_user)
+) -> Dict[str, str]:
     """
     Delete a cover letter.
     
@@ -142,8 +156,8 @@ async def delete_cover_letter(cover_letter_id: str) -> Dict[str, str]:
         # Get cover letter service from unified registry
         cover_letter_service = await service_registry.get_cover_letter_service()
         
-        # Delete cover letter
-        success = await cover_letter_service.delete_cover_letter(cover_letter_id)
+        # Delete cover letter (filtered by user)
+        success = await cover_letter_service.delete_cover_letter(cover_letter_id, user_id=current_user.id)
         
         if not success:
             raise HTTPException(status_code=404, detail=f"Cover letter {cover_letter_id} not found")
@@ -159,7 +173,10 @@ async def delete_cover_letter(cover_letter_id: str) -> Dict[str, str]:
 
 
 @router.post("/generate", response_model=CoverLetter)
-async def generate_cover_letter_with_ai(cover_letter_request: CoverLetterCreate) -> CoverLetter:
+async def generate_cover_letter_with_ai(
+    cover_letter_request: CoverLetterCreate,
+    current_user: UserProfile = Depends(get_current_user)
+) -> CoverLetter:
     """
     Generate a cover letter using AI.
     

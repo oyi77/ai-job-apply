@@ -36,6 +36,11 @@ def create_app() -> FastAPI:
         redirect_slashes=False,  # Allow both /endpoint and /endpoint/ to work
     )
     
+    # Initialize rate limiter
+    limiter = Limiter(key_func=get_remote_address)
+    app.state.limiter = limiter
+    app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
+    
     # Add CORS middleware
     app.add_middleware(
         CORSMiddleware,
@@ -55,6 +60,7 @@ def create_app() -> FastAPI:
     
     # Include routers - handle import errors gracefully
     try:
+        from src.api.v1.auth import router as auth_router
         from src.api.v1.jobs import router as jobs_router
         from src.api.v1.resumes import router as resumes_router
         from src.api.v1.applications import router as applications_router
@@ -62,6 +68,7 @@ def create_app() -> FastAPI:
         from src.api.v1.cover_letters import router as cover_letters_router
         from src.api.v1.job_applications import router as job_applications_router
         
+        app.include_router(auth_router, prefix="/api/v1/auth", tags=["authentication"])
         app.include_router(jobs_router, prefix="/api/v1/jobs", tags=["jobs"])
         app.include_router(resumes_router, prefix="/api/v1/resumes", tags=["resumes"])
         app.include_router(applications_router, prefix="/api/v1/applications", tags=["applications"])

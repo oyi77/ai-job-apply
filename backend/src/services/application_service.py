@@ -67,7 +67,7 @@ class ApplicationService(ApplicationService):
         
         self.logger.info("Initialized with sample application data")
     
-    async def create_application(self, job_info: Dict[str, Any], resume_path: Optional[str] = None) -> JobApplication:
+    async def create_application(self, job_info: Dict[str, Any], resume_path: Optional[str] = None, user_id: Optional[str] = None) -> JobApplication:
         """Create a new job application."""
         try:
             app_id = str(uuid.uuid4())
@@ -84,9 +84,13 @@ class ApplicationService(ApplicationService):
                 notes=job_info.get("notes", ""),
             )
             
+            # Set user_id if provided (for database models)
+            if user_id and hasattr(application, 'user_id'):
+                application.user_id = user_id
+            
             # Use repository if available, otherwise use in-memory storage
             if self.repository:
-                application = await self.repository.create(application)
+                application = await self.repository.create(application, user_id=user_id)
             else:
                 self.applications[app_id] = application
             
@@ -97,11 +101,11 @@ class ApplicationService(ApplicationService):
             self.logger.error(f"Error creating application: {e}", exc_info=True)
             raise
     
-    async def get_application(self, application_id: str) -> Optional[JobApplication]:
-        """Get an application by ID."""
+    async def get_application(self, application_id: str, user_id: Optional[str] = None) -> Optional[JobApplication]:
+        """Get an application by ID, optionally filtered by user."""
         try:
             if self.repository:
-                application = await self.repository.get_by_id(application_id)
+                application = await self.repository.get_by_id(application_id, user_id=user_id)
             else:
                 application = self.applications.get(application_id)
             
@@ -115,11 +119,11 @@ class ApplicationService(ApplicationService):
             self.logger.error(f"Error getting application {application_id}: {e}", exc_info=True)
             return None
     
-    async def get_all_applications(self) -> List[JobApplication]:
-        """Get all applications."""
+    async def get_all_applications(self, user_id: Optional[str] = None) -> List[JobApplication]:
+        """Get all applications, optionally filtered by user."""
         try:
             if self.repository:
-                applications = await self.repository.get_all()
+                applications = await self.repository.get_all(user_id=user_id)
             else:
                 applications = list(self.applications.values())
                 # Sort by creation date, most recent first
@@ -132,11 +136,11 @@ class ApplicationService(ApplicationService):
             self.logger.error(f"Error getting all applications: {e}", exc_info=True)
             return []
     
-    async def get_applications_by_status(self, status: ApplicationStatus) -> List[JobApplication]:
-        """Get applications by status."""
+    async def get_applications_by_status(self, status: ApplicationStatus, user_id: Optional[str] = None) -> List[JobApplication]:
+        """Get applications by status, optionally filtered by user."""
         try:
             if self.repository:
-                applications = await self.repository.get_by_status(status)
+                applications = await self.repository.get_by_status(status, user_id=user_id)
             else:
                 applications = [
                     app for app in self.applications.values() 
@@ -198,17 +202,17 @@ class ApplicationService(ApplicationService):
             self.logger.error(f"Error updating application {application_id}: {e}", exc_info=True)
             return None
     
-    async def delete_application(self, application_id: str) -> bool:
-        """Delete an application."""
+    async def delete_application(self, application_id: str, user_id: Optional[str] = None) -> bool:
+        """Delete an application, optionally filtered by user."""
         try:
-            application = await self.get_application(application_id)
+            application = await self.get_application(application_id, user_id=user_id)
             if not application:
                 self.logger.warning(f"Cannot delete, application not found: {application_id}")
                 return False
             
             # Delete from repository if available
             if self.repository:
-                success = await self.repository.delete(application_id)
+                success = await self.repository.delete(application_id, user_id=user_id)
             else:
                 # Remove from storage
                 del self.applications[application_id]
@@ -224,11 +228,11 @@ class ApplicationService(ApplicationService):
             self.logger.error(f"Error deleting application {application_id}: {e}", exc_info=True)
             return False
     
-    async def get_application_stats(self) -> Dict[str, Any]:
-        """Get application statistics."""
+    async def get_application_stats(self, user_id: Optional[str] = None) -> Dict[str, Any]:
+        """Get application statistics, optionally filtered by user."""
         try:
             if self.repository:
-                stats = await self.repository.get_statistics()
+                stats = await self.repository.get_statistics(user_id=user_id)
                 # Convert status enum keys to string values for consistency
                 if "status_breakdown" in stats:
                     status_breakdown = {}
@@ -368,11 +372,11 @@ class ApplicationService(ApplicationService):
             self.logger.error(f"Error getting upcoming follow-ups: {e}", exc_info=True)
             return []
     
-    async def get_applications_by_company(self, company: str) -> List[JobApplication]:
-        """Get all applications for a specific company."""
+    async def get_applications_by_company(self, company: str, user_id: Optional[str] = None) -> List[JobApplication]:
+        """Get all applications for a specific company, optionally filtered by user."""
         try:
             if self.repository:
-                applications = await self.repository.get_by_company(company)
+                applications = await self.repository.get_by_company(company, user_id=user_id)
             else:
                 applications = [
                     app for app in self.applications.values()
@@ -387,11 +391,11 @@ class ApplicationService(ApplicationService):
             self.logger.error(f"Error getting applications for company {company}: {e}", exc_info=True)
             return []
     
-    async def search_applications(self, query: str) -> List[JobApplication]:
-        """Search applications by job title, company, or notes."""
+    async def search_applications(self, query: str, user_id: Optional[str] = None) -> List[JobApplication]:
+        """Search applications by job title, company, or notes, optionally filtered by user."""
         try:
             if self.repository:
-                matching_applications = await self.repository.search(query)
+                matching_applications = await self.repository.search(query, user_id=user_id)
             else:
                 query_lower = query.lower()
                 matching_applications = []

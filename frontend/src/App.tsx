@@ -3,6 +3,8 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { Suspense, lazy, useEffect } from 'react';
 import Layout from './components/layout/Layout';
 import Spinner from './components/ui/Spinner';
+import { NotificationContainer, useNotifications } from './components/ui/Notification';
+import ProtectedRoute from './components/auth/ProtectedRoute';
 
 // Lazy load all page components for code splitting
 const Dashboard = lazy(() => import('./pages/Dashboard'));
@@ -14,6 +16,7 @@ const AIServices = lazy(() => import('./pages/AIServices'));
 const Analytics = lazy(() => import('./pages/Analytics'));
 const Settings = lazy(() => import('./pages/Settings'));
 const Login = lazy(() => import('./pages/Login'));
+const Register = lazy(() => import('./pages/Register'));
 const NotFound = lazy(() => import('./pages/NotFound'));
 
 // Loading component for Suspense fallback
@@ -44,7 +47,44 @@ const queryClient = new QueryClient({
   },
 });
 
-function App() {
+// Create a wrapper component for notifications
+function AppWithNotifications() {
+  const { notifications, dismissNotification, showError } = useNotifications();
+
+  // Global error handler for unhandled errors
+  useEffect(() => {
+    const handleError = (event: ErrorEvent) => {
+      console.error('Unhandled error:', event.error);
+      showError(
+        'An unexpected error occurred',
+        event.error?.message || 'Please refresh the page and try again.',
+        0 // Persistent error
+      );
+    };
+
+    const handleRejection = (event: PromiseRejectionEvent) => {
+      console.error('Unhandled promise rejection:', event.reason);
+      showError(
+        'Request failed',
+        event.reason?.message || 'Please try again later.',
+        5000
+      );
+    };
+
+    window.addEventListener('error', handleError);
+    window.addEventListener('unhandledrejection', handleRejection);
+
+    return () => {
+      window.removeEventListener('error', handleError);
+      window.removeEventListener('unhandledrejection', handleRejection);
+    };
+  }, [showError]);
+
+  return <AppContent notifications={notifications} dismissNotification={dismissNotification} />;
+}
+
+function AppContent({ notifications, dismissNotification }: { notifications: any[], dismissNotification: (id: string) => void }) {
+
   // Performance monitoring
   useEffect(() => {
     // Monitor Core Web Vitals
@@ -105,6 +145,11 @@ function App() {
     <QueryClientProvider client={queryClient}>
       <Router>
         <div className="min-h-screen bg-gray-50">
+          <NotificationContainer
+            notifications={notifications}
+            onDismiss={dismissNotification}
+            position="top-right"
+          />
           <Routes>
             {/* Public routes */}
             <Route path="/login" element={
@@ -112,49 +157,56 @@ function App() {
                 <Login />
               </Suspense>
             } />
+            <Route path="/register" element={
+              <Suspense fallback={<PageLoader />}>
+                <Register />
+              </Suspense>
+            } />
             
             {/* Protected routes */}
-            <Route path="/" element={<Layout />}>
-              <Route index element={
-                <Suspense fallback={<PageLoader />}>
-                  <Dashboard />
-                </Suspense>
-              } />
-              <Route path="applications" element={
-                <Suspense fallback={<PageLoader />}>
-                  <Applications />
-                </Suspense>
-              } />
-              <Route path="resumes" element={
-                <Suspense fallback={<PageLoader />}>
-                  <Resumes />
-                </Suspense>
-              } />
-              <Route path="cover-letters" element={
-                <Suspense fallback={<PageLoader />}>
-                  <CoverLetters />
-                </Suspense>
-              } />
-              <Route path="job-search" element={
-                <Suspense fallback={<PageLoader />}>
-                  <JobSearch />
-                </Suspense>
-              } />
-              <Route path="ai-services" element={
-                <Suspense fallback={<PageLoader />}>
-                  <AIServices />
-                </Suspense>
-              } />
-              <Route path="analytics" element={
-                <Suspense fallback={<PageLoader />}>
-                  <Analytics />
-                </Suspense>
-              } />
-              <Route path="settings" element={
-                <Suspense fallback={<PageLoader />}>
-                  <Settings />
-                </Suspense>
-              } />
+            <Route element={<ProtectedRoute />}>
+              <Route path="/" element={<Layout />}>
+                <Route index element={
+                  <Suspense fallback={<PageLoader />}>
+                    <Dashboard />
+                  </Suspense>
+                } />
+                <Route path="applications" element={
+                  <Suspense fallback={<PageLoader />}>
+                    <Applications />
+                  </Suspense>
+                } />
+                <Route path="resumes" element={
+                  <Suspense fallback={<PageLoader />}>
+                    <Resumes />
+                  </Suspense>
+                } />
+                <Route path="cover-letters" element={
+                  <Suspense fallback={<PageLoader />}>
+                    <CoverLetters />
+                  </Suspense>
+                } />
+                <Route path="job-search" element={
+                  <Suspense fallback={<PageLoader />}>
+                    <JobSearch />
+                  </Suspense>
+                } />
+                <Route path="ai-services" element={
+                  <Suspense fallback={<PageLoader />}>
+                    <AIServices />
+                  </Suspense>
+                } />
+                <Route path="analytics" element={
+                  <Suspense fallback={<PageLoader />}>
+                    <Analytics />
+                  </Suspense>
+                } />
+                <Route path="settings" element={
+                  <Suspense fallback={<PageLoader />}>
+                    <Settings />
+                  </Suspense>
+                } />
+              </Route>
             </Route>
             
             {/* 404 route */}
@@ -170,4 +222,4 @@ function App() {
   );
 }
 
-export default App;
+export default AppWithNotifications;

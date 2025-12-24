@@ -1,13 +1,16 @@
 import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 import { Card, CardBody } from '../components/ui/Card';
 import Input from '../components/ui/Input';
 import Button from '../components/ui/Button';
 import { useAppStore } from '../stores/appStore';
+import { authService } from '../services/api';
+import { useNotifications } from '../components/ui/Notification';
 
 const Login: React.FC = () => {
   const navigate = useNavigate();
   const { setUser, setAuthenticated } = useAppStore();
+  const { showSuccess, showError } = useNotifications();
   const [formData, setFormData] = useState({
     email: '',
     password: '',
@@ -21,51 +24,55 @@ const Login: React.FC = () => {
     setError('');
 
     try {
-      // For demo purposes, simulate login
-      // In production, this would call your authentication API
-      if (formData.email && formData.password) {
-        // Simulate API call delay
-        await new Promise(resolve => setTimeout(resolve, 1000));
-        
-        // Create mock user
-        const mockUser = {
-          id: '1',
-          email: formData.email,
-          name: 'Demo User',
-          avatar: undefined,
-          preferences: {
-            theme: 'system' as const,
-            notifications: {
-              email: true,
-              push: true,
-              follow_up_reminders: true,
-              interview_reminders: true,
-              application_updates: true,
-            },
-            privacy: {
-              profile_visibility: 'private' as const,
-              data_sharing: false,
-              analytics_tracking: true,
-            },
-          },
-          created_at: new Date().toISOString(),
-          updated_at: new Date().toISOString(),
-        };
-
-        // Store mock token
-        localStorage.setItem('auth_token', 'mock-jwt-token');
-        
-        // Update store
-        setUser(mockUser);
-        setAuthenticated(true);
-        
-        // Redirect to dashboard
-        navigate('/');
-      } else {
+      if (!formData.email || !formData.password) {
         setError('Please enter both email and password');
+        return;
       }
-    } catch (err) {
-      setError('Login failed. Please try again.');
+
+      // Call authentication API
+      await authService.login({
+        email: formData.email,
+        password: formData.password,
+      });
+
+      // Get user profile
+      const userProfile = await authService.getProfile();
+
+      // Update store with user data
+      const user = {
+        id: userProfile.id,
+        email: userProfile.email,
+        name: userProfile.name || userProfile.email,
+        preferences: {
+          theme: 'system' as const,
+          notifications: {
+            email: true,
+            push: true,
+            follow_up_reminders: true,
+            interview_reminders: true,
+            application_updates: true,
+          },
+          privacy: {
+            profile_visibility: 'private' as const,
+            data_sharing: false,
+            analytics_tracking: true,
+          },
+        },
+        created_at: userProfile.created_at,
+        updated_at: userProfile.updated_at,
+      };
+
+      setUser(user);
+      setAuthenticated(true);
+
+      showSuccess('Login successful!', 'Welcome back');
+      
+      // Redirect to dashboard
+      navigate('/');
+    } catch (err: any) {
+      const errorMessage = err.response?.data?.detail || err.message || 'Login failed. Please try again.';
+      setError(errorMessage);
+      showError('Login failed', errorMessage);
     } finally {
       setLoading(false);
     }
@@ -132,7 +139,10 @@ const Login: React.FC = () => {
               
               <div className="text-center">
                 <p className="text-sm text-gray-600">
-                  Demo credentials: Use any email and password
+                  Don't have an account?{' '}
+                  <Link to="/register" className="font-medium text-primary-600 hover:text-primary-500">
+                    Sign up
+                  </Link>
                 </p>
               </div>
             </form>

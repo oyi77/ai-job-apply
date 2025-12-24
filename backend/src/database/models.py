@@ -2,7 +2,7 @@
 
 from datetime import datetime
 from typing import Optional, List
-from sqlalchemy import String, DateTime, Text, Boolean, Integer, Float, Enum as SQLEnum, ForeignKey
+from sqlalchemy import String, DateTime, Text, Boolean, Integer, Float, Enum as SQLEnum, ForeignKey, Index
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from sqlalchemy.dialects.postgresql import UUID
 import uuid
@@ -11,6 +11,7 @@ from .config import Base
 from ..models.application import ApplicationStatus
 from ..models.resume import Resume
 from ..models.cover_letter import CoverLetter
+from ..models.user import User as UserModel
 
 
 class DBResume(Base):
@@ -31,9 +32,21 @@ class DBResume(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
     updated_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
     
+    # Foreign keys
+    user_id: Mapped[Optional[str]] = mapped_column(String, ForeignKey("users.id", ondelete="CASCADE"), nullable=True)
+    
     # Relationships
     applications: Mapped[List["DBJobApplication"]] = relationship(
         "DBJobApplication", back_populates="resume", cascade="all, delete-orphan"
+    )
+    user: Mapped[Optional["DBUser"]] = relationship(
+        "DBUser", back_populates="resumes", foreign_keys=[user_id]
+    )
+    
+    # Indexes for performance
+    __table_args__ = (
+        Index("idx_resume_created_at", "created_at"),
+        Index("idx_resume_is_default", "is_default"),
     )
     
     def to_model(self) -> Resume:
@@ -94,9 +107,15 @@ class DBCoverLetter(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
     updated_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
     
+    # Foreign keys
+    user_id: Mapped[Optional[str]] = mapped_column(String, ForeignKey("users.id", ondelete="CASCADE"), nullable=True)
+    
     # Relationships
     applications: Mapped[List["DBJobApplication"]] = relationship(
         "DBJobApplication", back_populates="cover_letter", cascade="all, delete-orphan"
+    )
+    user: Mapped[Optional["DBUser"]] = relationship(
+        "DBUser", back_populates="cover_letters", foreign_keys=[user_id]
     )
     
     def to_model(self) -> CoverLetter:
@@ -146,6 +165,7 @@ class DBJobApplication(Base):
     # Foreign keys
     resume_id: Mapped[Optional[str]] = mapped_column(String, ForeignKey("resumes.id"), nullable=True)
     cover_letter_id: Mapped[Optional[str]] = mapped_column(String, ForeignKey("cover_letters.id"), nullable=True)
+    user_id: Mapped[Optional[str]] = mapped_column(String, ForeignKey("users.id", ondelete="CASCADE"), nullable=True)
     
     # Relationships
     resume: Mapped[Optional[DBResume]] = relationship(
@@ -153,6 +173,21 @@ class DBJobApplication(Base):
     )
     cover_letter: Mapped[Optional[DBCoverLetter]] = relationship(
         "DBCoverLetter", back_populates="applications", foreign_keys=[cover_letter_id]
+    )
+    user: Mapped[Optional["DBUser"]] = relationship(
+        "DBUser", back_populates="applications", foreign_keys=[user_id]
+    )
+    
+    # Indexes for performance optimization
+    __table_args__ = (
+        Index("idx_application_status", "status"),
+        Index("idx_application_company", "company"),
+        Index("idx_application_created_at", "created_at"),
+        Index("idx_application_updated_at", "updated_at"),
+        Index("idx_application_applied_date", "applied_date"),
+        Index("idx_application_follow_up_date", "follow_up_date"),
+        Index("idx_application_resume_id", "resume_id"),
+        Index("idx_application_company_status", "company", "status"),  # Composite index for common queries
     )
     
     def to_model(self) -> "JobApplication":
@@ -208,6 +243,12 @@ class DBJobSearch(Base):
     search_date: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
     
+    # Indexes for performance
+    __table_args__ = (
+        Index("idx_job_search_date", "search_date"),
+        Index("idx_job_search_location", "location"),
+    )
+    
     def to_dict(self) -> dict:
         """Convert to dictionary."""
         import json
@@ -238,6 +279,14 @@ class DBAIActivity(Base):
     confidence_score: Mapped[Optional[float]] = mapped_column(Float, nullable=True)
     user_id: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+    
+    # Indexes for performance
+    __table_args__ = (
+        Index("idx_ai_activity_type", "activity_type"),
+        Index("idx_ai_activity_created_at", "created_at"),
+        Index("idx_ai_activity_success", "success"),
+        Index("idx_ai_activity_user_id", "user_id"),
+    )
     
     def to_dict(self) -> dict:
         """Convert to dictionary."""
@@ -274,6 +323,15 @@ class DBFileMetadata(Base):
     access_count: Mapped[int] = mapped_column(Integer, default=0)
     is_active: Mapped[bool] = mapped_column(Boolean, default=True)
     
+    # Indexes for performance
+    __table_args__ = (
+        Index("idx_file_metadata_path", "file_path"),
+        Index("idx_file_metadata_type", "file_type"),
+        Index("idx_file_metadata_uploaded_at", "uploaded_at"),
+        Index("idx_file_metadata_is_active", "is_active"),
+        Index("idx_file_metadata_md5", "md5_hash"),
+    )
+    
     def to_dict(self) -> dict:
         """Convert to dictionary."""
         return {
@@ -287,5 +345,103 @@ class DBFileMetadata(Base):
             "uploaded_at": self.uploaded_at.isoformat(),
             "last_accessed": self.last_accessed.isoformat(),
             "access_count": self.access_count,
+            "is_active": self.is_active,
+        }
+
+
+class DBUser(Base):
+    """Database model for users."""
+    
+    __tablename__ = "users"
+    
+    id: Mapped[str] = mapped_column(String, primary_key=True, default=lambda: str(uuid.uuid4()))
+    email: Mapped[str] = mapped_column(String(255), nullable=False, unique=True, index=True)
+    password_hash: Mapped[str] = mapped_column(String(255), nullable=False)
+    name: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
+    password_reset_token: Mapped[Optional[str]] = mapped_column(String(255), nullable=True, index=True)
+    password_reset_token_expires: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
+    is_active: Mapped[bool] = mapped_column(Boolean, default=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+    updated_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    
+    # Relationships
+    applications: Mapped[List["DBJobApplication"]] = relationship(
+        "DBJobApplication", back_populates="user", cascade="all, delete-orphan"
+    )
+    resumes: Mapped[List["DBResume"]] = relationship(
+        "DBResume", back_populates="user", cascade="all, delete-orphan"
+    )
+    cover_letters: Mapped[List["DBCoverLetter"]] = relationship(
+        "DBCoverLetter", back_populates="user", cascade="all, delete-orphan"
+    )
+    sessions: Mapped[List["DBUserSession"]] = relationship(
+        "DBUserSession", back_populates="user", cascade="all, delete-orphan"
+    )
+    
+    # Indexes for performance
+    __table_args__ = (
+        Index("idx_user_email", "email"),
+        Index("idx_user_created_at", "created_at"),
+        Index("idx_user_is_active", "is_active"),
+    )
+    
+    def to_model(self) -> UserModel:
+        """Convert database model to domain model."""
+        return UserModel(
+            id=self.id,
+            email=self.email,
+            password_hash=self.password_hash,
+            name=self.name,
+            is_active=self.is_active,
+            created_at=self.created_at,
+            updated_at=self.updated_at,
+        )
+    
+    @classmethod
+    def from_model(cls, user: UserModel) -> "DBUser":
+        """Create database model from domain model."""
+        return cls(
+            id=user.id,
+            email=user.email,
+            password_hash=user.password_hash,
+            name=user.name,
+            is_active=user.is_active,
+            created_at=user.created_at,
+            updated_at=user.updated_at,
+        )
+
+
+class DBUserSession(Base):
+    """Database model for user sessions (refresh tokens)."""
+    
+    __tablename__ = "user_sessions"
+    
+    id: Mapped[str] = mapped_column(String, primary_key=True, default=lambda: str(uuid.uuid4()))
+    user_id: Mapped[str] = mapped_column(String, ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
+    refresh_token: Mapped[str] = mapped_column(String(500), nullable=False, unique=True, index=True)
+    expires_at: Mapped[datetime] = mapped_column(DateTime, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+    last_used_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+    is_active: Mapped[bool] = mapped_column(Boolean, default=True)
+    
+    # Relationships
+    user: Mapped["DBUser"] = relationship("DBUser", back_populates="sessions")
+    
+    # Indexes for performance
+    __table_args__ = (
+        Index("idx_session_user_id", "user_id"),
+        Index("idx_session_refresh_token", "refresh_token"),
+        Index("idx_session_expires_at", "expires_at"),
+        Index("idx_session_is_active", "is_active"),
+    )
+    
+    def to_dict(self) -> dict:
+        """Convert to dictionary."""
+        return {
+            "id": self.id,
+            "user_id": self.user_id,
+            "expires_at": self.expires_at.isoformat(),
+            "created_at": self.created_at.isoformat(),
+            "last_used_at": self.last_used_at.isoformat(),
             "is_active": self.is_active,
         }

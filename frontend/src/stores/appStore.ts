@@ -39,6 +39,7 @@ interface AppState {
   // Actions
   setUser: (user: User | null) => void;
   setAuthenticated: (authenticated: boolean) => void;
+  logout: () => void;
   setTheme: (theme: 'light' | 'dark' | 'system') => void;
   
   // Application actions
@@ -128,6 +129,13 @@ export const useAppStore = create<AppState>()(
         // User actions
         setUser: (user) => set({ user, isAuthenticated: !!user }),
         setAuthenticated: (authenticated) => set({ isAuthenticated: authenticated }),
+        logout: () => {
+          // Clear tokens
+          localStorage.removeItem('auth_token');
+          localStorage.removeItem('refresh_token');
+          // Clear user state
+          set({ user: null, isAuthenticated: false });
+        },
         setTheme: (theme) => set({ theme }),
         
         // Application actions

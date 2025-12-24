@@ -23,11 +23,11 @@ class CoverLetterService(CoverLetterService):
         if not self.repository:
             self.cover_letters: Dict[str, CoverLetter] = {}  # In-memory storage
     
-    async def get_all_cover_letters(self) -> List[CoverLetter]:
-        """Get all cover letters."""
+    async def get_all_cover_letters(self, user_id: Optional[str] = None) -> List[CoverLetter]:
+        """Get all cover letters, optionally filtered by user."""
         try:
             if self.repository:
-                cover_letters = await self.repository.get_all()
+                cover_letters = await self.repository.get_all(user_id=user_id)
             else:
                 cover_letters = list(self.cover_letters.values())
                 # Sort by creation date, most recent first
@@ -40,11 +40,11 @@ class CoverLetterService(CoverLetterService):
             self.logger.error(f"Error getting all cover letters: {e}", exc_info=True)
             return []
     
-    async def get_cover_letter(self, cover_letter_id: str) -> Optional[CoverLetter]:
-        """Get a specific cover letter by ID."""
+    async def get_cover_letter(self, cover_letter_id: str, user_id: Optional[str] = None) -> Optional[CoverLetter]:
+        """Get a specific cover letter by ID, optionally filtered by user."""
         try:
             if self.repository:
-                cover_letter = await self.repository.get_by_id(cover_letter_id)
+                cover_letter = await self.repository.get_by_id(cover_letter_id, user_id=user_id)
             else:
                 cover_letter = self.cover_letters.get(cover_letter_id)
             
@@ -58,7 +58,7 @@ class CoverLetterService(CoverLetterService):
             self.logger.error(f"Error getting cover letter {cover_letter_id}: {e}", exc_info=True)
             return None
     
-    async def create_cover_letter(self, cover_letter_data: CoverLetterCreate) -> CoverLetter:
+    async def create_cover_letter(self, cover_letter_data: CoverLetterCreate, user_id: Optional[str] = None) -> CoverLetter:
         """Create a new cover letter."""
         try:
             cover_letter_id = str(uuid.uuid4())
@@ -78,7 +78,7 @@ class CoverLetterService(CoverLetterService):
             
             # Store cover letter
             if self.repository:
-                cover_letter = await self.repository.create(cover_letter)
+                cover_letter = await self.repository.create(cover_letter, user_id=user_id)
             else:
                 self.cover_letters[cover_letter_id] = cover_letter
             
@@ -89,10 +89,10 @@ class CoverLetterService(CoverLetterService):
             self.logger.error(f"Error creating cover letter: {e}", exc_info=True)
             raise
     
-    async def update_cover_letter(self, cover_letter_id: str, updates: CoverLetterUpdate) -> Optional[CoverLetter]:
-        """Update an existing cover letter."""
+    async def update_cover_letter(self, cover_letter_id: str, updates: CoverLetterUpdate, user_id: Optional[str] = None) -> Optional[CoverLetter]:
+        """Update an existing cover letter, optionally filtered by user."""
         try:
-            cover_letter = await self.get_cover_letter(cover_letter_id)
+            cover_letter = await self.get_cover_letter(cover_letter_id, user_id=user_id)
             if not cover_letter:
                 self.logger.warning(f"Cannot update, cover letter not found: {cover_letter_id}")
                 return None
@@ -133,7 +133,7 @@ class CoverLetterService(CoverLetterService):
                 if hasattr(updates, 'word_count') and updates.word_count is not None:
                     update_dict['word_count'] = updates.word_count
                 if update_dict:
-                    cover_letter = await self.repository.update(cover_letter_id, update_dict)
+                    cover_letter = await self.repository.update(cover_letter_id, update_dict, user_id=user_id)
             
             self.logger.info(f"Cover letter updated: {cover_letter.job_title} at {cover_letter.company_name} (ID: {cover_letter_id})")
             return cover_letter
@@ -142,17 +142,17 @@ class CoverLetterService(CoverLetterService):
             self.logger.error(f"Error updating cover letter {cover_letter_id}: {e}", exc_info=True)
             return None
     
-    async def delete_cover_letter(self, cover_letter_id: str) -> bool:
-        """Delete a cover letter."""
+    async def delete_cover_letter(self, cover_letter_id: str, user_id: Optional[str] = None) -> bool:
+        """Delete a cover letter, optionally filtered by user."""
         try:
-            cover_letter = await self.get_cover_letter(cover_letter_id)
+            cover_letter = await self.get_cover_letter(cover_letter_id, user_id=user_id)
             if not cover_letter:
                 self.logger.warning(f"Cannot delete, cover letter not found: {cover_letter_id}")
                 return False
             
             # Delete from repository if available
             if self.repository:
-                success = await self.repository.delete(cover_letter_id)
+                success = await self.repository.delete(cover_letter_id, user_id=user_id)
             else:
                 # Remove from memory
                 del self.cover_letters[cover_letter_id]

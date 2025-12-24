@@ -1,5 +1,6 @@
 """Jobs API endpoints for the AI Job Application Assistant."""
 
+from datetime import datetime
 from fastapi import APIRouter, HTTPException, Depends
 from typing import List, Dict, Any
 from ...models.job import JobSearchRequest, JobSearchResponse, Job
@@ -23,7 +24,10 @@ async def search_jobs(request: JobSearchRequest) -> JobSearchResponse:
         Job search results grouped by portal
     """
     try:
-        logger.info(f"Job search request: {request.keywords} in {request.location}")
+        logger.info(
+            f"Job search request received: keywords={request.keywords}, "
+            f"location={request.location}, experience={request.experience_level}"
+        )
         
         # Get job search service from unified registry
         job_search_service = await service_registry.get_job_search_service()
@@ -31,12 +35,47 @@ async def search_jobs(request: JobSearchRequest) -> JobSearchResponse:
         # Use the real job search service
         response = await job_search_service.search_jobs(request)
         
-        logger.info(f"Found {response.total_jobs} jobs across {len(response.jobs)} sites")
+        # Log search results
+        fallback_used = response.search_metadata.get("fallback_used", False)
+        if fallback_used:
+            logger.info(
+                f"Job search completed with fallback: {response.total_jobs} jobs found "
+                f"across {len(response.jobs)} sites. "
+                f"Reason: {response.search_metadata.get('fallback_reason', 'Unknown')}"
+            )
+        else:
+            logger.info(
+                f"Job search completed successfully: {response.total_jobs} jobs found "
+                f"across {len(response.jobs)} sites"
+            )
+        
         return response
         
     except Exception as e:
-        logger.error(f"Error searching jobs: {e}", exc_info=True)
-        raise HTTPException(status_code=500, detail=f"Job search failed: {str(e)}")
+        logger.error(
+            f"Error searching jobs: {e}",
+            exc_info=True,
+            extra={
+                "keywords": request.keywords,
+                "location": request.location,
+                "experience_level": request.experience_level
+            }
+        )
+        # Return user-friendly error instead of raising
+        return JobSearchResponse(
+            jobs={},
+            total_jobs=0,
+            search_metadata={
+                "keywords": request.keywords,
+                "location": request.location,
+                "experience_level": request.experience_level,
+                "sites_searched": [],
+                "timestamp": datetime.utcnow().isoformat(),
+                "method": "error",
+                "error": "Unable to search for jobs at this time. Please try again later.",
+                "error_details": str(e) if logger.level <= 10 else None  # Only in debug mode
+            }
+        )
 
 
 @router.get("/sites", response_model=List[str])

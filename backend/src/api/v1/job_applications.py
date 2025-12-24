@@ -5,6 +5,8 @@ from typing import List, Dict, Any, Optional
 from ...models.job import Job, ApplicationInfo
 from ...models.resume import Resume
 from ...models.application import JobApplication
+from ...models.user import UserProfile
+from ...api.dependencies import get_current_user
 from ...utils.logger import get_logger
 from ...utils.response_wrapper import success_response, error_response
 from ...services.service_registry import service_registry
@@ -19,7 +21,8 @@ async def apply_to_job(
     job_id: str = Form(...),
     resume_id: str = Form(...),
     cover_letter: str = Form(...),
-    additional_data: Optional[str] = Form(None)
+    additional_data: Optional[str] = Form(None),
+    current_user: UserProfile = Depends(get_current_user)
 ) -> Dict[str, Any]:
     """
     Apply to a job using the appropriate method.
@@ -103,7 +106,10 @@ async def apply_to_job(
 
 
 @router.get("/info/{job_id}", response_model=ApplicationInfo)
-async def get_job_application_info(job_id: str) -> ApplicationInfo:
+async def get_job_application_info(
+    job_id: str,
+    current_user: UserProfile = Depends(get_current_user)
+) -> ApplicationInfo:
     """
     Get application information for a specific job.
     
@@ -139,7 +145,10 @@ async def get_job_application_info(job_id: str) -> ApplicationInfo:
 
 
 @router.get("/status/{application_id}", response_model=Dict[str, Any])
-async def get_application_status(application_id: str) -> Dict[str, Any]:
+async def get_application_status(
+    application_id: str,
+    current_user: UserProfile = Depends(get_current_user)
+) -> Dict[str, Any]:
     """
     Check the status of a submitted application.
     
@@ -173,7 +182,8 @@ async def get_application_status(application_id: str) -> Dict[str, Any]:
 async def validate_application_data(
     job_id: str = Form(...),
     resume_id: str = Form(...),
-    cover_letter: str = Form(...)
+    cover_letter: str = Form(...),
+    current_user: UserProfile = Depends(get_current_user)
 ) -> Dict[str, Any]:
     """
     Validate application data before submission.
@@ -277,7 +287,8 @@ async def bulk_apply_to_jobs(
     job_ids: List[str] = Form(...),
     resume_id: str = Form(...),
     cover_letter_template: str = Form(...),
-    customizations: Optional[str] = Form(None)
+    customizations: Optional[str] = Form(None),
+    current_user: UserProfile = Depends(get_current_user)
 ) -> Dict[str, Any]:
     """
     Apply to multiple jobs using a template cover letter.

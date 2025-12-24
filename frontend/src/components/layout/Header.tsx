@@ -1,6 +1,8 @@
 import React from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useAppStore } from '../../stores/appStore';
 import { Notification, ThemeToggle } from '../ui';
+import { authService } from '../../services/api';
 import {
   UserCircleIcon,
   Cog6ToothIcon,
@@ -8,13 +10,21 @@ import {
 } from '@heroicons/react/24/outline';
 
 const Header: React.FC = () => {
-  const { user, setUser, setAuthenticated, notifications, setNotifications, theme, setTheme } = useAppStore();
+  const navigate = useNavigate();
+  const { user, logout, notifications, setNotifications, theme, setTheme } = useAppStore();
 
-  const handleLogout = () => {
-    localStorage.removeItem('auth_token');
-    setUser(null);
-    setAuthenticated(false);
-    window.location.href = '/login';
+  const handleLogout = async () => {
+    try {
+      const refreshToken = localStorage.getItem('refresh_token');
+      if (refreshToken) {
+        await authService.logout();
+      }
+    } catch (error) {
+      console.error('Logout error:', error);
+    } finally {
+      logout();
+      navigate('/login');
+    }
   };
 
   const handleMarkAsRead = (id: string) => {

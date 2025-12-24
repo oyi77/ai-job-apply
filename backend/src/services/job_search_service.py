@@ -37,14 +37,22 @@ class JobSearchService(JobSearchService):
     async def initialize(self) -> None:
         """Initialize the service."""
         try:
-            # Try to import jobspy
+            # Try to import jobspy (check both possible package names)
             try:
                 import jobspy
                 self._jobspy_available = True
                 self.logger.info("JobSpy available for job search")
             except ImportError:
-                self.logger.warning("JobSpy not available, using fallback job search")
-                self._jobspy_available = False
+                try:
+                    import python_jobspy as jobspy
+                    self._jobspy_available = True
+                    self.logger.info("python-jobspy available for job search")
+                except ImportError:
+                    self.logger.warning(
+                        "JobSpy not available (neither 'jobspy' nor 'python-jobspy' found), "
+                        "using enhanced fallback job search with realistic mock data"
+                    )
+                    self._jobspy_available = False
             
             self._initialized = True
             self.logger.info("Job search service initialized successfully")
@@ -68,53 +76,154 @@ class JobSearchService(JobSearchService):
         Returns:
             Job search results grouped by platform
         """
+        import time
+        start_time = time.time()
+        
         try:
             await self.initialize()
             
-            self.logger.info(f"Job search: {request.keywords} in {request.location}")
+            self.logger.info(
+                f"Job search initiated: keywords={request.keywords}, "
+                f"location={request.location}, experience={request.experience_level}"
+            )
             
             if self._jobspy_available:
-                return await self._search_with_jobspy(request)
+                try:
+                    response = await self._search_with_jobspy(request)
+                    elapsed_time = time.time() - start_time
+                    self.logger.info(
+                        f"JobSpy search completed: {response.total_jobs} jobs found "
+                        f"across {len(response.jobs)} platforms in {elapsed_time:.2f}s"
+                    )
+                    return response
+                except Exception as e:
+                    self.logger.warning(
+                        f"JobSpy search failed, falling back to enhanced fallback: {e}"
+                    )
+                    # Fall through to fallback
+                    return await self._search_with_fallback(request, fallback_reason=str(e))
             else:
                 return await self._search_with_fallback(request)
                 
         except Exception as e:
-            self.logger.error(f"Error in job search: {e}", exc_info=True)
-            raise
+            elapsed_time = time.time() - start_time
+            self.logger.error(
+                f"Job search failed after {elapsed_time:.2f}s: {e}",
+                exc_info=True
+            )
+            # Return empty response with error indication instead of raising
+            return JobSearchResponse(
+                jobs={},
+                total_jobs=0,
+                search_metadata={
+                    "keywords": request.keywords,
+                    "location": request.location,
+                    "experience_level": request.experience_level,
+                    "sites_searched": [],
+                    "timestamp": datetime.utcnow(),
+                    "method": "fallback",
+                    "error": f"Job search failed: {str(e)}",
+                    "fallback_used": True
+                }
+            )
     
     async def _search_with_jobspy(self, request: JobSearchRequest) -> JobSearchResponse:
-        """Search using JobSpy library."""
+        """Search using JobSpy library with retry logic."""
+        max_retries = 3
+        retry_delay = 1  # seconds
+        
+        for attempt in range(max_retries):
+            try:
+                from jobspy import scrape_jobs
+                
+                # Convert our request to JobSpy parameters
+                jobspy_params = self._build_jobspy_params(request)
+                
+                self.logger.debug(
+                    f"JobSpy search attempt {attempt + 1}/{max_retries} "
+                    f"with params: {jobspy_params}"
+                )
+                
+                # Run JobSpy search in executor to avoid blocking
+                loop = asyncio.get_event_loop()
+                jobs_df = await loop.run_in_executor(
+                    None, 
+                    lambda: scrape_jobs(**jobspy_params)
+                )
+                
+                # Convert JobSpy results to our format
+                response = self._convert_jobspy_results(jobs_df, request)
+                self.logger.info(
+                    f"JobSpy search succeeded on attempt {attempt + 1}: "
+                    f"{response.total_jobs} jobs found"
+                )
+                return response
+                
+            except ImportError as e:
+                self.logger.warning(
+                    f"JobSpy import failed, cannot retry: {e}"
+                )
+                # Cannot retry import errors
+                return await self._search_with_fallback(
+                    request, 
+                    fallback_reason=f"JobSpy not available: {str(e)}"
+                )
+            except Exception as e:
+                error_msg = str(e)
+                is_network_error = any(
+                    keyword in error_msg.lower() 
+                    for keyword in ['network', 'connection', 'timeout', 'dns', 'http']
+                )
+                
+                if attempt < max_retries - 1 and is_network_error:
+                    wait_time = retry_delay * (2 ** attempt)  # Exponential backoff
+                    self.logger.warning(
+                        f"JobSpy search failed (network error) on attempt {attempt + 1}: {e}. "
+                        f"Retrying in {wait_time}s..."
+                    )
+                    await asyncio.sleep(wait_time)
+                    continue
+                else:
+                    self.logger.error(
+                        f"JobSpy search failed after {attempt + 1} attempts: {e}",
+                        exc_info=True
+                    )
+                    # Fallback to mock search
+                    return await self._search_with_fallback(
+                        request,
+                        fallback_reason=f"JobSpy search failed: {error_msg}"
+                    )
+        
+        # Should not reach here, but just in case
+        return await self._search_with_fallback(
+            request,
+            fallback_reason="JobSpy search failed after all retries"
+        )
+    
+    async def _search_with_fallback(
+        self, 
+        request: JobSearchRequest, 
+        fallback_reason: Optional[str] = None
+    ) -> JobSearchResponse:
+        """
+        Search using enhanced fallback with realistic mock data.
+        
+        Args:
+            request: Job search request parameters
+            fallback_reason: Reason for using fallback (if any)
+        """
         try:
-            from jobspy import scrape_jobs
-            
-            # Convert our request to JobSpy parameters
-            jobspy_params = self._build_jobspy_params(request)
-            
-            # Run JobSpy search in executor to avoid blocking
-            loop = asyncio.get_event_loop()
-            jobs_df = await loop.run_in_executor(
-                None, 
-                lambda: scrape_jobs(**jobspy_params)
+            reason_msg = f" (reason: {fallback_reason})" if fallback_reason else ""
+            self.logger.info(
+                f"Using enhanced fallback job search{reason_msg}. "
+                f"Generating realistic mock jobs based on search criteria."
             )
             
-            # Convert JobSpy results to our format
-            return self._convert_jobspy_results(jobs_df, request)
-            
-        except Exception as e:
-            self.logger.error(f"JobSpy search failed: {e}", exc_info=True)
-            # Fallback to mock search
-            return await self._search_with_fallback(request)
-    
-    async def _search_with_fallback(self, request: JobSearchRequest) -> JobSearchResponse:
-        """Search using fallback/mock data."""
-        try:
-            self.logger.info("Using fallback job search")
-            
-            # Generate mock jobs for demonstration
+            # Generate realistic mock jobs based on search criteria
             mock_jobs = self._generate_mock_jobs(request)
             
-            # Group by platform
-            jobs_by_platform = {
+            # Group by platform with better distribution
+            platform_distribution = {
                 "indeed": mock_jobs[:3],
                 "linkedin": mock_jobs[3:6],
                 "glassdoor": mock_jobs[6:9],
@@ -123,27 +232,57 @@ class JobSearchService(JobSearchService):
             }
             
             # Remove empty platforms
-            jobs_by_platform = {k: v for k, v in jobs_by_platform.items() if v}
+            jobs_by_platform = {
+                k: v for k, v in platform_distribution.items() 
+                if v and len(v) > 0
+            }
+            
+            total_jobs = sum(len(jobs) for jobs in jobs_by_platform.values())
             
             response = JobSearchResponse(
                 jobs=jobs_by_platform,
-                total_jobs=sum(len(jobs) for jobs in jobs_by_platform.values()),
+                total_jobs=total_jobs,
                 search_metadata={
                     "keywords": request.keywords,
                     "location": request.location,
                     "experience_level": request.experience_level,
                     "sites_searched": list(jobs_by_platform.keys()),
-                    "timestamp": datetime.utcnow(),
-                    "method": "fallback"
+                    "timestamp": datetime.utcnow().isoformat(),
+                    "method": "fallback",
+                    "fallback_used": True,
+                    "fallback_reason": fallback_reason or "JobSpy not available",
+                    "note": "Results are generated mock data for demonstration purposes. "
+                           "Install JobSpy for real job search results."
                 }
             )
             
-            self.logger.info(f"Fallback search found {response.total_jobs} jobs")
+            self.logger.info(
+                f"Enhanced fallback search completed: {total_jobs} jobs found "
+                f"across {len(jobs_by_platform)} platforms. "
+                f"Platforms: {', '.join(jobs_by_platform.keys())}"
+            )
             return response
             
         except Exception as e:
-            self.logger.error(f"Fallback search failed: {e}", exc_info=True)
-            raise
+            self.logger.error(
+                f"Enhanced fallback search failed: {e}",
+                exc_info=True
+            )
+            # Return empty response instead of raising to prevent complete failure
+            return JobSearchResponse(
+                jobs={},
+                total_jobs=0,
+                search_metadata={
+                    "keywords": request.keywords,
+                    "location": request.location,
+                    "experience_level": request.experience_level,
+                    "sites_searched": [],
+                    "timestamp": datetime.utcnow().isoformat(),
+                    "method": "fallback",
+                    "fallback_used": True,
+                    "error": f"Fallback search failed: {str(e)}"
+                }
+            )
     
     async def search_specific_site(self, site: str, request: JobSearchRequest) -> List[Job]:
         """
@@ -511,11 +650,47 @@ class JobSearchService(JobSearchService):
             return "unknown"
     
     def _generate_mock_jobs(self, request: JobSearchRequest) -> List[Job]:
-        """Generate mock jobs for fallback search."""
+        """Generate realistic mock jobs for fallback search based on search criteria."""
         mock_jobs = []
         
-        # Sample job titles based on keywords
-        sample_titles = [
+        # Generate job titles based on keywords and experience level
+        keyword_str = " ".join(request.keywords).lower()
+        experience = request.experience_level or "mid"
+        
+        # Base titles that match common keywords
+        base_titles = []
+        if any(kw in keyword_str for kw in ["python", "developer", "software", "engineer"]):
+            base_titles = [
+                f"{experience.title()} Python Developer",
+                f"{experience.title()} Software Engineer",
+                f"Full Stack {experience.title()} Developer",
+                f"{experience.title()} Backend Engineer",
+            ]
+        elif any(kw in keyword_str for kw in ["react", "frontend", "ui", "javascript"]):
+            base_titles = [
+                f"{experience.title()} React Developer",
+                f"{experience.title()} Frontend Engineer",
+                f"{experience.title()} UI/UX Developer",
+                f"Full Stack {experience.title()} Developer",
+            ]
+        elif any(kw in keyword_str for kw in ["data", "analyst", "scientist", "ml", "ai"]):
+            base_titles = [
+                f"{experience.title()} Data Scientist",
+                f"{experience.title()} Data Analyst",
+                f"{experience.title()} Machine Learning Engineer",
+                f"{experience.title()} AI Engineer",
+            ]
+        else:
+            # Generic titles based on experience level
+            base_titles = [
+                f"{experience.title()} Software Developer",
+                f"{experience.title()} Engineer",
+                f"{experience.title()} Developer",
+                f"{experience.title()} Specialist",
+            ]
+        
+        # Fallback to default titles if no match
+        sample_titles = base_titles + [
             "Senior Software Engineer",
             "Full Stack Developer", 
             "Python Developer",
@@ -610,15 +785,43 @@ class JobSearchService(JobSearchService):
                 contact_phone = None
                 external_application = True
             
+            # Generate more realistic description based on keywords
+            title = sample_titles[i % len(sample_titles)]
+            company = sample_companies[i % len(sample_companies)]
+            keywords_mention = ", ".join(request.keywords[:3])  # First 3 keywords
+            
+            description = (
+                f"We are seeking a {title} to join our team at {company}. "
+                f"This position requires expertise in {keywords_mention} and related technologies. "
+                f"The ideal candidate will have {experience} level experience and be passionate about "
+                f"building innovative solutions. This is an excellent opportunity to work on exciting "
+                f"projects and grow your career in a dynamic environment."
+            )
+            
+            # Adjust salary based on experience level
+            salary_ranges = {
+                "entry": "$50,000 - $75,000",
+                "junior": "$60,000 - $85,000",
+                "mid": "$80,000 - $120,000",
+                "senior": "$120,000 - $160,000",
+                "lead": "$150,000 - $200,000",
+                "executive": "$180,000 - $250,000"
+            }
+            salary = salary_ranges.get(experience, "$80,000 - $120,000")
+            
+            # Generate posted dates (vary from recent to a few days ago)
+            posted_dates = ["Today", "1 day ago", "2 days ago", "3 days ago", "1 week ago"]
+            posted_date = posted_dates[i % len(posted_dates)]
+            
             job = Job(
-                title=sample_titles[i % len(sample_titles)],
-                company=sample_companies[i % len(sample_companies)],
+                title=title,
+                company=company,
                 location=request.location,
-                url=f"https://example.com/job/{i+1}",
+                url=f"https://{platform}.com/jobs/{i+1}",
                 portal=platform,
-                description=f"This is a mock job description for {sample_titles[i % len(sample_titles)]} position at {sample_companies[i % len(sample_companies)]}. This job requires experience in the technologies mentioned in your search. We are looking for a talented individual to join our team and contribute to exciting projects.",
-                salary="$80,000 - $120,000",
-                posted_date="Recently",
+                description=description,
+                salary=salary,
+                posted_date=posted_date,
                 experience_level=request.experience_level or "mid",
                 requirements=sample_requirements[i % len(sample_requirements)],
                 skills=sample_skills[i % len(sample_skills)],

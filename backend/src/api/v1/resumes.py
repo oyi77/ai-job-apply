@@ -3,9 +3,11 @@
 from fastapi import APIRouter, HTTPException, UploadFile, File, Depends
 from typing import List, Optional, Dict, Any
 from ...models.resume import Resume, ResumeOptimizationRequest, ResumeOptimizationResponse
+from ...models.user import UserProfile
 from ...utils.logger import get_logger
 from ...utils.validators import validate_file_type, validate_file_size
 from ...services.service_registry import service_registry
+from ..dependencies import get_current_user
 
 logger = get_logger(__name__)
 
@@ -26,7 +28,8 @@ def create_api_response(data: Any, success: bool = True, message: str = None) ->
 @router.post("/upload", response_model=Dict[str, Any])
 async def upload_resume(
     file: UploadFile = File(...),
-    name: Optional[str] = None
+    name: Optional[str] = None,
+    current_user: UserProfile = Depends(get_current_user)
 ) -> Dict[str, Any]:
     """
     Upload a new resume file.
@@ -88,7 +91,7 @@ async def upload_resume(
         
         # Upload resume using resume service
         resume_name = name or file.filename or "Unnamed Resume"
-        resume = await resume_service.upload_resume(str(file_path), resume_name)
+        resume = await resume_service.upload_resume(str(file_path), resume_name, user_id=current_user.id)
         
         logger.info(f"Resume uploaded successfully: {resume.name} (ID: {resume.id})")
         return create_api_response(resume.model_dump(), True, "Resume uploaded successfully")
@@ -101,7 +104,9 @@ async def upload_resume(
 
 
 @router.get("", response_model=Dict[str, Any])
-async def get_all_resumes() -> Dict[str, Any]:
+async def get_all_resumes(
+    current_user: UserProfile = Depends(get_current_user)
+) -> Dict[str, Any]:
     """
     Get all available resumes.
     
@@ -112,8 +117,8 @@ async def get_all_resumes() -> Dict[str, Any]:
         # Get resume service from unified registry
         resume_service = await service_registry.get_resume_service()
         
-        # Use the real resume service
-        resumes = await resume_service.get_all_resumes()
+        # Use the real resume service (filtered by user)
+        resumes = await resume_service.get_all_resumes(user_id=current_user.id)
         logger.info(f"Successfully retrieved {len(resumes)} resumes")
         
         # Return empty list if no resumes (this is normal)
@@ -127,7 +132,10 @@ async def get_all_resumes() -> Dict[str, Any]:
 
 
 @router.get("/{resume_id}", response_model=Resume)
-async def get_resume(resume_id: str) -> Resume:
+async def get_resume(
+    resume_id: str,
+    current_user: UserProfile = Depends(get_current_user)
+) -> Resume:
     """
     Get a specific resume by ID.
     
@@ -141,8 +149,8 @@ async def get_resume(resume_id: str) -> Resume:
         # Get resume service from unified registry
         resume_service = await service_registry.get_resume_service()
         
-        # Get the resume
-        resume = await resume_service.get_resume(resume_id)
+        # Get the resume (filtered by user)
+        resume = await resume_service.get_resume(resume_id, user_id=current_user.id)
         if not resume:
             raise HTTPException(status_code=404, detail=f"Resume not found: {resume_id}")
         
@@ -160,7 +168,8 @@ async def get_resume(resume_id: str) -> Resume:
 async def update_resume(
     resume_id: str,
     name: Optional[str] = None,
-    is_default: Optional[bool] = None
+    is_default: Optional[bool] = None,
+    current_user: UserProfile = Depends(get_current_user)
 ) -> Resume:
     """
     Update resume information.
@@ -187,8 +196,8 @@ async def update_resume(
         if not updates:
             raise HTTPException(status_code=400, detail="No update fields provided")
         
-        # Update the resume
-        updated_resume = await resume_service.update_resume(resume_id, updates)
+        # Update the resume (filtered by user)
+        updated_resume = await resume_service.update_resume(resume_id, updates, user_id=current_user.id)
         if not updated_resume:
             raise HTTPException(status_code=404, detail=f"Resume not found: {resume_id}")
         
@@ -203,7 +212,10 @@ async def update_resume(
 
 
 @router.delete("/{resume_id}")
-async def delete_resume(resume_id: str) -> dict:
+async def delete_resume(
+    resume_id: str,
+    current_user: UserProfile = Depends(get_current_user)
+) -> dict:
     """
     Delete a resume.
     
@@ -217,8 +229,8 @@ async def delete_resume(resume_id: str) -> dict:
         # Get resume service from unified registry
         resume_service = await service_registry.get_resume_service()
         
-        # Delete the resume
-        success = await resume_service.delete_resume(resume_id)
+        # Delete the resume (filtered by user)
+        success = await resume_service.delete_resume(resume_id, user_id=current_user.id)
         if not success:
             raise HTTPException(status_code=404, detail=f"Resume not found: {resume_id}")
         
@@ -233,7 +245,10 @@ async def delete_resume(resume_id: str) -> dict:
 
 
 @router.post("/{resume_id}/set-default")
-async def set_default_resume(resume_id: str) -> dict:
+async def set_default_resume(
+    resume_id: str,
+    current_user: UserProfile = Depends(get_current_user)
+) -> dict:
     """
     Set a resume as the default.
     
@@ -247,8 +262,8 @@ async def set_default_resume(resume_id: str) -> dict:
         # Get resume service from unified registry
         resume_service = await service_registry.get_resume_service()
         
-        # Set as default resume
-        success = await resume_service.set_default_resume(resume_id)
+        # Set as default resume (filtered by user)
+        success = await resume_service.set_default_resume(resume_id, user_id=current_user.id)
         if not success:
             raise HTTPException(status_code=404, detail=f"Resume not found: {resume_id}")
         

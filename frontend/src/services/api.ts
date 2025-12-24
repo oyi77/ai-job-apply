@@ -27,11 +27,127 @@ const apiClient: AxiosInstance = axios.create({
     'Content-Type': 'application/json',
   },
 });
+// Token storage keys
+const ACCESS_TOKEN_KEY = 'auth_token';
+const REFRESH_TOKEN_KEY = 'refresh_token';
 
-// Request interceptor for authentication
+// Token refresh helper
+let isRefreshing = false;
+let failedQueue: Array<{ resolve: (value?: any) => void; reject: (reason?: any) => void }> = [];
+
+const processQueue = (error: any, token: string | null = null) => {
+  failedQueue.forEach(prom => {
+    if (error) {
+      prom.reject(error);
+    } else {
+      prom.resolve(token);
+    }
+  });
+  failedQueue = [];
+};
+
+// Enhanced response interceptor with token refresh
+apiClient.interceptors.response.use(
+  (response: AxiosResponse) => response,
+  async (error) => {
+    const originalRequest = error.config;
+
+    // If error is 401 and we haven't tried to refresh yet
+    if (error.response?.status === 401 && !originalRequest._retry) {
+      if (isRefreshing) {
+        // If already refreshing, queue this request
+        return new Promise((resolve, reject) => {
+          failedQueue.push({ resolve, reject });
+        })
+          .then(token => {
+            originalRequest.headers.Authorization = `Bearer ${token}`;
+            return apiClient(originalRequest);
+          })
+          .catch(err => {
+            return Promise.reject(err);
+          });
+      }
+
+      originalRequest._retry = true;
+      isRefreshing = true;
+
+      const refreshToken = localStorage.getItem(REFRESH_TOKEN_KEY);
+      if (!refreshToken) {
+        // No refresh token, logout
+        localStorage.removeItem(ACCESS_TOKEN_KEY);
+        localStorage.removeItem(REFRESH_TOKEN_KEY);
+        window.location.href = '/login';
+        processQueue(error, null);
+        return Promise.reject(error);
+      }
+
+      try {
+        const response = await apiClient.post('/api/v1/auth/refresh', {
+          refresh_token: refreshToken,
+        });
+        const { access_token, refresh_token: newRefreshToken } = response.data;
+        
+        localStorage.setItem(ACCESS_TOKEN_KEY, access_token);
+        if (newRefreshToken) {
+          localStorage.setItem(REFRESH_TOKEN_KEY, newRefreshToken);
+        }
+        
+        originalRequest.headers.Authorization = `Bearer ${access_token}`;
+        processQueue(null, access_token);
+        return apiClient(originalRequest);
+      } catch (refreshError) {
+        // Refresh failed, logout
+        localStorage.removeItem(ACCESS_TOKEN_KEY);
+        localStorage.removeItem(REFRESH_TOKEN_KEY);
+        window.location.href = '/login';
+        processQueue(refreshError, null);
+        return Promise.reject(refreshError);
+      } finally {
+        isRefreshing = false;
+      }
+    }
+
+    // Enhanced error handling with user-friendly messages
+    if (error.response) {
+      const status = error.response.status;
+      const data = error.response.data;
+      
+      switch (status) {
+        case 401:
+          // Handle unauthorized access (after refresh attempt failed)
+          localStorage.removeItem(ACCESS_TOKEN_KEY);
+          localStorage.removeItem(REFRESH_TOKEN_KEY);
+          window.location.href = '/login';
+          break;
+        case 403:
+          console.error('Access forbidden:', data?.detail || 'You do not have permission to access this resource');
+          break;
+        case 404:
+          console.error('Resource not found:', data?.detail || 'The requested resource was not found');
+          break;
+        case 422:
+          console.error('Validation error:', data?.detail || 'Invalid request data');
+          break;
+        case 500:
+          console.error('Server error:', data?.detail || 'An internal server error occurred');
+          break;
+        default:
+          console.error('API error:', data?.detail || error.message || 'An error occurred');
+      }
+    } else if (error.request) {
+      console.error('Network error: No response received from server. Please check your connection.');
+    } else {
+      console.error('Request error:', error.message || 'An unexpected error occurred');
+    }
+    
+    return Promise.reject(error);
+  }
+);
+
+// Update request interceptor to use correct token key
 apiClient.interceptors.request.use(
   (config) => {
-    const token = localStorage.getItem('auth_token');
+    const token = localStorage.getItem(ACCESS_TOKEN_KEY);
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
     }
@@ -42,31 +158,119 @@ apiClient.interceptors.request.use(
   }
 );
 
-// Response interceptor for error handling
-apiClient.interceptors.response.use(
-  (response: AxiosResponse) => response,
-  (error) => {
-    if (error.response?.status === 401) {
-      // Handle unauthorized access
-      localStorage.removeItem('auth_token');
-      window.location.href = '/login';
-    }
-    return Promise.reject(error);
-  }
-);
-
-// Generic API response handler
-const handleApiResponse = <T>(response: AxiosResponse<ApiResponse<T>>): T => {
-  if (response.data.success && response.data.data) {
-    return response.data.data;
-  }
-  throw new Error(response.data.message || 'API request failed');
-};
-
 // Health Check
 export const healthCheck = async (): Promise<{ status: string }> => {
   const response = await apiClient.get('/health');
   return response.data;
+};
+
+// Authentication Services
+export interface TokenResponse {
+  access_token: string;
+  refresh_token: string;
+  token_type: string;
+  expires_in: number;
+}
+
+export interface UserProfile {
+  id: string;
+  email: string;
+  name?: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface UserRegister {
+  email: string;
+  password: string;
+  name?: string;
+}
+
+export interface UserLogin {
+  email: string;
+  password: string;
+}
+
+export const authService = {
+  // Register new user
+  register: async (data: UserRegister): Promise<TokenResponse> => {
+    const response = await apiClient.post<TokenResponse>('/api/v1/auth/register', data);
+    const tokens = response.data;
+    localStorage.setItem(ACCESS_TOKEN_KEY, tokens.access_token);
+    localStorage.setItem(REFRESH_TOKEN_KEY, tokens.refresh_token);
+    return tokens;
+  },
+
+  // Login user
+  login: async (data: UserLogin): Promise<TokenResponse> => {
+    const response = await apiClient.post<TokenResponse>('/api/v1/auth/login', data);
+    const tokens = response.data;
+    localStorage.setItem(ACCESS_TOKEN_KEY, tokens.access_token);
+    localStorage.setItem(REFRESH_TOKEN_KEY, tokens.refresh_token);
+    return tokens;
+  },
+
+  // Refresh token
+  refreshToken: async (refreshToken: string): Promise<TokenResponse> => {
+    const response = await apiClient.post<TokenResponse>('/api/v1/auth/refresh', {
+      refresh_token: refreshToken,
+    });
+    const tokens = response.data;
+    localStorage.setItem(ACCESS_TOKEN_KEY, tokens.access_token);
+    localStorage.setItem(REFRESH_TOKEN_KEY, tokens.refresh_token);
+    return tokens;
+  },
+
+  // Logout user
+  logout: async (): Promise<void> => {
+    const refreshToken = localStorage.getItem(REFRESH_TOKEN_KEY);
+    if (refreshToken) {
+      try {
+        await apiClient.post('/api/v1/auth/logout', {
+          refresh_token: refreshToken,
+        });
+      } catch (error) {
+        console.error('Logout error:', error);
+      }
+    }
+    localStorage.removeItem(ACCESS_TOKEN_KEY);
+    localStorage.removeItem(REFRESH_TOKEN_KEY);
+  },
+
+  // Get current user profile
+  getProfile: async (): Promise<UserProfile> => {
+    const response = await apiClient.get<UserProfile>('/api/v1/auth/me');
+    return response.data;
+  },
+
+  // Update user profile
+  updateProfile: async (updates: Partial<UserProfile>): Promise<UserProfile> => {
+    const response = await apiClient.put<UserProfile>('/api/v1/auth/me', updates);
+    return response.data;
+  },
+
+  // Change password
+  changePassword: async (currentPassword: string, newPassword: string): Promise<void> => {
+    await apiClient.post('/api/v1/auth/change-password', {
+      current_password: currentPassword,
+      new_password: newPassword,
+    });
+  },
+
+  // Check if user is authenticated
+  isAuthenticated: (): boolean => {
+    return !!localStorage.getItem(ACCESS_TOKEN_KEY);
+  },
+
+  // Get stored access token
+  getAccessToken: (): string | null => {
+    return localStorage.getItem(ACCESS_TOKEN_KEY);
+  },
+
+  // Get stored refresh token
+  getRefreshToken: (): string | null => {
+    return localStorage.getItem(REFRESH_TOKEN_KEY);
+  },
 };
 
 // Application Services
@@ -345,6 +549,7 @@ export const fileService = {
 // Export all services
 export default {
   healthCheck,
+  authService,
   applicationService,
   resumeService,
   coverLetterService,

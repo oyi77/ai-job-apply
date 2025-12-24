@@ -19,10 +19,12 @@ class CoverLetterRepository:
         self.session = session
         self.logger = get_logger(__name__)
     
-    async def create(self, cover_letter: CoverLetter) -> CoverLetter:
-        """Create a new cover letter."""
+    async def create(self, cover_letter: CoverLetter, user_id: Optional[str] = None) -> CoverLetter:
+        """Create a new cover letter, optionally associated with a user."""
         try:
             db_cover_letter = DBCoverLetter.from_model(cover_letter)
+            if user_id:
+                db_cover_letter.user_id = user_id
             self.session.add(db_cover_letter)
             await self.session.commit()
             await self.session.refresh(db_cover_letter)
@@ -35,12 +37,16 @@ class CoverLetterRepository:
             self.logger.error(f"Error creating cover letter: {e}", exc_info=True)
             raise
     
-    async def get_by_id(self, cover_letter_id: str) -> Optional[CoverLetter]:
-        """Get cover letter by ID."""
+    async def get_by_id(self, cover_letter_id: str, user_id: Optional[str] = None) -> Optional[CoverLetter]:
+        """Get cover letter by ID, optionally filtered by user."""
         try:
             stmt = select(DBCoverLetter).options(
                 selectinload(DBCoverLetter.applications)
             ).where(DBCoverLetter.id == cover_letter_id)
+            
+            # Filter by user_id if provided
+            if user_id:
+                stmt = stmt.where(DBCoverLetter.user_id == user_id)
             
             result = await self.session.execute(stmt)
             db_cover_letter = result.scalar_one_or_none()
@@ -55,12 +61,18 @@ class CoverLetterRepository:
             self.logger.error(f"Error getting cover letter {cover_letter_id}: {e}", exc_info=True)
             return None
     
-    async def get_all(self, limit: Optional[int] = None, offset: Optional[int] = None) -> List[CoverLetter]:
-        """Get all cover letters with optional pagination."""
+    async def get_all(self, limit: Optional[int] = None, offset: Optional[int] = None, user_id: Optional[str] = None) -> List[CoverLetter]:
+        """Get all cover letters with optional pagination and user filtering."""
         try:
             stmt = select(DBCoverLetter).options(
                 selectinload(DBCoverLetter.applications)
-            ).order_by(DBCoverLetter.created_at.desc())
+            )
+            
+            # Filter by user_id if provided
+            if user_id:
+                stmt = stmt.where(DBCoverLetter.user_id == user_id)
+            
+            stmt = stmt.order_by(DBCoverLetter.created_at.desc())
             
             if limit:
                 stmt = stmt.limit(limit)
@@ -79,14 +91,16 @@ class CoverLetterRepository:
             self.logger.error(f"Error getting all cover letters: {e}", exc_info=True)
             return []
     
-    async def get_by_company(self, company_name: str) -> List[CoverLetter]:
-        """Get cover letters by company name."""
+    async def get_by_company(self, company_name: str, user_id: Optional[str] = None) -> List[CoverLetter]:
+        """Get cover letters by company name, optionally filtered by user."""
         try:
+            where_clause = func.lower(DBCoverLetter.company_name) == company_name.lower()
+            if user_id:
+                where_clause = and_(where_clause, DBCoverLetter.user_id == user_id)
+            
             stmt = select(DBCoverLetter).options(
                 selectinload(DBCoverLetter.applications)
-            ).where(
-                func.lower(DBCoverLetter.company_name) == company_name.lower()
-            ).order_by(DBCoverLetter.created_at.desc())
+            ).where(where_clause).order_by(DBCoverLetter.created_at.desc())
             
             result = await self.session.execute(stmt)
             db_cover_letters = result.scalars().all()
@@ -145,24 +159,26 @@ class CoverLetterRepository:
             self.logger.error(f"Error getting cover letters by tone {tone}: {e}", exc_info=True)
             return []
     
-    async def update(self, cover_letter_id: str, updates: Dict[str, Any]) -> Optional[CoverLetter]:
-        """Update cover letter."""
+    async def update(self, cover_letter_id: str, updates: Dict[str, Any], user_id: Optional[str] = None) -> Optional[CoverLetter]:
+        """Update cover letter, optionally filtered by user."""
         try:
             # Prepare update data
             update_data = {**updates}
             update_data["updated_at"] = datetime.utcnow()
             
-            # Perform update
-            stmt = update(DBCoverLetter).where(
-                DBCoverLetter.id == cover_letter_id
-            ).values(**update_data)
+            # Perform update (with user filter if provided)
+            where_clause = DBCoverLetter.id == cover_letter_id
+            if user_id:
+                where_clause = and_(where_clause, DBCoverLetter.user_id == user_id)
+            
+            stmt = update(DBCoverLetter).where(where_clause).values(**update_data)
             
             result = await self.session.execute(stmt)
             await self.session.commit()
             
             if result.rowcount > 0:
-                # Return updated cover letter
-                updated_cover_letter = await self.get_by_id(cover_letter_id)
+                # Return updated cover letter (with user filter)
+                updated_cover_letter = await self.get_by_id(cover_letter_id, user_id=user_id)
                 self.logger.info(f"Updated cover letter: {cover_letter_id}")
                 return updated_cover_letter
             
@@ -174,10 +190,14 @@ class CoverLetterRepository:
             self.logger.error(f"Error updating cover letter {cover_letter_id}: {e}", exc_info=True)
             return None
     
-    async def delete(self, cover_letter_id: str) -> bool:
-        """Delete cover letter."""
+    async def delete(self, cover_letter_id: str, user_id: Optional[str] = None) -> bool:
+        """Delete cover letter, optionally filtered by user."""
         try:
-            stmt = delete(DBCoverLetter).where(DBCoverLetter.id == cover_letter_id)
+            where_clause = DBCoverLetter.id == cover_letter_id
+            if user_id:
+                where_clause = and_(where_clause, DBCoverLetter.user_id == user_id)
+            
+            stmt = delete(DBCoverLetter).where(where_clause)
             result = await self.session.execute(stmt)
             await self.session.commit()
             
@@ -193,20 +213,24 @@ class CoverLetterRepository:
             self.logger.error(f"Error deleting cover letter {cover_letter_id}: {e}", exc_info=True)
             return False
     
-    async def search(self, query: str, limit: Optional[int] = None) -> List[CoverLetter]:
-        """Search cover letters by job title, company, or content."""
+    async def search(self, query: str, limit: Optional[int] = None, user_id: Optional[str] = None) -> List[CoverLetter]:
+        """Search cover letters by job title, company, or content, optionally filtered by user."""
         try:
             search_term = f"%{query.lower()}%"
             
+            where_clause = or_(
+                func.lower(DBCoverLetter.job_title).like(search_term),
+                func.lower(DBCoverLetter.company_name).like(search_term),
+                func.lower(DBCoverLetter.content).like(search_term)
+            )
+            
+            # Filter by user_id if provided
+            if user_id:
+                where_clause = and_(where_clause, DBCoverLetter.user_id == user_id)
+            
             stmt = select(DBCoverLetter).options(
                 selectinload(DBCoverLetter.applications)
-            ).where(
-                or_(
-                    func.lower(DBCoverLetter.job_title).like(search_term),
-                    func.lower(DBCoverLetter.company_name).like(search_term),
-                    func.lower(DBCoverLetter.content).like(search_term)
-                )
-            ).order_by(DBCoverLetter.created_at.desc())
+            ).where(where_clause).order_by(DBCoverLetter.created_at.desc())
             
             if limit:
                 stmt = stmt.limit(limit)

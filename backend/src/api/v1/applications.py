@@ -3,8 +3,10 @@
 from fastapi import APIRouter, HTTPException, Depends
 from typing import List, Dict, Any, Optional
 from ...models.application import JobApplication, ApplicationUpdateRequest, ApplicationStatus
+from ...models.user import UserProfile
 from ...services.service_registry import service_registry
 from ...utils.response_wrapper import success_response, error_response, paginated_response
+from ..dependencies import get_current_user
 from loguru import logger
 
 router = APIRouter()
@@ -13,7 +15,8 @@ router = APIRouter()
 @router.post("/", response_model=Dict[str, Any])
 async def create_application(
     job_info: Dict[str, Any],
-    resume_path: Optional[str] = None
+    resume_path: Optional[str] = None,
+    current_user: UserProfile = Depends(get_current_user)
 ) -> Dict[str, Any]:
     """
     Create a new job application.
@@ -29,8 +32,8 @@ async def create_application(
         # Get application service from registry
         application_service = await service_registry.get_application_service()
         
-        # Use the application service
-        application = await application_service.create_application(job_info, resume_path)
+        # Use the application service with user_id
+        application = await application_service.create_application(job_info, resume_path, user_id=current_user.id)
         
         logger.info(f"Application created for {application.job_title} at {application.company}")
         return success_response(application.dict(), "Application created successfully").dict()
@@ -42,7 +45,8 @@ async def create_application(
 
 @router.get("", response_model=Dict[str, Any])
 async def get_all_applications(
-    status: Optional[ApplicationStatus] = None
+    status: Optional[ApplicationStatus] = None,
+    current_user: UserProfile = Depends(get_current_user)
 ) -> Dict[str, Any]:
     """
     Get all applications with optional status filter.
@@ -57,11 +61,11 @@ async def get_all_applications(
         # Get application service from registry
         application_service = await service_registry.get_application_service()
         
-        # Use the application service
+        # Use the application service with user_id
         if status:
-            applications = await application_service.get_applications_by_status(status)
+            applications = await application_service.get_applications_by_status(status, user_id=current_user.id)
         else:
-            applications = await application_service.get_all_applications()
+            applications = await application_service.get_all_applications(user_id=current_user.id)
         
         return success_response([app.dict() for app in applications], f"Retrieved {len(applications)} applications").dict()
         
@@ -71,7 +75,9 @@ async def get_all_applications(
 
 
 @router.get("/stats")
-async def get_application_stats() -> Dict[str, Any]:
+async def get_application_stats(
+    current_user: UserProfile = Depends(get_current_user)
+) -> Dict[str, Any]:
     """
     Get application statistics and summary.
     
@@ -82,8 +88,8 @@ async def get_application_stats() -> Dict[str, Any]:
         # Get application service from registry
         application_service = await service_registry.get_application_service()
         
-        # Get statistics from service
-        stats = await application_service.get_application_stats()
+        # Get statistics from service with user_id
+        stats = await application_service.get_application_stats(user_id=current_user.id)
         return success_response(stats, "Application statistics retrieved successfully").dict()
         
     except Exception as e:
@@ -92,7 +98,9 @@ async def get_application_stats() -> Dict[str, Any]:
 
 
 @router.get("/stats/summary")
-async def get_application_stats_summary() -> Dict[str, Any]:
+async def get_application_stats_summary(
+    current_user: UserProfile = Depends(get_current_user)
+) -> Dict[str, Any]:
     """
     Get application statistics summary (legacy endpoint).
     
@@ -103,7 +111,10 @@ async def get_application_stats_summary() -> Dict[str, Any]:
 
 
 @router.get("/{application_id}", response_model=Dict[str, Any])
-async def get_application(application_id: str) -> Dict[str, Any]:
+async def get_application(
+    application_id: str,
+    current_user: UserProfile = Depends(get_current_user)
+) -> Dict[str, Any]:
     """
     Get a specific application by ID.
     
@@ -117,8 +128,8 @@ async def get_application(application_id: str) -> Dict[str, Any]:
         # Get application service from registry
         application_service = await service_registry.get_application_service()
         
-        # Get application by ID
-        application = await application_service.get_application(application_id)
+        # Get application by ID with user_id
+        application = await application_service.get_application(application_id, user_id=current_user.id)
         
         if not application:
             raise HTTPException(status_code=404, detail=f"Application {application_id} not found")
@@ -135,7 +146,8 @@ async def get_application(application_id: str) -> Dict[str, Any]:
 @router.put("/{application_id}", response_model=JobApplication)
 async def update_application(
     application_id: str,
-    updates: ApplicationUpdateRequest
+    updates: ApplicationUpdateRequest,
+    current_user: UserProfile = Depends(get_current_user)
 ) -> JobApplication:
     """
     Update an application.
@@ -151,8 +163,8 @@ async def update_application(
         # Get application service from registry
         application_service = await service_registry.get_application_service()
         
-        # Update application
-        updated_application = await application_service.update_application(application_id, updates)
+        # Update application with user_id
+        updated_application = await application_service.update_application(application_id, updates, user_id=current_user.id)
         
         if not updated_application:
             raise HTTPException(status_code=404, detail=f"Application {application_id} not found")
@@ -168,7 +180,10 @@ async def update_application(
 
 
 @router.delete("/{application_id}")
-async def delete_application(application_id: str) -> Dict[str, str]:
+async def delete_application(
+    application_id: str,
+    current_user: UserProfile = Depends(get_current_user)
+) -> Dict[str, str]:
     """
     Delete an application.
     
@@ -182,8 +197,8 @@ async def delete_application(application_id: str) -> Dict[str, str]:
         # Get application service from registry
         application_service = await service_registry.get_application_service()
         
-        # Delete application
-        success = await application_service.delete_application(application_id)
+        # Delete application with user_id
+        success = await application_service.delete_application(application_id, user_id=current_user.id)
         
         if not success:
             raise HTTPException(status_code=404, detail=f"Application {application_id} not found")
@@ -201,7 +216,8 @@ async def delete_application(application_id: str) -> Dict[str, str]:
 @router.post("/{application_id}/follow-up")
 async def schedule_follow_up(
     application_id: str,
-    follow_up_date: str
+    follow_up_date: str,
+    current_user: UserProfile = Depends(get_current_user)
 ) -> Dict[str, str]:
     """
     Schedule a follow-up for an application.
@@ -234,7 +250,9 @@ async def schedule_follow_up(
 
 
 @router.get("/follow-ups/upcoming")
-async def get_upcoming_follow_ups() -> List[JobApplication]:
+async def get_upcoming_follow_ups(
+    current_user: UserProfile = Depends(get_current_user)
+) -> List[JobApplication]:
     """
     Get applications with upcoming follow-ups.
     
@@ -255,7 +273,10 @@ async def get_upcoming_follow_ups() -> List[JobApplication]:
 
 
 @router.get("/company/{company}")
-async def get_applications_by_company(company: str) -> List[JobApplication]:
+async def get_applications_by_company(
+    company: str,
+    current_user: UserProfile = Depends(get_current_user)
+) -> List[JobApplication]:
     """
     Get all applications for a specific company.
     
@@ -279,7 +300,10 @@ async def get_applications_by_company(company: str) -> List[JobApplication]:
 
 
 @router.get("/search/{query}")
-async def search_applications(query: str) -> List[JobApplication]:
+async def search_applications(
+    query: str,
+    current_user: UserProfile = Depends(get_current_user)
+) -> List[JobApplication]:
     """
     Search applications by query.
     
@@ -294,7 +318,7 @@ async def search_applications(query: str) -> List[JobApplication]:
         application_service = await service_registry.get_application_service()
         
         # Search applications
-        applications = await application_service.search_applications(query)
+        applications = await application_service.search_applications(query, user_id=current_user.id)
         return applications
         
     except Exception as e:
@@ -303,7 +327,10 @@ async def search_applications(query: str) -> List[JobApplication]:
 
 
 @router.get("/{application_id}/timeline")
-async def get_application_timeline(application_id: str) -> List[Dict[str, Any]]:
+async def get_application_timeline(
+    application_id: str,
+    current_user: UserProfile = Depends(get_current_user)
+) -> List[Dict[str, Any]]:
     """
     Get timeline of events for an application.
     

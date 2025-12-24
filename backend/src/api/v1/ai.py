@@ -5,6 +5,8 @@ from typing import Dict, Any
 from datetime import datetime
 from ...models.resume import Resume, ResumeOptimizationRequest, ResumeOptimizationResponse
 from ...models.cover_letter import CoverLetterRequest, CoverLetter
+from ...models.user import UserProfile
+from ...api.dependencies import get_current_user
 from ...utils.logger import get_logger
 from ...services.service_registry import service_registry
 
@@ -14,7 +16,10 @@ router = APIRouter()
 
 
 @router.post("/optimize-resume", response_model=ResumeOptimizationResponse)
-async def optimize_resume(request: ResumeOptimizationRequest) -> ResumeOptimizationResponse:
+async def optimize_resume(
+    request: ResumeOptimizationRequest,
+    current_user: UserProfile = Depends(get_current_user)
+) -> ResumeOptimizationResponse:
     """
     Optimize resume for a specific job.
     
@@ -42,7 +47,10 @@ async def optimize_resume(request: ResumeOptimizationRequest) -> ResumeOptimizat
 
 
 @router.post("/generate-cover-letter", response_model=CoverLetter)
-async def generate_cover_letter(request: CoverLetterRequest) -> CoverLetter:
+async def generate_cover_letter(
+    request: CoverLetterRequest,
+    current_user: UserProfile = Depends(get_current_user)
+) -> CoverLetter:
     """
     Generate a personalized cover letter.
     
@@ -72,7 +80,8 @@ async def generate_cover_letter(request: CoverLetterRequest) -> CoverLetter:
 @router.post("/analyze-job-match")
 async def analyze_job_match(
     resume_content: str,
-    job_description: str
+    job_description: str,
+    current_user: UserProfile = Depends(get_current_user)
 ) -> Dict[str, Any]:
     """
     Analyze how well a resume matches a job description.
@@ -102,7 +111,10 @@ async def analyze_job_match(
 
 
 @router.post("/extract-skills")
-async def extract_resume_skills(resume_content: str) -> Dict[str, Any]:
+async def extract_resume_skills(
+    resume_content: str,
+    current_user: UserProfile = Depends(get_current_user)
+) -> Dict[str, Any]:
     """
     Extract skills from resume content.
     
@@ -138,7 +150,10 @@ async def extract_resume_skills(resume_content: str) -> Dict[str, Any]:
 
 
 @router.post("/improve-resume")
-async def improve_resume_suggestions(resume_content: str) -> Dict[str, Any]:
+async def improve_resume_suggestions(
+    resume_content: str,
+    current_user: UserProfile = Depends(get_current_user)
+) -> Dict[str, Any]:
     """
     Get suggestions for improving a resume.
     

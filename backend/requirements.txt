@@ -41,4 +41,10 @@ loguru>=0.7.0
 
 # AI Provider dependencies
 openai>=1.0.0
-aiohttp>=3.8.0 
+aiohttp>=3.8.0
+
+# Authentication dependencies
+python-jose[cryptography]>=3.3.0
+bcrypt>=4.0.1
+passlib[bcrypt]>=1.7.4
+slowapi>=0.1.9 slowapi>=0.1.9

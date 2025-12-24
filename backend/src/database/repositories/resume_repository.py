@@ -19,10 +19,12 @@ class ResumeRepository:
         self.session = session
         self.logger = get_logger(__name__)
     
-    async def create(self, resume: Resume) -> Resume:
-        """Create a new resume."""
+    async def create(self, resume: Resume, user_id: Optional[str] = None) -> Resume:
+        """Create a new resume, optionally associated with a user."""
         try:
             db_resume = DBResume.from_model(resume)
+            if user_id:
+                db_resume.user_id = user_id
             self.session.add(db_resume)
             await self.session.commit()
             await self.session.refresh(db_resume)
@@ -35,12 +37,16 @@ class ResumeRepository:
             self.logger.error(f"Error creating resume: {e}", exc_info=True)
             raise
     
-    async def get_by_id(self, resume_id: str) -> Optional[Resume]:
-        """Get resume by ID."""
+    async def get_by_id(self, resume_id: str, user_id: Optional[str] = None) -> Optional[Resume]:
+        """Get resume by ID, optionally filtered by user."""
         try:
             stmt = select(DBResume).options(
                 selectinload(DBResume.applications)
             ).where(DBResume.id == resume_id)
+            
+            # Filter by user_id if provided
+            if user_id:
+                stmt = stmt.where(DBResume.user_id == user_id)
             
             result = await self.session.execute(stmt)
             db_resume = result.scalar_one_or_none()
@@ -55,12 +61,18 @@ class ResumeRepository:
             self.logger.error(f"Error getting resume {resume_id}: {e}", exc_info=True)
             return None
     
-    async def get_all(self, limit: Optional[int] = None, offset: Optional[int] = None) -> List[Resume]:
-        """Get all resumes with optional pagination."""
+    async def get_all(self, limit: Optional[int] = None, offset: Optional[int] = None, user_id: Optional[str] = None) -> List[Resume]:
+        """Get all resumes with optional pagination and user filtering."""
         try:
             stmt = select(DBResume).options(
                 selectinload(DBResume.applications)
-            ).order_by(DBResume.created_at.desc())
+            )
+            
+            # Filter by user_id if provided
+            if user_id:
+                stmt = stmt.where(DBResume.user_id == user_id)
+            
+            stmt = stmt.order_by(DBResume.created_at.desc())
             
             if limit:
                 stmt = stmt.limit(limit)
@@ -79,12 +91,16 @@ class ResumeRepository:
             self.logger.error(f"Error getting all resumes: {e}", exc_info=True)
             return []
     
-    async def get_by_name(self, name: str) -> Optional[Resume]:
-        """Get resume by name."""
+    async def get_by_name(self, name: str, user_id: Optional[str] = None) -> Optional[Resume]:
+        """Get resume by name, optionally filtered by user."""
         try:
             stmt = select(DBResume).options(
                 selectinload(DBResume.applications)
             ).where(DBResume.name == name)
+            
+            # Filter by user_id if provided
+            if user_id:
+                stmt = stmt.where(DBResume.user_id == user_id)
             
             result = await self.session.execute(stmt)
             db_resume = result.scalar_one_or_none()
@@ -99,12 +115,16 @@ class ResumeRepository:
             self.logger.error(f"Error getting resume by name {name}: {e}", exc_info=True)
             return None
     
-    async def get_default_resume(self) -> Optional[Resume]:
-        """Get the default resume."""
+    async def get_default_resume(self, user_id: Optional[str] = None) -> Optional[Resume]:
+        """Get the default resume, optionally filtered by user."""
         try:
             stmt = select(DBResume).options(
                 selectinload(DBResume.applications)
             ).where(DBResume.is_default == True)
+            
+            # Filter by user_id if provided
+            if user_id:
+                stmt = stmt.where(DBResume.user_id == user_id)
             
             result = await self.session.execute(stmt)
             db_resume = result.scalar_one_or_none()
@@ -119,17 +139,26 @@ class ResumeRepository:
             self.logger.error(f"Error getting default resume: {e}", exc_info=True)
             return None
     
-    async def set_default_resume(self, resume_id: str) -> bool:
-        """Set a resume as the default resume."""
+    async def set_default_resume(self, resume_id: str, user_id: Optional[str] = None) -> bool:
+        """Set a resume as the default resume, optionally filtered by user."""
         try:
-            # First, unset all other default resumes
+            # Base where clause
+            where_clause = DBResume.is_default == True
+            if user_id:
+                where_clause = and_(where_clause, DBResume.user_id == user_id)
+            
+            # First, unset all other default resumes for this user
             await self.session.execute(
-                update(DBResume).where(DBResume.is_default == True).values(is_default=False)
+                update(DBResume).where(where_clause).values(is_default=False)
             )
             
-            # Set the specified resume as default
+            # Set the specified resume as default (with user filter)
+            update_where = DBResume.id == resume_id
+            if user_id:
+                update_where = and_(update_where, DBResume.user_id == user_id)
+            
             result = await self.session.execute(
-                update(DBResume).where(DBResume.id == resume_id).values(is_default=True, updated_at=datetime.utcnow())
+                update(DBResume).where(update_where).values(is_default=True, updated_at=datetime.utcnow())
             )
             
             await self.session.commit()
@@ -146,8 +175,8 @@ class ResumeRepository:
             self.logger.error(f"Error setting default resume {resume_id}: {e}", exc_info=True)
             return False
     
-    async def update(self, resume_id: str, updates: Dict[str, Any]) -> Optional[Resume]:
-        """Update resume."""
+    async def update(self, resume_id: str, updates: Dict[str, Any], user_id: Optional[str] = None) -> Optional[Resume]:
+        """Update resume, optionally filtered by user."""
         try:
             # Prepare update data
             update_data = {**updates}
@@ -166,17 +195,19 @@ class ResumeRepository:
                 import json
                 update_data["certifications"] = json.dumps(update_data["certifications"])
             
-            # Perform update
-            stmt = update(DBResume).where(
-                DBResume.id == resume_id
-            ).values(**update_data)
+            # Perform update (with user filter if provided)
+            where_clause = DBResume.id == resume_id
+            if user_id:
+                where_clause = and_(where_clause, DBResume.user_id == user_id)
+            
+            stmt = update(DBResume).where(where_clause).values(**update_data)
             
             result = await self.session.execute(stmt)
             await self.session.commit()
             
             if result.rowcount > 0:
-                # Return updated resume
-                updated_resume = await self.get_by_id(resume_id)
+                # Return updated resume (with user filter)
+                updated_resume = await self.get_by_id(resume_id, user_id=user_id)
                 self.logger.info(f"Updated resume: {resume_id}")
                 return updated_resume
             
@@ -188,10 +219,14 @@ class ResumeRepository:
             self.logger.error(f"Error updating resume {resume_id}: {e}", exc_info=True)
             return None
     
-    async def delete(self, resume_id: str) -> bool:
-        """Delete resume."""
+    async def delete(self, resume_id: str, user_id: Optional[str] = None) -> bool:
+        """Delete resume, optionally filtered by user."""
         try:
-            stmt = delete(DBResume).where(DBResume.id == resume_id)
+            where_clause = DBResume.id == resume_id
+            if user_id:
+                where_clause = and_(where_clause, DBResume.user_id == user_id)
+            
+            stmt = delete(DBResume).where(where_clause)
             result = await self.session.execute(stmt)
             await self.session.commit()
             
