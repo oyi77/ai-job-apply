@@ -14,7 +14,7 @@ from pathlib import Path
 sys.path.append(str(Path(__file__).parent / "src"))
 
 from src.api import app
-from src.config import Config
+from src.config import config
 
 # Configure logging
 logging.basicConfig(
@@ -57,8 +57,8 @@ def main():
         # Validate environment first
         validate_environment()
         
-        # Validate configuration
-        Config.validate()
+        # Validate configuration (using pydantic validation in Settings class)
+        # config instance is already validated upon initialization
         logger.info("Configuration validated successfully")
         
         # Create necessary directories
