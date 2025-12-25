@@ -1,11 +1,11 @@
 import axios from 'axios';
 import type { AxiosInstance, AxiosResponse } from 'axios';
-import type { 
-  JobApplication, 
-  Resume, 
-  CoverLetter, 
-  Job, 
-  ApiResponse, 
+import type {
+  JobApplication,
+  Resume,
+  CoverLetter,
+  Job,
+  ApiResponse,
   PaginatedResponse,
   AIOptimizationRequest,
   AIOptimizationResponse,
@@ -86,12 +86,12 @@ apiClient.interceptors.response.use(
           refresh_token: refreshToken,
         });
         const { access_token, refresh_token: newRefreshToken } = response.data;
-        
+
         localStorage.setItem(ACCESS_TOKEN_KEY, access_token);
         if (newRefreshToken) {
           localStorage.setItem(REFRESH_TOKEN_KEY, newRefreshToken);
         }
-        
+
         originalRequest.headers.Authorization = `Bearer ${access_token}`;
         processQueue(null, access_token);
         return apiClient(originalRequest);
@@ -111,7 +111,7 @@ apiClient.interceptors.response.use(
     if (error.response) {
       const status = error.response.status;
       const data = error.response.data;
-      
+
       switch (status) {
         case 401:
           // Handle unauthorized access (after refresh attempt failed)
@@ -139,7 +139,7 @@ apiClient.interceptors.response.use(
     } else {
       console.error('Request error:', error.message || 'An unexpected error occurred');
     }
-    
+
     return Promise.reject(error);
   }
 );
@@ -273,6 +273,14 @@ export const authService = {
   },
 };
 
+// Helper to handle API responses
+const handleApiResponse = <T>(response: AxiosResponse<ApiResponse<T>>): T => {
+  if (response.data && (response.data.success === true || response.data.data !== undefined)) {
+    return (response.data.data !== undefined ? response.data.data : response.data) as T;
+  }
+  throw new Error(response.data?.message || 'API request failed');
+};
+
 // Application Services
 export const applicationService = {
   // Get all applications
@@ -391,17 +399,17 @@ export const coverLetterService = {
   createCoverLetter: async (coverLetter: Omit<CoverLetter, 'id' | 'created_at' | 'updated_at' | 'generated_at'>): Promise<CoverLetter> => {
     // Calculate word count from content
     const wordCount = coverLetter.content.trim().split(/\s+/).length;
-    
+
     // Prepare the request with correct field names
     const requestBody = {
       job_title: coverLetter.job_title,
-      company_name: coverLetter.company_name,
+      company: coverLetter.company,
       content: coverLetter.content,
       tone: coverLetter.tone || 'professional',
       word_count: wordCount,
       file_path: coverLetter.file_path
     };
-    
+
     const response = await apiClient.post('/api/v1/cover-letters/', requestBody);
     return handleApiResponse(response);
   },
@@ -478,7 +486,7 @@ export const jobSearchService = {
     };
 
     const response = await apiClient.post('/api/v1/jobs/search', requestBody);
-    
+
     // Backend returns jobs grouped by portal, convert to flat array
     const allJobs: Job[] = [];
     if (response.data.jobs) {
@@ -489,7 +497,7 @@ export const jobSearchService = {
         }
       });
     }
-    
+
     return { data: allJobs };
   },
 
@@ -509,7 +517,7 @@ export const jobSearchService = {
   getJobDetails: async (jobId: string, platform?: string): Promise<Job> => {
     const params = new URLSearchParams();
     if (platform) params.append('platform', platform);
-    
+
     const response = await apiClient.get(`/api/v1/jobs/${jobId}/details?${params.toString()}`);
     return handleApiResponse(response);
   },

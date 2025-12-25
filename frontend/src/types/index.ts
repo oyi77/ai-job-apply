@@ -42,6 +42,7 @@ export interface Resume {
   file_size: number;
   mime_type: string;
   file_type?: string;
+  content?: string;
   skills: string[];
   experience_years: number;
   education: Education[];
@@ -70,7 +71,6 @@ export interface CoverLetter {
   id?: string;
   job_title: string;
   company: string;
-  company_name: string;
   content: string;
   file_path?: string;
   tone: string;
@@ -181,6 +181,19 @@ export interface UserPreferences {
   theme: 'light' | 'dark' | 'system';
   notifications: NotificationPreferences;
   privacy: PrivacySettings;
+  ai: AISettings;
+}
+
+export interface AISettings {
+  openai_api_key?: string;
+  openai_model?: string;
+  openai_base_url?: string;
+  openrouter_api_key?: string;
+  openrouter_model?: string;
+  openrouter_base_url?: string;
+  local_base_url?: string;
+  local_model?: string;
+  provider_preference: 'openai' | 'openrouter' | 'local_ai';
 }
 
 export interface NotificationPreferences {
@@ -234,7 +247,7 @@ export interface ValidationRule {
 
 // UI Component Types
 export interface ButtonProps {
-  variant?: 'primary' | 'secondary' | 'danger' | 'ghost' | 'success' | 'warning' | 'info';
+  variant?: 'primary' | 'secondary' | 'danger' | 'ghost' | 'success' | 'warning' | 'info' | 'default';
   size?: 'sm' | 'md' | 'lg';
   disabled?: boolean;
   loading?: boolean;
@@ -262,6 +275,7 @@ export interface InputProps {
   rightIcon?: React.ReactNode;
   as?: 'input' | 'textarea';
   rows?: number;
+  helpText?: string;
   ref?: React.Ref<HTMLInputElement | HTMLTextAreaElement>;
 }
 

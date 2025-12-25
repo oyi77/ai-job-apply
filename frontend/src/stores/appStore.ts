@@ -1,89 +1,94 @@
 import { create } from 'zustand';
 import { devtools, persist } from 'zustand/middleware';
-import type { 
-  JobApplication, 
-  Resume, 
-  CoverLetter, 
-  Job, 
-  User, 
+import type {
+  JobApplication,
+  Resume,
+  CoverLetter,
+  Job,
+  User,
   SearchFilters,
-  SortOptions
+  SortOptions,
+  AISettings
 } from '../types';
 import { ApplicationStatus } from '../types';
+import { AppNotification } from '../components/ui';
 
 // Application State Interface
 interface AppState {
   // User state
   user: User | null;
   isAuthenticated: boolean;
-  
+
   // Theme state
   theme: 'light' | 'dark' | 'system';
-  
+
   // Data state
   applications: JobApplication[];
   resumes: Resume[];
   coverLetters: CoverLetter[];
   jobs: Job[];
-  
-  // UI state
+
   sidebarOpen: boolean;
-  notifications: Notification[];
+  notifications: AppNotification[];
   loading: boolean;
   error: string | null;
-  
+
   // Search and filters
   searchFilters: SearchFilters;
   sortOptions: SortOptions;
-  
+
+  // AI Settings
+  aiSettings: AISettings;
+
   // Actions
   setUser: (user: User | null) => void;
   setAuthenticated: (authenticated: boolean) => void;
   logout: () => void;
   setTheme: (theme: 'light' | 'dark' | 'system') => void;
-  
+  updateAISettings: (settings: Partial<AISettings>) => void;
+
   // Application actions
   setApplications: (applications: JobApplication[]) => void;
   addApplication: (application: JobApplication) => void;
   updateApplication: (id: string, updates: Partial<JobApplication>) => void;
   deleteApplication: (id: string) => void;
-  
+
   // Resume actions
   setResumes: (resumes: Resume[]) => void;
   addResume: (resume: Resume) => void;
   updateResume: (id: string, updates: Partial<Resume>) => void;
   deleteResume: (id: string) => void;
   setDefaultResume: (id: string) => void;
-  
+
   // Cover letter actions
   setCoverLetters: (coverLetters: CoverLetter[]) => void;
   addCoverLetter: (coverLetter: CoverLetter) => void;
   updateCoverLetter: (id: string, updates: Partial<CoverLetter>) => void;
   deleteCoverLetter: (id: string) => void;
-  
+
   // Job actions
   setJobs: (jobs: Job[]) => void;
   addJob: (job: Job) => void;
-  
+
   // UI actions
   setSidebarOpen: (open: boolean) => void;
-  setNotifications: (notifications: Notification[]) => void;
-  addNotification: (notification: Notification) => void;
+  setNotifications: (notifications: AppNotification[]) => void;
+  addNotification: (notification: AppNotification) => void;
   removeNotification: (id: string) => void;
   setLoading: (loading: boolean) => void;
   setError: (error: string | null) => void;
-  
+
   // Search and filter actions
   setSearchFilters: (filters: SearchFilters) => void;
   setSortOptions: (options: SortOptions) => void;
   clearFilters: () => void;
-  
+
   // Computed values
   getApplicationById: (id: string) => JobApplication | undefined;
   getResumeById: (id: string) => Resume | undefined;
   getCoverLetterById: (id: string) => CoverLetter | undefined;
   getJobById: (id: string) => Job | undefined;
-  
+
   // Statistics
   getApplicationStats: () => {
     total: number;
@@ -92,15 +97,7 @@ interface AppState {
   };
 }
 
-// Notification interface
-interface Notification {
-  id: string;
-  type: 'success' | 'warning' | 'error' | 'info';
-  title: string;
-  message: string;
-  timestamp: Date;
-  read: boolean;
-}
+
 
 // Initial state
 const initialState = {
@@ -117,6 +114,9 @@ const initialState = {
   error: null,
   searchFilters: {},
   sortOptions: { field: 'created_at' as keyof JobApplication, direction: 'desc' as const },
+  aiSettings: {
+    provider_preference: 'openai' as const,
+  },
 };
 
 // Create store
@@ -125,7 +125,7 @@ export const useAppStore = create<AppState>()(
     persist(
       (set, get) => ({
         ...initialState,
-        
+
         // User actions
         setUser: (user) => set({ user, isAuthenticated: !!user }),
         setAuthenticated: (authenticated) => set({ isAuthenticated: authenticated }),
@@ -137,7 +137,10 @@ export const useAppStore = create<AppState>()(
           set({ user: null, isAuthenticated: false });
         },
         setTheme: (theme) => set({ theme }),
-        
+        updateAISettings: (updates) => set((state) => ({
+          aiSettings: { ...state.aiSettings, ...updates },
+        })),
+
         // Application actions
         setApplications: (applications) => set({ applications }),
         addApplication: (application) => set((state) => ({
@@ -151,7 +154,7 @@ export const useAppStore = create<AppState>()(
         deleteApplication: (id) => set((state) => ({
           applications: state.applications.filter((app) => app.id !== id),
         })),
-        
+
         // Resume actions
         setResumes: (resumes) => set({ resumes }),
         addResume: (resume) => set((state) => ({
@@ -171,7 +174,7 @@ export const useAppStore = create<AppState>()(
             is_default: resume.id === id,
           })),
         })),
-        
+
         // Cover letter actions
         setCoverLetters: (coverLetters) => set({ coverLetters }),
         addCoverLetter: (coverLetter) => set((state) => ({
@@ -185,13 +188,13 @@ export const useAppStore = create<AppState>()(
         deleteCoverLetter: (id) => set((state) => ({
           coverLetters: state.coverLetters.filter((letter) => letter.id !== id),
         })),
-        
+
         // Job actions
         setJobs: (jobs) => set({ jobs }),
         addJob: (job) => set((state) => ({
           jobs: [...state.jobs, job],
         })),
-        
+
         // UI actions
         setSidebarOpen: (sidebarOpen) => set({ sidebarOpen }),
         setNotifications: (notifications) => set({ notifications }),
@@ -203,15 +206,15 @@ export const useAppStore = create<AppState>()(
         })),
         setLoading: (loading) => set({ loading }),
         setError: (error) => set({ error }),
-        
+
         // Search and filter actions
         setSearchFilters: (searchFilters) => set({ searchFilters }),
         setSortOptions: (sortOptions) => set({ sortOptions }),
-        clearFilters: () => set({ 
-          searchFilters: {}, 
-          sortOptions: { field: 'created_at', direction: 'desc' } 
+        clearFilters: () => set({
+          searchFilters: {},
+          sortOptions: { field: 'created_at', direction: 'desc' }
         }),
-        
+
         // Computed values
         getApplicationById: (id) => {
           const state = get();
@@ -229,7 +232,7 @@ export const useAppStore = create<AppState>()(
           const state = get();
           return state.jobs.find((job) => job.id === id);
         },
-        
+
         // Statistics
         getApplicationStats: () => {
           const state = get();
@@ -238,11 +241,11 @@ export const useAppStore = create<AppState>()(
             acc[app.status] = (acc[app.status] || 0) + 1;
             return acc;
           }, {} as Record<ApplicationStatus, number>);
-          
-          const successful = (byStatus[ApplicationStatus.OFFER_ACCEPTED] || 0) + 
-                           (byStatus[ApplicationStatus.OFFER_RECEIVED] || 0);
+
+          const successful = (byStatus[ApplicationStatus.OFFER_ACCEPTED] || 0) +
+            (byStatus[ApplicationStatus.OFFER_RECEIVED] || 0);
           const successRate = total > 0 ? (successful / total) * 100 : 0;
-          
+
           return {
             total,
             byStatus,
@@ -253,9 +256,12 @@ export const useAppStore = create<AppState>()(
       {
         name: 'ai-job-apply-store',
         partialize: (state) => ({
+          user: state.user,
+          isAuthenticated: state.isAuthenticated,
           theme: state.theme,
           searchFilters: state.searchFilters,
           sortOptions: state.sortOptions,
+          aiSettings: state.aiSettings,
         }),
       }
     ),
