@@ -1,11 +1,21 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen } from '@testing-library/react';
-import { BrowserRouter, Routes, Route } from 'react-router-dom';
+import { MemoryRouter, Routes, Route } from 'react-router-dom';
 import ProtectedRoute from '../ProtectedRoute';
 import { useAppStore } from '../../../stores/appStore';
+import { authService } from '../../../services/api';
 
 // Mock the store
 vi.mock('../../../stores/appStore');
+
+// Mock authService
+vi.mock('../../../services/api', () => ({
+  authService: {
+    isAuthenticated: vi.fn(),
+    getProfile: vi.fn(),
+    logout: vi.fn(),
+  },
+}));
 
 describe('ProtectedRoute', () => {
   const mockUser = {
@@ -41,43 +51,45 @@ describe('ProtectedRoute', () => {
     (useAppStore as any).mockReturnValue({
       isAuthenticated,
       user,
+      setAuthenticated: vi.fn(),
+      setUser: vi.fn(),
     });
 
     return render(
-      <BrowserRouter>
+      <MemoryRouter initialEntries={['/protected']}>
         <Routes>
           <Route element={<ProtectedRoute />}>
             <Route path="/protected" element={<TestComponent />} />
           </Route>
           <Route path="/login" element={<div>Login Page</div>} />
         </Routes>
-      </BrowserRouter>
+      </MemoryRouter>
     );
   };
 
   it('renders protected content when authenticated', () => {
     renderWithRouter(true, mockUser);
-    
+
     expect(screen.getByText('Protected Content')).toBeInTheDocument();
   });
 
   it('redirects to login when not authenticated', () => {
     renderWithRouter(false, null);
-    
+
     expect(screen.getByText('Login Page')).toBeInTheDocument();
     expect(screen.queryByText('Protected Content')).not.toBeInTheDocument();
   });
 
   it('redirects to login when user is null', () => {
     renderWithRouter(true, null);
-    
+
     expect(screen.getByText('Login Page')).toBeInTheDocument();
     expect(screen.queryByText('Protected Content')).not.toBeInTheDocument();
   });
 
   it('redirects to login when authenticated but user data not loaded', () => {
     renderWithRouter(true, null);
-    
+
     expect(screen.getByText('Login Page')).toBeInTheDocument();
     expect(screen.queryByText('Protected Content')).not.toBeInTheDocument();
   });

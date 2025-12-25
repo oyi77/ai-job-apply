@@ -1,11 +1,11 @@
 import React, { useState } from 'react';
-import { 
-  Card, 
-  CardHeader, 
-  CardBody, 
-  Button, 
-  Badge, 
-  Modal, 
+import {
+  Card,
+  CardHeader,
+  CardBody,
+  Button,
+  Badge,
+  Modal,
   Form,
   FormField,
   Select,
@@ -24,6 +24,7 @@ import {
   DocumentArrowDownIcon,
   TrashIcon,
   Cog6ToothIcon,
+  SparklesIcon,
 } from '@heroicons/react/24/outline';
 
 const Settings: React.FC = () => {
@@ -33,12 +34,13 @@ const Settings: React.FC = () => {
   const [isThemeModalOpen, setIsThemeModalOpen] = useState(false);
   const [isExportModalOpen, setIsExportModalOpen] = useState(false);
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
+  const [isAIModalOpen, setIsAIModalOpen] = useState(false);
   const [showSuccessMessage, setShowSuccessMessage] = useState(false);
   const [isExporting, setIsExporting] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   const [deleteConfirmation, setDeleteConfirmation] = useState('');
-  
-  const { user, setUser, theme, setTheme, setAuthenticated } = useAppStore();
+
+  const { user, setUser, theme, setTheme, setAuthenticated, aiSettings, updateAISettings } = useAppStore();
 
   const handleProfileUpdate = async (data: any) => {
     try {
@@ -67,7 +69,7 @@ const Settings: React.FC = () => {
         resumeService.getResumes().catch(() => []),
         coverLetterService.getCoverLetters().catch(() => [])
       ]);
-      
+
       const exportData = {
         user: user,
         applications: applications.data || applications,
@@ -79,7 +81,7 @@ const Settings: React.FC = () => {
         exportDate: new Date().toISOString(),
         version: '1.0.0'
       };
-      
+
       // Create and download JSON file
       const blob = new Blob([JSON.stringify(exportData, null, 2)], { type: 'application/json' });
       const url = URL.createObjectURL(blob);
@@ -90,7 +92,7 @@ const Settings: React.FC = () => {
       a.click();
       document.body.removeChild(a);
       URL.revokeObjectURL(url);
-      
+
       setIsExportModalOpen(false);
       setShowSuccessMessage(true);
       setTimeout(() => setShowSuccessMessage(false), 3000);
@@ -107,7 +109,7 @@ const Settings: React.FC = () => {
       alert('Please type DELETE to confirm account deletion');
       return;
     }
-    
+
     setIsDeleting(true);
     try {
       // TODO: Add API endpoint for account deletion when backend auth is implemented
@@ -131,15 +133,6 @@ const Settings: React.FC = () => {
     { value: 'light', label: 'Light' },
     { value: 'dark', label: 'Dark' },
     { value: 'system', label: 'System Default' },
-  ];
-
-  const languageOptions = [
-    { value: 'en', label: 'English' },
-    { value: 'es', label: 'Spanish' },
-    { value: 'fr', label: 'French' },
-    { value: 'de', label: 'German' },
-    { value: 'ja', label: 'Japanese' },
-    { value: 'zh', label: 'Chinese' },
   ];
 
   return (
@@ -271,7 +264,7 @@ const Settings: React.FC = () => {
             </div>
             <Button
               variant="secondary"
-              onClick={() => {}} // TODO: Implement language selection
+              onClick={() => { }} // TODO: Implement language selection
               className="w-full"
               disabled
             >
@@ -309,6 +302,34 @@ const Settings: React.FC = () => {
                 Delete Account
               </Button>
             </div>
+          </CardBody>
+        </Card>
+
+        {/* AI Intelligence */}
+        <Card className="hover:shadow-lg transition-shadow border-primary-100 bg-primary-50/10">
+          <CardHeader>
+            <div className="flex items-center space-x-2">
+              <SparklesIcon className="h-6 w-6 text-primary-600" />
+              <h3 className="text-lg font-medium text-gray-900">AI Intelligence</h3>
+            </div>
+          </CardHeader>
+          <CardBody>
+            <p className="text-gray-600 mb-4">
+              Configure your AI providers and model preferences for resume optimization.
+            </p>
+            <div className="flex items-center space-x-2 mb-3">
+              <span className="text-sm text-gray-600">Active Provider:</span>
+              <Badge variant="primary" size="sm">
+                {aiSettings.provider_preference === 'openai' ? 'OpenAI' : aiSettings.provider_preference === 'openrouter' ? 'OpenRouter' : 'Local AI'}
+              </Badge>
+            </div>
+            <Button
+              variant="primary"
+              onClick={() => setIsAIModalOpen(true)}
+              className="w-full"
+            >
+              Configure AI
+            </Button>
           </CardBody>
         </Card>
       </div>
@@ -360,11 +381,11 @@ const Settings: React.FC = () => {
               placeholder="Tell us about yourself"
             />
           </div>
-          
+
           <div className="flex justify-end space-x-3 mt-6">
-            <Button 
-              type="button" 
-              variant="secondary" 
+            <Button
+              type="button"
+              variant="secondary"
               onClick={() => setIsProfileModalOpen(false)}
             >
               Cancel
@@ -392,7 +413,7 @@ const Settings: React.FC = () => {
               </div>
               <input type="checkbox" className="rounded border-gray-300 text-primary-600 focus:ring-primary-500" defaultChecked />
             </div>
-            
+
             <div className="flex items-center justify-between">
               <div>
                 <h4 className="font-medium text-gray-900">New Job Matches</h4>
@@ -400,7 +421,7 @@ const Settings: React.FC = () => {
               </div>
               <input type="checkbox" className="rounded border-gray-300 text-primary-600 focus:ring-primary-500" defaultChecked />
             </div>
-            
+
             <div className="flex items-center justify-between">
               <div>
                 <h4 className="font-medium text-gray-900">AI Service Updates</h4>
@@ -408,7 +429,7 @@ const Settings: React.FC = () => {
               </div>
               <input type="checkbox" className="rounded border-gray-300 text-primary-600 focus:ring-primary-500" defaultChecked />
             </div>
-            
+
             <div className="flex items-center justify-between">
               <div>
                 <h4 className="font-medium text-gray-900">Weekly Reports</h4>
@@ -417,7 +438,7 @@ const Settings: React.FC = () => {
               <input type="checkbox" className="rounded border-gray-300 text-primary-600 focus:ring-primary-500" />
             </div>
           </div>
-          
+
           <div className="flex justify-end space-x-3 pt-4 border-t border-gray-200">
             <Button
               variant="secondary"
@@ -456,7 +477,7 @@ const Settings: React.FC = () => {
               <Select
                 name="profile_visibility"
                 value="private"
-                onChange={() => {}}
+                onChange={() => { }}
                 options={[
                   { value: 'public', label: 'Public' },
                   { value: 'private', label: 'Private' },
@@ -464,7 +485,7 @@ const Settings: React.FC = () => {
                 ]}
               />
             </div>
-            
+
             <div className="flex items-center justify-between">
               <div>
                 <h4 className="font-medium text-gray-900">Data Sharing</h4>
@@ -472,7 +493,7 @@ const Settings: React.FC = () => {
               </div>
               <input type="checkbox" className="rounded border-gray-300 text-primary-600 focus:ring-primary-500" defaultChecked />
             </div>
-            
+
             <div className="flex items-center justify-between">
               <div>
                 <h4 className="font-medium text-gray-900">Two-Factor Authentication</h4>
@@ -483,7 +504,7 @@ const Settings: React.FC = () => {
               </Button>
             </div>
           </div>
-          
+
           <div className="flex justify-end space-x-3 pt-4 border-t border-gray-200">
             <Button
               variant="secondary"
@@ -522,11 +543,10 @@ const Settings: React.FC = () => {
                 {themeOptions.map((option) => (
                   <div
                     key={option.value}
-                    className={`flex items-center p-3 border rounded-lg cursor-pointer transition-colors ${
-                      theme === option.value
-                        ? 'border-primary-500 bg-primary-50'
-                        : 'border-gray-200 hover:border-gray-300'
-                    }`}
+                    className={`flex items-center p-3 border rounded-lg cursor-pointer transition-colors ${theme === option.value
+                      ? 'border-primary-500 bg-primary-50'
+                      : 'border-gray-200 hover:border-gray-300'
+                      }`}
                     onClick={() => handleThemeChange(option.value)}
                   >
                     <input
@@ -543,7 +563,7 @@ const Settings: React.FC = () => {
               </div>
             </div>
           </div>
-          
+
           <div className="flex justify-end space-x-3 pt-4 border-t border-gray-200">
             <Button
               variant="secondary"
@@ -572,7 +592,7 @@ const Settings: React.FC = () => {
               Download a copy of all your data including applications, resumes, and settings.
             </p>
           </div>
-          
+
           <div className="flex justify-end space-x-3">
             <Button
               variant="secondary"
@@ -601,6 +621,135 @@ const Settings: React.FC = () => {
         </div>
       </Modal>
 
+      {/* AI Intelligence Modal */}
+      <Modal
+        isOpen={isAIModalOpen}
+        onClose={() => setIsAIModalOpen(false)}
+        title="AI Intelligence Settings"
+        size="lg"
+      >
+        <div className="space-y-6">
+          <div className="space-y-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-3">
+                Preferred AI Provider
+              </label>
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+                {[
+                  { id: 'openai', name: 'OpenAI', description: 'GPT-4o, GPT-4' },
+                  { id: 'openrouter', name: 'OpenRouter', description: 'Claude, Llama, etc.' },
+                  { id: 'local_ai', name: 'Local AI', description: 'Ollama, Localhost' }
+                ].map((provider) => (
+                  <div
+                    key={provider.id}
+                    onClick={() => updateAISettings({ provider_preference: provider.id as any })}
+                    className={`flex flex-col p-3 border rounded-lg cursor-pointer transition-all ${aiSettings.provider_preference === provider.id
+                      ? 'border-primary-500 bg-primary-50 ring-1 ring-primary-500'
+                      : 'border-gray-200 hover:border-gray-300 bg-white'
+                      }`}
+                  >
+                    <span className="font-semibold text-gray-900">{provider.name}</span>
+                    <span className="text-xs text-gray-500">{provider.description}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {aiSettings.provider_preference === 'openai' && (
+              <div className="space-y-4 pt-4 border-t border-gray-100">
+                <Input
+                  label="OpenAI API Key"
+                  name="openai_api_key"
+                  type="password"
+                  placeholder="sk-..."
+                  value={aiSettings.openai_api_key || ''}
+                  onChange={(val: string) => updateAISettings({ openai_api_key: val })}
+                />
+                <Input
+                  label="Model Selection"
+                  name="openai_model"
+                  placeholder="gpt-4o"
+                  value={aiSettings.openai_model || ''}
+                  onChange={(val: string) => updateAISettings({ openai_model: val })}
+                />
+                <Input
+                  label="Custom Base URL (Optional)"
+                  name="openai_base_url"
+                  placeholder="https://api.openai.com/v1"
+                  value={aiSettings.openai_base_url || ''}
+                  onChange={(val: string) => updateAISettings({ openai_base_url: val })}
+                />
+              </div>
+            )}
+
+            {aiSettings.provider_preference === 'openrouter' && (
+              <div className="space-y-4 pt-4 border-t border-gray-100">
+                <Input
+                  label="OpenRouter API Key"
+                  name="openrouter_api_key"
+                  type="password"
+                  placeholder="sk-or-v1-..."
+                  value={aiSettings.openrouter_api_key || ''}
+                  onChange={(val: string) => updateAISettings({ openrouter_api_key: val })}
+                />
+                <Input
+                  label="Model Identifier"
+                  name="openrouter_model"
+                  placeholder="anthropic/claude-3.5-sonnet"
+                  value={aiSettings.openrouter_model || ''}
+                  onChange={(val: string) => updateAISettings({ openrouter_model: val })}
+                />
+                <Input
+                  label="Custom Base URL"
+                  name="openrouter_base_url"
+                  placeholder="https://openrouter.ai/api/v1"
+                  value={aiSettings.openrouter_base_url || ''}
+                  onChange={(val: string) => updateAISettings({ openrouter_base_url: val })}
+                />
+              </div>
+            )}
+
+            {aiSettings.provider_preference === 'local_ai' && (
+              <div className="space-y-4 pt-4 border-t border-gray-100">
+                <Input
+                  label="Local API Endpoint"
+                  name="local_base_url"
+                  placeholder="http://localhost:11434/v1"
+                  value={aiSettings.local_base_url || ''}
+                  onChange={(val: string) => updateAISettings({ local_base_url: val })}
+                />
+                <Input
+                  label="Local Model"
+                  name="local_model"
+                  placeholder="llama3"
+                  value={aiSettings.local_model || ''}
+                  onChange={(val: string) => updateAISettings({ local_model: val })}
+                />
+              </div>
+            )}
+          </div>
+
+          <div className="flex justify-end space-x-3 pt-6 border-t border-gray-200">
+            <Button
+              variant="secondary"
+              onClick={() => setIsAIModalOpen(false)}
+            >
+              Close
+            </Button>
+            <Button
+              variant="primary"
+              onClick={() => {
+                setIsAIModalOpen(false);
+                setShowSuccessMessage(true);
+                setTimeout(() => setShowSuccessMessage(false), 3000);
+              }}
+            >
+              Apply Settings
+            </Button>
+          </div>
+        </div>
+      </Modal>
+
       {/* Delete Account Modal */}
       <Modal
         isOpen={isDeleteModalOpen}
@@ -618,29 +767,30 @@ const Settings: React.FC = () => {
               This action cannot be undone. All your data will be permanently deleted.
             </p>
           </div>
-          
+
           <div className="p-4 bg-danger-50 border border-danger-200 rounded-lg">
             <p className="text-sm text-danger-800">
-              <strong>Warning:</strong> Deleting your account will remove all applications, resumes, 
+              <strong>Warning:</strong> Deleting your account will remove all applications, resumes,
               cover letters, and other data permanently.
             </p>
           </div>
-          
+
           <div className="space-y-4">
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
                 Type <strong>DELETE</strong> to confirm:
               </label>
               <Input
+                name="deleteConfirmation"
                 type="text"
                 value={deleteConfirmation}
-                onChange={(e) => setDeleteConfirmation(e.target.value)}
+                onChange={(val: string) => setDeleteConfirmation(val)}
                 placeholder="Type DELETE to confirm"
                 className="w-full"
               />
             </div>
           </div>
-          
+
           <div className="flex justify-end space-x-3">
             <Button
               variant="secondary"

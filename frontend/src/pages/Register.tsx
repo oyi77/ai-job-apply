@@ -47,7 +47,7 @@ const Register: React.FC = () => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     if (!validateForm()) {
       return;
     }
@@ -84,6 +84,9 @@ const Register: React.FC = () => {
             data_sharing: false,
             analytics_tracking: true,
           },
+          ai: {
+            provider_preference: 'openai' as const,
+          },
         },
         created_at: userProfile.created_at,
         updated_at: userProfile.updated_at,
@@ -93,7 +96,7 @@ const Register: React.FC = () => {
       setAuthenticated(true);
 
       showSuccess('Registration successful!', 'Welcome to AI Job Application Assistant');
-      
+
       // Redirect to dashboard
       navigate('/');
     } catch (err: any) {
@@ -131,16 +134,16 @@ const Register: React.FC = () => {
             AI Job Application Assistant
           </p>
         </div>
-        
+
         <Card>
           <CardBody className="p-6">
-            <form className="space-y-6" onSubmit={handleSubmit}>
+            <form className="space-y-6" onSubmit={handleSubmit} aria-label="registration form">
               {errors.submit && (
                 <div className="bg-danger-50 border border-danger-200 text-danger-700 px-4 py-3 rounded-md">
                   {errors.submit}
                 </div>
               )}
-              
+
               <Input
                 name="name"
                 label="Full Name (Optional)"
@@ -150,7 +153,7 @@ const Register: React.FC = () => {
                 onChange={(value: string) => handleInputChange('name', value)}
                 error={errors.name}
               />
-              
+
               <Input
                 name="email"
                 label="Email address"
@@ -161,7 +164,7 @@ const Register: React.FC = () => {
                 required
                 error={errors.email}
               />
-              
+
               <Input
                 name="password"
                 label="Password"
@@ -173,7 +176,7 @@ const Register: React.FC = () => {
                 error={errors.password}
                 helpText="Must be at least 8 characters with uppercase, lowercase, and a number"
               />
-              
+
               <Input
                 name="confirmPassword"
                 label="Confirm Password"
@@ -184,7 +187,7 @@ const Register: React.FC = () => {
                 required
                 error={errors.confirmPassword}
               />
-              
+
               <div>
                 <Button
                   type="submit"
@@ -195,7 +198,7 @@ const Register: React.FC = () => {
                   Create Account
                 </Button>
               </div>
-              
+
               <div className="text-center">
                 <p className="text-sm text-gray-600">
                   Already have an account?{' '}

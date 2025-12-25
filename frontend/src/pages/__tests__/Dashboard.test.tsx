@@ -53,7 +53,7 @@ describe('Dashboard', () => {
   it('displays application statistics', async () => {
     renderDashboard();
     await waitFor(() => {
-      expect(screen.getByText(/applications/i)).toBeInTheDocument();
+      expect(screen.getByText(/total applications/i)).toBeInTheDocument();
     });
   });
 

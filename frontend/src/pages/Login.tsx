@@ -57,6 +57,9 @@ const Login: React.FC = () => {
             data_sharing: false,
             analytics_tracking: true,
           },
+          ai: {
+            provider_preference: 'openai' as const,
+          },
         },
         created_at: userProfile.created_at,
         updated_at: userProfile.updated_at,
@@ -66,9 +69,9 @@ const Login: React.FC = () => {
       setAuthenticated(true);
 
       showSuccess('Login successful!', 'Welcome back');
-      
+
       // Redirect to dashboard
-      navigate('/');
+      navigate('/', { replace: true });
     } catch (err: any) {
       const errorMessage = err.response?.data?.detail || err.message || 'Login failed. Please try again.';
       setError(errorMessage);
@@ -96,7 +99,7 @@ const Login: React.FC = () => {
             AI Job Application Assistant
           </p>
         </div>
-        
+
         <Card>
           <CardBody className="p-6">
             <form className="space-y-6" onSubmit={handleSubmit}>
@@ -105,27 +108,27 @@ const Login: React.FC = () => {
                   {error}
                 </div>
               )}
-              
+
               <Input
                 name="email"
                 label="Email address"
                 type="email"
                 placeholder="Enter your email"
                 value={formData.email}
-                                 onChange={(value: string) => handleInputChange('email', value)}
+                onChange={(value: string) => handleInputChange('email', value)}
                 required
               />
-              
+
               <Input
                 name="password"
                 label="Password"
                 type="password"
                 placeholder="Enter your password"
                 value={formData.password}
-                                 onChange={(value: string) => handleInputChange('password', value)}
+                onChange={(value: string) => handleInputChange('password', value)}
                 required
               />
-              
+
               <div>
                 <Button
                   type="submit"
@@ -136,7 +139,7 @@ const Login: React.FC = () => {
                   Sign in
                 </Button>
               </div>
-              
+
               <div className="text-center">
                 <p className="text-sm text-gray-600">
                   Don't have an account?{' '}

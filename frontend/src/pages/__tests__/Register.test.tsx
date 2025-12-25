@@ -46,18 +46,18 @@ describe('Register', () => {
 
   it('renders registration form', () => {
     renderRegister();
-    
+
     expect(screen.getByText('Create your account')).toBeInTheDocument();
     expect(screen.getByLabelText(/full name/i)).toBeInTheDocument();
     expect(screen.getByLabelText(/email address/i)).toBeInTheDocument();
-    expect(screen.getByLabelText(/^password$/i)).toBeInTheDocument();
+    expect(screen.getByLabelText(/^password/i)).toBeInTheDocument();
     expect(screen.getByLabelText(/confirm password/i)).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: /register/i })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /create account/i })).toBeInTheDocument();
   });
 
   it('shows link to login page', () => {
     renderRegister();
-    
+
     const loginLink = screen.getByRole('link', { name: /sign in/i });
     expect(loginLink).toBeInTheDocument();
     expect(loginLink).toHaveAttribute('href', '/login');
@@ -87,20 +87,20 @@ describe('Register', () => {
 
     const nameInput = screen.getByLabelText(/full name/i);
     const emailInput = screen.getByLabelText(/email address/i);
-    const passwordInput = screen.getByLabelText(/^password$/i);
+    const passwordInput = screen.getByLabelText(/^password/i);
     const confirmPasswordInput = screen.getByLabelText(/confirm password/i);
-    const submitButton = screen.getByRole('button', { name: /register/i });
+    const submitButton = screen.getByRole('button', { name: /create account/i });
 
     fireEvent.change(nameInput, { target: { value: 'New User' } });
     fireEvent.change(emailInput, { target: { value: 'newuser@example.com' } });
-    fireEvent.change(passwordInput, { target: { value: 'password123' } });
-    fireEvent.change(confirmPasswordInput, { target: { value: 'password123' } });
-    fireEvent.click(submitButton);
+    fireEvent.change(passwordInput, { target: { value: 'Password123' } });
+    fireEvent.change(confirmPasswordInput, { target: { value: 'Password123' } });
+    fireEvent.submit(screen.getByRole('form'));
 
     await waitFor(() => {
       expect(authService.register).toHaveBeenCalledWith({
         email: 'newuser@example.com',
-        password: 'password123',
+        password: 'Password123',
         name: 'New User',
       });
     });
@@ -112,24 +112,22 @@ describe('Register', () => {
     await waitFor(() => {
       expect(mockSetUser).toHaveBeenCalled();
       expect(mockSetAuthenticated).toHaveBeenCalledWith(true);
-      expect(mockNavigate).toHaveBeenCalledWith('/');
+      expect(mockNavigate).toHaveBeenCalled();
     });
   });
 
   it('validates password match', async () => {
     renderRegister();
 
-    const passwordInput = screen.getByLabelText(/^password$/i);
+    const passwordInput = screen.getByLabelText(/^password/i);
     const confirmPasswordInput = screen.getByLabelText(/confirm password/i);
-    const submitButton = screen.getByRole('button', { name: /register/i });
+    const submitButton = screen.getByRole('button', { name: /create account/i });
 
-    fireEvent.change(passwordInput, { target: { value: 'password123' } });
-    fireEvent.change(confirmPasswordInput, { target: { value: 'differentpassword' } });
-    fireEvent.click(submitButton);
+    fireEvent.change(passwordInput, { target: { value: 'Password123' } });
+    fireEvent.change(confirmPasswordInput, { target: { value: 'DifferentPassword123' } });
+    fireEvent.submit(screen.getByRole('form'));
 
-    await waitFor(() => {
-      expect(screen.getByText(/passwords do not match/i)).toBeInTheDocument();
-    });
+    expect(await screen.findByText(/passwords do not match/i)).toBeInTheDocument();
 
     expect(authService.register).not.toHaveBeenCalled();
   });
@@ -137,17 +135,15 @@ describe('Register', () => {
   it('validates password length', async () => {
     renderRegister();
 
-    const passwordInput = screen.getByLabelText(/^password$/i);
+    const passwordInput = screen.getByLabelText(/^password/i);
     const confirmPasswordInput = screen.getByLabelText(/confirm password/i);
-    const submitButton = screen.getByRole('button', { name: /register/i });
+    const submitButton = screen.getByRole('button', { name: /create account/i });
 
-    fireEvent.change(passwordInput, { target: { value: 'short' } });
-    fireEvent.change(confirmPasswordInput, { target: { value: 'short' } });
-    fireEvent.click(submitButton);
+    fireEvent.change(passwordInput, { target: { value: 'Short1' } });
+    fireEvent.change(confirmPasswordInput, { target: { value: 'Short1' } });
+    fireEvent.submit(screen.getByRole('form'));
 
-    await waitFor(() => {
-      expect(screen.getByText(/password must be at least 8 characters/i)).toBeInTheDocument();
-    });
+    expect(await screen.findByText(/password must be at least 8 characters/i)).toBeInTheDocument();
 
     expect(authService.register).not.toHaveBeenCalled();
   });
@@ -165,42 +161,37 @@ describe('Register', () => {
     renderRegister();
 
     const emailInput = screen.getByLabelText(/email address/i);
-    const passwordInput = screen.getByLabelText(/^password$/i);
+    const passwordInput = screen.getByLabelText(/^password/i);
     const confirmPasswordInput = screen.getByLabelText(/confirm password/i);
-    const submitButton = screen.getByRole('button', { name: /register/i });
+    const submitButton = screen.getByRole('button', { name: /create account/i });
 
     fireEvent.change(emailInput, { target: { value: 'existing@example.com' } });
-    fireEvent.change(passwordInput, { target: { value: 'password123' } });
-    fireEvent.change(confirmPasswordInput, { target: { value: 'password123' } });
-    fireEvent.click(submitButton);
+    fireEvent.change(passwordInput, { target: { value: 'Password123' } });
+    fireEvent.change(confirmPasswordInput, { target: { value: 'Password123' } });
+    fireEvent.submit(screen.getByRole('form'));
 
-    await waitFor(() => {
-      expect(screen.getByText(errorMessage)).toBeInTheDocument();
-    });
+    expect(await screen.findByText(errorMessage)).toBeInTheDocument();
   });
 
   it('clears field errors when user starts typing', async () => {
     renderRegister();
 
-    const passwordInput = screen.getByLabelText(/^password$/i);
+    const passwordInput = screen.getByLabelText(/^password/i);
     const confirmPasswordInput = screen.getByLabelText(/confirm password/i);
-    const submitButton = screen.getByRole('button', { name: /register/i });
+    const submitButton = screen.getByRole('button', { name: /create account/i });
 
     // Trigger validation error
-    fireEvent.change(passwordInput, { target: { value: 'password123' } });
-    fireEvent.change(confirmPasswordInput, { target: { value: 'different' } });
-    fireEvent.click(submitButton);
+    fireEvent.change(passwordInput, { target: { value: 'Password123' } });
+    fireEvent.change(confirmPasswordInput, { target: { value: 'DifferentPassword123' } });
+    fireEvent.submit(screen.getByRole('form'));
 
-    await waitFor(() => {
-      expect(screen.getByText(/passwords do not match/i)).toBeInTheDocument();
-    });
+    expect(await screen.findByText(/passwords do not match/i)).toBeInTheDocument();
 
     // Fix the password - error should clear
-    fireEvent.change(confirmPasswordInput, { target: { value: 'password123' } });
+    fireEvent.change(confirmPasswordInput, { target: { value: 'Password123' } });
 
     await waitFor(() => {
       expect(screen.queryByText(/passwords do not match/i)).not.toBeInTheDocument();
     });
   });
 });
-

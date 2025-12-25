@@ -1,12 +1,12 @@
 import React, { useState } from 'react';
 import { useQuery, useMutation } from '@tanstack/react-query';
-import { 
-  Card, 
-  CardHeader, 
-  CardBody, 
-  Button, 
-  Badge, 
-  Modal, 
+import {
+  Card,
+  CardHeader,
+  CardBody,
+  Button,
+  Badge,
+  Modal,
   Form,
   FormField,
   Select,
@@ -45,7 +45,7 @@ const CoverLetters: React.FC = () => {
   const [selectedJob, setSelectedJob] = useState<JobApplication | null>(null);
   const [generationResult, setGenerationResult] = useState<string>('');
   const [generationProgress, setGenerationProgress] = useState(0);
-  
+
   const { coverLetters, resumes, applications } = useAppStore();
   const itemsPerPage = 10;
 
@@ -131,9 +131,10 @@ const CoverLetters: React.FC = () => {
     try {
       await createCoverLetterMutation.mutateAsync({
         job_title: data.job_title,
-        company_name: data.company_name,
+        company: data.company || data.company_name,
         content: data.content,
         tone: data.tone || 'professional',
+        word_count: data.content.split(/\s+/).length,
       });
     } catch (error) {
       console.error('Error creating cover letter:', error);
@@ -144,12 +145,13 @@ const CoverLetters: React.FC = () => {
     if (selectedCoverLetter) {
       try {
         await updateCoverLetterMutation.mutateAsync({
-          id: selectedCoverLetter.id,
+          id: selectedCoverLetter.id!,
           data: {
             job_title: data.job_title,
-            company_name: data.company_name,
+            company: data.company || data.company_name,
             content: data.content,
             tone: data.tone,
+            word_count: data.content.split(/\s+/).length,
           },
         });
       } catch (error) {
@@ -333,7 +335,7 @@ const CoverLetters: React.FC = () => {
               <Select
                 name="statusFilter"
                 value=""
-                onChange={() => {}}
+                onChange={() => { }}
                 options={[
                   { value: '', label: 'All Statuses' },
                   { value: 'draft', label: 'Draft' },
@@ -357,9 +359,9 @@ const CoverLetters: React.FC = () => {
             <div className="text-center py-12">
               <DocumentTextIcon className="h-12 w-12 text-gray-300 mx-auto mb-4" />
               <p className="text-gray-500">No cover letters found</p>
-              <Button 
-                onClick={() => setIsCreateModalOpen(true)} 
-                variant="primary" 
+              <Button
+                onClick={() => setIsCreateModalOpen(true)}
+                variant="primary"
                 className="mt-4"
               >
                 Create your first cover letter
@@ -435,7 +437,7 @@ const CoverLetters: React.FC = () => {
                           onClick={async () => {
                             if (window.confirm('Are you sure you want to delete this cover letter?')) {
                               try {
-                                await deleteCoverLetterMutation.mutateAsync(coverLetter.id);
+                                await deleteCoverLetterMutation.mutateAsync(coverLetter.id!);
                               } catch (error) {
                                 console.error('Error deleting cover letter:', error);
                                 alert('Failed to delete cover letter. Please try again.');
@@ -506,7 +508,7 @@ const CoverLetters: React.FC = () => {
               <Select
                 name="status"
                 value="draft"
-                onChange={() => {}}
+                onChange={() => { }}
                 options={[
                   { value: 'draft', label: 'Draft' },
                   { value: 'final', label: 'Final' },
@@ -565,7 +567,7 @@ const CoverLetters: React.FC = () => {
                 <Select
                   name="status"
                   value={selectedCoverLetter.status || 'draft'}
-                  onChange={() => {}}
+                  onChange={() => { }}
                   options={[
                     { value: 'draft', label: 'Draft' },
                     { value: 'final', label: 'Final' },
@@ -742,9 +744,10 @@ const CoverLetters: React.FC = () => {
                       const company = selectedJob?.company || '';
                       await createCoverLetterMutation.mutateAsync({
                         job_title: jobTitle,
-                        company_name: company,
+                        company: company,
                         content: generationResult,
                         tone: 'professional',
+                        word_count: generationResult.split(/\s+/).length,
                       });
                       setIsGenerateModalOpen(false);
                       setGenerationResult('');

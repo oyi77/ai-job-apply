@@ -1,12 +1,12 @@
 import React, { useState } from 'react';
 import { useQuery, useMutation } from '@tanstack/react-query';
-import { 
-  Card, 
-  CardHeader, 
-  CardBody, 
-  Button, 
-  Badge, 
-  Modal, 
+import {
+  Card,
+  CardHeader,
+  CardBody,
+  Button,
+  Badge,
+  Modal,
   Spinner,
   Alert,
   Form,
@@ -42,7 +42,7 @@ const AIServices: React.FC = () => {
   const [skillsResult, setSkillsResult] = useState<{ skills: string[]; confidence: number } | null>(null);
   const [interviewPrepResult, setInterviewPrepResult] = useState<string>('');
   const [careerInsightsResult, setCareerInsightsResult] = useState<string>('');
-  
+
   const { resumes, applications } = useAppStore();
 
   // Fetch AI service status
@@ -70,15 +70,15 @@ const AIServices: React.FC = () => {
 
   // Cover letter generation mutation
   const coverLetterMutation = useMutation({
-    mutationFn: async ({ 
-      resumeId, 
-      jobTitle, 
-      company, 
-      jobDescription 
-    }: { 
-      resumeId: string; 
-      jobTitle: string; 
-      company: string; 
+    mutationFn: async ({
+      resumeId,
+      jobTitle,
+      company,
+      jobDescription
+    }: {
+      resumeId: string;
+      jobTitle: string;
+      company: string;
       jobDescription: string;
     }) => {
       return aiService.generateCoverLetter({
@@ -379,17 +379,17 @@ const AIServices: React.FC = () => {
                 required
               />
             </div>
-            
+
             <div className="flex justify-end space-x-3 mt-6">
-              <Button 
-                type="button" 
-                variant="secondary" 
+              <Button
+                type="button"
+                variant="secondary"
                 onClick={() => setIsResumeOptimizationOpen(false)}
               >
                 Cancel
               </Button>
-              <Button 
-                type="submit" 
+              <Button
+                type="submit"
                 variant="primary"
                 loading={optimizationMutation.isPending}
               >
@@ -450,17 +450,17 @@ const AIServices: React.FC = () => {
                 required
               />
             </div>
-            
+
             <div className="flex justify-end space-x-3 mt-6">
-              <Button 
-                type="button" 
-                variant="secondary" 
+              <Button
+                type="button"
+                variant="secondary"
                 onClick={() => setIsCoverLetterOpen(false)}
               >
                 Cancel
               </Button>
-              <Button 
-                type="submit" 
+              <Button
+                type="submit"
                 variant="success"
                 loading={coverLetterMutation.isPending}
               >
@@ -509,17 +509,17 @@ const AIServices: React.FC = () => {
                 required
               />
             </div>
-            
+
             <div className="flex justify-end space-x-3 mt-6">
-              <Button 
-                type="button" 
-                variant="secondary" 
+              <Button
+                type="button"
+                variant="secondary"
                 onClick={() => setIsJobMatchingOpen(false)}
               >
                 Cancel
               </Button>
-              <Button 
-                type="submit" 
+              <Button
+                type="submit"
                 variant="warning"
                 loading={jobMatchingMutation.isPending}
               >
@@ -609,13 +609,13 @@ const AIServices: React.FC = () => {
             }}
             options={[
               { value: '', label: 'Select a resume' },
-              ...resumes.map(r => ({ value: r.id, label: r.name }))
+              ...resumes.map(r => ({ value: r.id, label: r.title || r.original_filename }))
             ]}
           />
           {skillsResult && (
             <div className="mt-4">
-              <Alert 
-                type="success" 
+              <Alert
+                type="success"
                 title={`Extracted ${skillsResult.skills.length} skills`}
                 message={`Confidence: ${(skillsResult.confidence * 100).toFixed(1)}%`}
               />
@@ -642,15 +642,15 @@ const AIServices: React.FC = () => {
         size="lg"
       >
         <div className="space-y-4">
-          <FormField
+          <Select
             name="job_application"
             label="Select Job Application"
-            type="select"
+            value=""
             options={[
               { value: '', label: 'Select a job application' },
-              ...applications.map(app => ({ 
-                value: app.id, 
-                label: `${app.job_title} at ${app.company}` 
+              ...applications.map(app => ({
+                value: app.id,
+                label: `${app.job_title} at ${app.company}`
               }))
             ]}
             onChange={(value) => {

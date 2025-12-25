@@ -1,12 +1,12 @@
 import React, { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { 
-  Card, 
-  CardHeader, 
-  CardBody, 
-  Button, 
-  Badge, 
-  Modal, 
+import {
+  Card,
+  CardHeader,
+  CardBody,
+  Button,
+  Badge,
+  Modal,
   Spinner,
   Alert,
   Form,
@@ -40,7 +40,7 @@ const JobSearch: React.FC = () => {
   const [isCreateApplicationOpen, setIsCreateApplicationOpen] = useState(false);
   const [sortBy, setSortBy] = useState<'relevance' | 'date' | 'salary'>('relevance');
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
-  
+
   const queryClient = useQueryClient();
   const { applications, addApplication } = useAppStore();
 
@@ -104,6 +104,7 @@ const JobSearch: React.FC = () => {
         job_title: job.title || 'Unknown Job',
         company: job.company || 'Unknown Company',
         location: job.location || 'Unknown Location',
+        applied_date: new Date().toISOString(),
         status: 'draft' as ApplicationStatus,
         notes: `Saved from job search: ${job.description?.substring(0, 100)}...`,
       });
@@ -141,15 +142,15 @@ const JobSearch: React.FC = () => {
 
   const formatDate = (dateString: string) => {
     if (!dateString) return 'Recently';
-    
+
     try {
       const date = new Date(dateString);
       if (isNaN(date.getTime())) return 'Recently';
-      
+
       const now = new Date();
       const diffTime = Math.abs(now.getTime() - date.getTime());
       const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-      
+
       if (diffDays === 1) return 'Today';
       if (diffDays === 2) return 'Yesterday';
       if (diffDays <= 7) return `${diffDays - 1} days ago`;
@@ -304,7 +305,7 @@ const JobSearch: React.FC = () => {
                             </Badge>
                           )}
                         </div>
-                        
+
                         <div className="flex items-center space-x-4 text-sm text-gray-600 mb-2">
                           <div className="flex items-center space-x-1">
                             <BuildingOfficeIcon className="h-4 w-4" />
@@ -536,7 +537,7 @@ const JobSearch: React.FC = () => {
                 </p>
                 <p className="text-sm text-gray-500 mt-1">{selectedJob?.location || 'Location'}</p>
               </div>
-              
+
               <FormField
                 name="notes"
                 label="Application Notes"
@@ -544,17 +545,17 @@ const JobSearch: React.FC = () => {
                 placeholder="Add any notes about this application..."
               />
             </div>
-            
+
             <div className="flex justify-end space-x-3 mt-6">
-              <Button 
-                type="button" 
-                variant="ghost" 
+              <Button
+                type="button"
+                variant="ghost"
                 onClick={() => setIsCreateApplicationOpen(false)}
               >
                 Cancel
               </Button>
-              <Button 
-                type="submit" 
+              <Button
+                type="submit"
                 variant="primary"
                 loading={createApplicationMutation.isPending}
               >
