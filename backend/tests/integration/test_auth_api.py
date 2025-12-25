@@ -272,7 +272,7 @@ class TestUserLogout:
             }
         )
         
-        assert response.status_code == 403  # Forbidden (no auth token)
+        assert response.status_code == 401  # Unauthorized (no auth token)
 
 
 class TestUserProfile:
@@ -310,7 +310,7 @@ class TestUserProfile:
         """Test getting profile without authentication."""
         response = await client.get("/api/v1/auth/me")
         
-        assert response.status_code == 403  # Forbidden
+        assert response.status_code == 401  # Unauthorized
     
     @pytest.mark.asyncio
     async def test_update_profile_success(self, app: FastAPI, client: AsyncClient, mock_auth_service):
@@ -442,7 +442,7 @@ class TestPasswordChange:
             }
         )
         
-        assert response.status_code == 403  # Forbidden
+        assert response.status_code == 401  # Unauthorized
 
 
 class TestProtectedRoutes:
@@ -453,7 +453,7 @@ class TestProtectedRoutes:
         """Test accessing protected route without authentication."""
         response = await client.get("/api/v1/applications")
         
-        assert response.status_code == 403  # Forbidden
+        assert response.status_code == 401  # Unauthorized
     
     @pytest.mark.asyncio
     async def test_protected_route_with_invalid_token(self, client: AsyncClient):
