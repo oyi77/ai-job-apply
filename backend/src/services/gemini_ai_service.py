@@ -2,23 +2,11 @@
 
 import asyncio
 import json
-import warnings
 from typing import List, Dict, Any, Optional
 from datetime import datetime, timezone
 
-# Suppress deprecation warning for google.generativeai before import
-# TODO: Migrate to google.genai when stable version is available
-# The warning is emitted during import, so we need to filter it globally
-warnings.filterwarnings("ignore", category=FutureWarning)
-
-try:
-    import google.genai as genai
-except ImportError:
-    # Fallback to old package for backward compatibility
-    # Suppress the deprecation warning that will be emitted during import
-    with warnings.catch_warnings():
-        warnings.simplefilter("ignore", FutureWarning)
-        import google.generativeai as genai
+from google import genai
+from google.genai import types
 
 from ..core.ai_service import AIService
 from ..models.resume import ResumeOptimizationRequest, ResumeOptimizationResponse, Resume
@@ -33,7 +21,7 @@ class GeminiAIService(AIService):
     def __init__(self):
         """Initialize the Gemini AI service."""
         self.logger = logger.bind(module="GeminiAIService")
-        self.model = None
+        self.client = None
         
         # Use main configuration
         self.api_key = config.GEMINI_API_KEY
@@ -47,21 +35,14 @@ class GeminiAIService(AIService):
         """Initialize the Gemini client."""
         try:
             if self.api_key:
-                genai.configure(api_key=self.api_key)
-                self.model = genai.GenerativeModel(
-                    self.model_name,
-                    generation_config=genai.types.GenerationConfig(
-                        temperature=self.temperature,
-                        max_output_tokens=self.max_tokens,
-                    )
-                )
-                self.logger.info(f"Gemini AI service initialized: {self.model_name}")
+                self.client = genai.Client(api_key=self.api_key)
+                self.logger.info(f"Gemini AI service initialized with model: {self.model_name}")
             else:
                 self.logger.warning("Gemini API key not configured, running in mock mode")
-                self.model = None
+                self.client = None
         except Exception as e:
             self.logger.error(f"Failed to initialize Gemini AI service: {e}")
-            self.model = None
+            self.client = None
     
     async def optimize_resume(self, request: ResumeOptimizationRequest) -> ResumeOptimizationResponse:
         """Optimize resume for a specific job using Gemini AI."""
@@ -235,59 +216,22 @@ class GeminiAIService(AIService):
     
     async def is_available(self) -> bool:
         """Check if the Gemini AI service is available."""
-        return self.model is not None and self.api_key is not None
+        return self.client is not None and self.api_key is not None
     
     async def _generate_content(self, prompt: str) -> Optional[str]:
         """Generate content using Gemini AI."""
         try:
-            if not self.model:
+            if not self.client:
                 return None
             
-            # For testing and consistency, we'll try to use generate_content_async if available
-            # but for now we'll stick to the synchronous version with run_in_executor 
-            # as it matches the current implementation structure
-            loop = asyncio.get_event_loop()
-            
-            # Check if we should use generate_content or generate_content_async (mocked in tests)
-            if hasattr(self.model, 'generate_content_async'):
-                # Handle both real coroutines and AsyncMock/MagicMock
-                if asyncio.iscoroutinefunction(self.model.generate_content_async) or isinstance(self.model.generate_content_async, (AsyncMock, MagicMock)):
-                    try:
-                        response = await self.model.generate_content_async(
-                            prompt,
-                            generation_config=genai.types.GenerationConfig(
-                                temperature=self.temperature,
-                                max_output_tokens=self.max_tokens,
-                            )
-                        )
-                    except TypeError:
-                        # Fallback if it's not actually awaitable
-                        response = self.model.generate_content(
-                            prompt,
-                            generation_config=genai.types.GenerationConfig(
-                                temperature=self.temperature,
-                                max_output_tokens=self.max_tokens,
-                            )
-                        )
-                else:
-                    response = self.model.generate_content(
-                        prompt,
-                        generation_config=genai.types.GenerationConfig(
-                            temperature=self.temperature,
-                            max_output_tokens=self.max_tokens,
-                        )
-                    )
-            else:
-                response = await loop.run_in_executor(
-                    None, 
-                    lambda: self.model.generate_content(
-                        prompt,
-                        generation_config=genai.types.GenerationConfig(
-                            temperature=self.temperature,
-                            max_output_tokens=self.max_tokens,
-                        )
-                    )
+            response = await self.client.aio.models.generate_content(
+                model=self.model_name,
+                contents=prompt,
+                config=types.GenerateContentConfig(
+                    temperature=self.temperature,
+                    max_output_tokens=self.max_tokens,
                 )
+            )
             
             return response.text if response and response.text else None
             

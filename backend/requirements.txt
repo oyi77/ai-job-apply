@@ -1,7 +1,5 @@
 # Core dependencies
-# Note: google.generativeai is deprecated, but google.genai is not yet stable
-# TODO: Migrate to google-genai when stable version is available
-google-generativeai>=0.3.2
+google-genai>=1.0.0
 requests>=2.31.0
 beautifulsoup4>=4.12.2
 python-dotenv>=1.0.0
