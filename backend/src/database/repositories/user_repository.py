@@ -1,7 +1,7 @@
 """User repository for database operations."""
 
 from typing import Optional
-from datetime import datetime
+from datetime import datetime, timezone
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, update
 from sqlalchemy.orm import selectinload
@@ -73,7 +73,7 @@ class UserRepository:
                 .where(DBUser.id == user_id)
                 .values(
                     **{k: v for k, v in updates.model_dump(exclude_unset=True).items() if v is not None},
-                    updated_at=datetime.utcnow()
+                    updated_at=datetime.now(timezone.utc)
                 )
             )
             await self.session.execute(stmt)
@@ -93,7 +93,7 @@ class UserRepository:
             stmt = (
                 update(DBUser)
                 .where(DBUser.id == user_id)
-                .values(password_hash=password_hash, updated_at=datetime.utcnow())
+                .values(password_hash=password_hash, updated_at=datetime.now(timezone.utc))
             )
             await self.session.execute(stmt)
             await self.session.commit()
@@ -187,7 +187,7 @@ class UserRepository:
                 .values(
                     password_reset_token=token,
                     password_reset_token_expires=expires_at,
-                    updated_at=datetime.utcnow()
+                    updated_at=datetime.now(timezone.utc)
                 )
             )
             await self.session.execute(stmt)
@@ -210,7 +210,7 @@ class UserRepository:
                 .values(
                     password_reset_token=None,
                     password_reset_token_expires=None,
-                    updated_at=datetime.utcnow()
+                    updated_at=datetime.now(timezone.utc)
                 )
             )
             await self.session.execute(stmt)

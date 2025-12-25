@@ -49,8 +49,16 @@ async def setup_database():
         finally:
             await session.close()
         
+        # Close database engine to release connections
+        await db_config.close()
+        
     except Exception as e:
         logger.error(f"Database setup failed: {e}")
+        # Ensure cleanup even on error
+        try:
+            await db_config.close()
+        except:
+            pass
         raise
 
 def main():

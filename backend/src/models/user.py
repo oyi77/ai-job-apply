@@ -115,10 +115,11 @@ class User(BaseModel):
     email: EmailStr
     password_hash: str  # Only for internal use, never returned to client
     name: Optional[str] = None
+    password_reset_token: Optional[str] = None
+    password_reset_token_expires: Optional[datetime] = None
     is_active: bool = True
     created_at: datetime
     updated_at: datetime
     
     class Config:
         from_attributes = True
-

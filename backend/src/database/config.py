@@ -70,8 +70,8 @@ class DatabaseConfig:
     
     def get_test_database_url(self) -> str:
         """Get the test database URL."""
-        # For testing, use SQLite in memory
-        return "sqlite+aiosqlite:///:memory:"
+        # For testing, use a separate SQLite file to ensure isolation and persistence during the test
+        return "sqlite+aiosqlite:///test_ai_job_assistant.db"
     
     async def initialize(self, test_mode: bool = False) -> None:
         """Initialize database connection."""
@@ -81,16 +81,36 @@ class DatabaseConfig:
         try:
             if test_mode:
                 database_url = self.get_test_database_url()
-                logger.info("Initializing test database (SQLite in-memory)")
+                logger.info("Initializing test database (SQLite file-based)")
             else:
                 database_url = self.get_database_url()
                 logger.info(f"Initializing database: {database_url}")
             
             # Create async engine
+            connect_args = {}
+            poolclass = None
+
+            if database_url.startswith("sqlite"):
+                # For SQLite, we need to ensure the directory exists for file-based dbs
+                if not ":memory:" in database_url:
+                    db_path = database_url.replace("sqlite+aiosqlite:///", "")
+                    if "/" in db_path:
+                        os.makedirs(os.path.dirname(db_path), exist_ok=True)
+                
+                # For tests, always use NullPool to ensure connections are closed
+                # except for in-memory shared cache which needs StaticPool
+                poolclass = StaticPool if ":memory:" in database_url else NullPool
+                connect_args["check_same_thread"] = False # Required for SQLite with multiple threads/async
+
+            elif test_mode:
+                # For non-SQLite tests, still use NullPool
+                poolclass = NullPool
+
             self.engine = create_async_engine(
                 database_url,
                 echo=config.DEBUG,  # Log SQL queries in debug mode
-                poolclass=NullPool if test_mode else None,  # No connection pooling for tests
+                poolclass=poolclass,
+                connect_args=connect_args,
                 future=True,
             )
             
@@ -149,7 +169,7 @@ database_config = DatabaseConfig()
 
 async def get_db_session() -> AsyncSession:
     """Dependency function to get database session."""
-    async with database_config.get_session() as session:
+    async with await database_config.get_session() as session:
         try:
             yield session
         except Exception:

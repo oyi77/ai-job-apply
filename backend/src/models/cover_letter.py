@@ -1,8 +1,8 @@
 """Cover letter data models."""
 
-from datetime import datetime
-from typing import Optional, Dict, Any
-from pydantic import BaseModel, Field
+from datetime import datetime, timezone
+from typing import Optional, Dict, Any, List
+from pydantic import BaseModel, Field, ConfigDict
 
 
 class CoverLetterRequest(BaseModel):
@@ -37,20 +37,13 @@ class CoverLetterCreate(BaseModel):
     content: str = Field(..., description="Cover letter content")
     file_path: Optional[str] = Field(None, description="Path to saved cover letter file")
     tone: str = Field(default="professional", description="Tone used in generation")
-    word_count: int = Field(..., description="Number of words in cover letter")
-    generated_at: Optional[datetime] = Field(None, description="When cover letter was generated")
+    word_count: Optional[int] = Field(None, description="Number of words in cover letter")
+    generated_at: Optional[datetime] = Field(default_factory=lambda: datetime.now(timezone.utc), description="When cover letter was generated")
     
-    model_config = {
-        "json_schema_extra": {
-            "example": {
-                "job_title": "Senior Python Developer",
-                "company_name": "TechCorp Inc.",
-                "content": "Dear Hiring Manager, I am writing to express...",
-                "tone": "professional",
-                "word_count": 250
-            }
-        }
-    }
+    model_config = ConfigDict(
+        use_enum_values=True,
+        populate_by_name=True
+    )
 
 
 class CoverLetterUpdate(BaseModel):
@@ -62,14 +55,9 @@ class CoverLetterUpdate(BaseModel):
     tone: Optional[str] = Field(None, description="Tone used in generation")
     word_count: Optional[int] = Field(None, description="Number of words in cover letter")
     
-    model_config = {
-        "json_schema_extra": {
-            "example": {
-                "content": "Updated cover letter content...",
-                "tone": "confident"
-            }
-        }
-    }
+    model_config = ConfigDict(
+        populate_by_name=True
+    )
 
 
 class CoverLetter(BaseModel):
@@ -80,16 +68,14 @@ class CoverLetter(BaseModel):
     content: str = Field(..., description="Generated cover letter content")
     file_path: Optional[str] = Field(None, description="Path to saved cover letter file")
     tone: str = Field(..., description="Tone used in generation")
-    word_count: int = Field(..., description="Number of words in cover letter")
-    generated_at: datetime = Field(default_factory=datetime.utcnow)
-    created_at: datetime = Field(default_factory=datetime.utcnow)
-    updated_at: datetime = Field(default_factory=datetime.utcnow)
+    word_count: int = Field(default=0, description="Number of words in cover letter")
+    generated_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    updated_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
     
-    model_config = {
-        "json_encoders": {
-            datetime: lambda v: v.isoformat()
-        }
-    }
+    model_config = ConfigDict(
+        populate_by_name=True
+    )
     
     @property
     def reading_time_minutes(self) -> float:

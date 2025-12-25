@@ -1,6 +1,6 @@
 """Database models for the AI Job Application Assistant."""
 
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Optional, List
 from sqlalchemy import String, DateTime, Text, Boolean, Integer, Float, Enum as SQLEnum, ForeignKey, Index
 from sqlalchemy.orm import Mapped, mapped_column, relationship
@@ -29,8 +29,8 @@ class DBResume(Base):
     education: Mapped[Optional[str]] = mapped_column(Text, nullable=True)  # JSON string
     certifications: Mapped[Optional[str]] = mapped_column(Text, nullable=True)  # JSON string
     is_default: Mapped[bool] = mapped_column(Boolean, default=False)
-    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
-    updated_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=lambda: datetime.now(timezone.utc))
+    updated_at: Mapped[datetime] = mapped_column(DateTime, default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc))
     
     # Foreign keys
     user_id: Mapped[Optional[str]] = mapped_column(String, ForeignKey("users.id", ondelete="CASCADE"), nullable=True)
@@ -104,8 +104,8 @@ class DBCoverLetter(Base):
     content: Mapped[str] = mapped_column(Text, nullable=False)
     tone: Mapped[str] = mapped_column(String(50), nullable=False)
     word_count: Mapped[int] = mapped_column(Integer, nullable=False)
-    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
-    updated_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=lambda: datetime.now(timezone.utc))
+    updated_at: Mapped[datetime] = mapped_column(DateTime, default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc))
     
     # Foreign keys
     user_id: Mapped[Optional[str]] = mapped_column(String, ForeignKey("users.id", ondelete="CASCADE"), nullable=True)
@@ -135,11 +135,14 @@ class DBCoverLetter(Base):
     def from_model(cls, cover_letter: CoverLetter) -> "DBCoverLetter":
         """Create database model from domain model."""
         return cls(
+            id=cover_letter.id if cover_letter.id else None,
             job_title=cover_letter.job_title,
             company_name=cover_letter.company_name,
             content=cover_letter.content,
             tone=cover_letter.tone,
             word_count=cover_letter.word_count,
+            created_at=cover_letter.created_at,
+            updated_at=cover_letter.updated_at,
         )
 
 
@@ -159,8 +162,8 @@ class DBJobApplication(Base):
     interview_date: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
     follow_up_date: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
     notes: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
-    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
-    updated_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=lambda: datetime.now(timezone.utc))
+    updated_at: Mapped[datetime] = mapped_column(DateTime, default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc))
     
     # Foreign keys
     resume_id: Mapped[Optional[str]] = mapped_column(String, ForeignKey("resumes.id"), nullable=True)
@@ -214,7 +217,7 @@ class DBJobApplication(Base):
     def from_model(cls, application: "JobApplication") -> "DBJobApplication":
         """Create database model from domain model."""
         return cls(
-            id=application.id,
+            id=application.id if application.id else None,
             job_id=application.job_id,
             job_title=application.job_title,
             company=application.company,
@@ -240,8 +243,8 @@ class DBJobSearch(Base):
     location: Mapped[str] = mapped_column(String(255), nullable=False)
     experience_level: Mapped[Optional[str]] = mapped_column(String(100), nullable=True)
     results_count: Mapped[int] = mapped_column(Integer, default=0)
-    search_date: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
-    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+    search_date: Mapped[datetime] = mapped_column(DateTime, default=lambda: datetime.now(timezone.utc))
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=lambda: datetime.now(timezone.utc))
     
     # Indexes for performance
     __table_args__ = (
@@ -278,7 +281,7 @@ class DBAIActivity(Base):
     processing_time_ms: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
     confidence_score: Mapped[Optional[float]] = mapped_column(Float, nullable=True)
     user_id: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
-    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=lambda: datetime.now(timezone.utc))
     
     # Indexes for performance
     __table_args__ = (
@@ -318,8 +321,8 @@ class DBFileMetadata(Base):
     file_type: Mapped[str] = mapped_column(String(50), nullable=False)
     mime_type: Mapped[str] = mapped_column(String(100), nullable=False)
     md5_hash: Mapped[str] = mapped_column(String(32), nullable=False)
-    uploaded_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
-    last_accessed: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+    uploaded_at: Mapped[datetime] = mapped_column(DateTime, default=lambda: datetime.now(timezone.utc))
+    last_accessed: Mapped[datetime] = mapped_column(DateTime, default=lambda: datetime.now(timezone.utc))
     access_count: Mapped[int] = mapped_column(Integer, default=0)
     is_active: Mapped[bool] = mapped_column(Boolean, default=True)
     
@@ -361,8 +364,8 @@ class DBUser(Base):
     password_reset_token: Mapped[Optional[str]] = mapped_column(String(255), nullable=True, index=True)
     password_reset_token_expires: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
     is_active: Mapped[bool] = mapped_column(Boolean, default=True)
-    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
-    updated_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=lambda: datetime.now(timezone.utc))
+    updated_at: Mapped[datetime] = mapped_column(DateTime, default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc))
     
     # Relationships
     applications: Mapped[List["DBJobApplication"]] = relationship(
@@ -392,6 +395,8 @@ class DBUser(Base):
             email=self.email,
             password_hash=self.password_hash,
             name=self.name,
+            password_reset_token=self.password_reset_token,
+            password_reset_token_expires=self.password_reset_token_expires,
             is_active=self.is_active,
             created_at=self.created_at,
             updated_at=self.updated_at,
@@ -420,8 +425,8 @@ class DBUserSession(Base):
     user_id: Mapped[str] = mapped_column(String, ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
     refresh_token: Mapped[str] = mapped_column(String(500), nullable=False, unique=True, index=True)
     expires_at: Mapped[datetime] = mapped_column(DateTime, nullable=False)
-    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
-    last_used_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=lambda: datetime.now(timezone.utc))
+    last_used_at: Mapped[datetime] = mapped_column(DateTime, default=lambda: datetime.now(timezone.utc))
     is_active: Mapped[bool] = mapped_column(Boolean, default=True)
     
     # Relationships

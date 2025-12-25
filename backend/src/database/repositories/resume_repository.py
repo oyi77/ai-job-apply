@@ -1,7 +1,7 @@
 """Resume repository for database operations."""
 
 from typing import List, Optional, Dict, Any
-from datetime import datetime
+from datetime import datetime, timezone
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, update, delete, func, and_, or_
 from sqlalchemy.orm import selectinload
@@ -158,7 +158,7 @@ class ResumeRepository:
                 update_where = and_(update_where, DBResume.user_id == user_id)
             
             result = await self.session.execute(
-                update(DBResume).where(update_where).values(is_default=True, updated_at=datetime.utcnow())
+                update(DBResume).where(update_where).values(is_default=True, updated_at=datetime.now(timezone.utc))
             )
             
             await self.session.commit()
@@ -180,7 +180,7 @@ class ResumeRepository:
         try:
             # Prepare update data
             update_data = {**updates}
-            update_data["updated_at"] = datetime.utcnow()
+            update_data["updated_at"] = datetime.now(timezone.utc)
             
             # Handle JSON fields
             if "skills" in update_data and update_data["skills"] is not None:
@@ -320,7 +320,7 @@ class ResumeRepository:
             
             # Get recent activity (last 30 days)
             from datetime import timedelta
-            recent_cutoff = datetime.utcnow() - timedelta(days=30)
+            recent_cutoff = datetime.now(timezone.utc) - timedelta(days=30)
             recent_stmt = select(func.count(DBResume.id)).where(
                 DBResume.created_at >= recent_cutoff
             )

@@ -1,8 +1,8 @@
 """Job-related data models."""
 
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import List, Optional, Dict, Any
-from pydantic import BaseModel, Field, HttpUrl
+from pydantic import BaseModel, Field, HttpUrl, ConfigDict
 from enum import Enum
 
 
@@ -61,15 +61,14 @@ class Job(BaseModel):
     external_application: bool = Field(False, description="If application is external to this platform")
     application_deadline: Optional[str] = Field(None, description="Application deadline")
     
-    created_at: datetime = Field(default_factory=datetime.utcnow)
-    updated_at: datetime = Field(default_factory=datetime.utcnow)
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    updated_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
     
-    model_config = {
-        "use_enum_values": True,
-        "json_encoders": {
-            datetime: lambda v: v.isoformat()
-        }
-    }
+    model_config = ConfigDict(
+        use_enum_values=True,
+        populate_by_name=True,
+        arbitrary_types_allowed=True
+    )
 
 
 class ApplicationForm(BaseModel):
@@ -98,16 +97,16 @@ class ApplicationInfo(BaseModel):
 
 class JobSearchRequest(BaseModel):
     """Job search request model."""
-    keywords: List[str] = Field(..., min_items=1, description="Search keywords")
+    keywords: List[str] = Field(default_factory=list, description="Search keywords")
     location: str = Field(default="Remote", description="Job location")
     experience_level: ExperienceLevel = Field(default=ExperienceLevel.ENTRY, description="Experience level")
     sites: Optional[List[str]] = Field(None, description="Specific sites to search")
     results_wanted: int = Field(default=50, ge=1, le=100, description="Number of results wanted")
     hours_old: int = Field(default=72, ge=1, le=720, description="Maximum age of job postings")
     
-    model_config = {
-        "use_enum_values": True
-    }
+    model_config = ConfigDict(
+        use_enum_values=True
+    )
 
 
 class JobSearchResponse(BaseModel):
@@ -115,10 +114,8 @@ class JobSearchResponse(BaseModel):
     jobs: Dict[str, List[Job]] = Field(..., description="Jobs grouped by portal")
     total_jobs: int = Field(..., description="Total number of jobs found")
     search_metadata: Dict[str, Any] = Field(default_factory=dict, description="Search metadata")
-    timestamp: datetime = Field(default_factory=datetime.utcnow)
+    timestamp: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
     
-    model_config = {
-        "json_encoders": {
-            datetime: lambda v: v.isoformat()
-        }
-    }
+    model_config = ConfigDict(
+        populate_by_name=True
+    )

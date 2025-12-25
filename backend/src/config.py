@@ -29,6 +29,11 @@ class Settings(BaseSettings):
     openai_model: str = Field(default="gpt-4", env="OPENAI_MODEL")
     openai_base_url: Optional[str] = Field(default=None, env="OPENAI_BASE_URL")
     
+    # OpenRouter Configuration
+    openrouter_api_key: Optional[str] = Field(default=None, env="OPENROUTER_API_KEY")
+    openrouter_model: str = Field(default="meta-llama/llama-3-8b-instruct", env="OPENROUTER_MODEL")
+    openrouter_base_url: str = Field(default="https://openrouter.ai/api/v1", env="OPENROUTER_BASE_URL")
+    
     # Local AI Configuration
     local_ai_base_url: Optional[str] = Field(default=None, env="LOCAL_AI_BASE_URL")
     local_ai_model: str = Field(default="llama2", env="LOCAL_AI_MODEL")
@@ -107,6 +112,18 @@ class Settings(BaseSettings):
                 provider_name="gemini",
                 api_key=self.gemini_api_key,
                 model=self.gemini_model,
+                temperature=0.7,
+                max_tokens=1000,
+                timeout=30
+            ))
+        
+        # OpenRouter Provider
+        if self.openrouter_api_key:
+            providers.append(AIProviderConfig(
+                provider_name="openrouter",
+                api_key=self.openrouter_api_key,
+                base_url=self.openrouter_base_url,
+                model=self.openrouter_model,
                 temperature=0.7,
                 max_tokens=1000,
                 timeout=30

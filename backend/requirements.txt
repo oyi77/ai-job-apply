@@ -1,4 +1,6 @@
 # Core dependencies
+# Note: google.generativeai is deprecated, but google.genai is not yet stable
+# TODO: Migrate to google-genai when stable version is available
 google-generativeai>=0.3.2
 requests>=2.31.0
 beautifulsoup4>=4.12.2
@@ -47,4 +49,5 @@ aiohttp>=3.8.0
 python-jose[cryptography]>=3.3.0
 bcrypt>=4.0.1
 passlib[bcrypt]>=1.7.4
-slowapi>=0.1.9 slowapi>=0.1.9
+slowapi>=0.1.9
+email-validator>=2.0.0

@@ -1,7 +1,7 @@
 """Validation utilities for the AI Job Application Assistant."""
 
 import re
-from typing import List, Optional
+from typing import List, Optional, Any
 from urllib.parse import urlparse
 from pathlib import Path
 
@@ -69,19 +69,23 @@ def validate_file_type(file_path: str, allowed_types: List[str]) -> bool:
     return file_ext in normalized_types
 
 
-def validate_file_size(file_path: str, max_size_mb: float) -> bool:
+def validate_file_size(file_path_or_size: Any, max_size_mb: float) -> bool:
     """
     Validate file size.
     
     Args:
-        file_path: Path to the file
+        file_path_or_size: Path to the file OR size in bytes
         max_size_mb: Maximum file size in MB
         
     Returns:
         True if file size is within limit, False otherwise
     """
     try:
-        file_size = Path(file_path).stat().st_size
+        if isinstance(file_path_or_size, (int, float)):
+            file_size = file_path_or_size
+        else:
+            file_size = Path(str(file_path_or_size)).stat().st_size
+            
         max_size_bytes = max_size_mb * 1024 * 1024
         return file_size <= max_size_bytes
     except (OSError, ValueError):

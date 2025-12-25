@@ -1,6 +1,6 @@
 """FastAPI application and API endpoints for the AI Job Application Assistant."""
 
-from fastapi import FastAPI, HTTPException, UploadFile, File, Form, Depends
+from fastapi import FastAPI, HTTPException, UploadFile, File, Form, Depends, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import HTMLResponse, FileResponse
@@ -8,6 +8,9 @@ from fastapi.security import HTTPBearer
 from typing import List, Dict, Any, Optional
 import logging
 from pathlib import Path
+from slowapi import Limiter
+from slowapi.util import get_remote_address
+from slowapi.errors import RateLimitExceeded
 
 from src.config import config
 from src.models.job import JobSearchRequest, JobSearchResponse
@@ -39,7 +42,16 @@ def create_app() -> FastAPI:
     # Initialize rate limiter
     limiter = Limiter(key_func=get_remote_address)
     app.state.limiter = limiter
-    app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
+    
+    # Add rate limit exception handler
+    @app.exception_handler(RateLimitExceeded)
+    async def rate_limit_handler(request: Request, exc: RateLimitExceeded):
+        """Handle rate limit exceeded exceptions."""
+        from fastapi.responses import JSONResponse
+        return JSONResponse(
+            status_code=429,
+            content={"detail": f"Rate limit exceeded: {exc.detail}"}
+        )
     
     # Add CORS middleware
     app.add_middleware(

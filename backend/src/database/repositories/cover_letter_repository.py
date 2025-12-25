@@ -1,7 +1,7 @@
 """Cover letter repository for database operations."""
 
 from typing import List, Optional, Dict, Any
-from datetime import datetime, timedelta
+from datetime import datetime, timezone, timedelta
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, update, delete, func, and_, or_
 from sqlalchemy.orm import selectinload
@@ -164,7 +164,7 @@ class CoverLetterRepository:
         try:
             # Prepare update data
             update_data = {**updates}
-            update_data["updated_at"] = datetime.utcnow()
+            update_data["updated_at"] = datetime.now(timezone.utc)
             
             # Perform update (with user filter if provided)
             where_clause = DBCoverLetter.id == cover_letter_id
@@ -274,7 +274,7 @@ class CoverLetterRepository:
     async def get_recent(self, days: int = 30, limit: Optional[int] = None) -> List[CoverLetter]:
         """Get recent cover letters."""
         try:
-            cutoff_date = datetime.utcnow() - timedelta(days=days)
+            cutoff_date = datetime.now(timezone.utc) - timedelta(days=days)
             
             stmt = select(DBCoverLetter).options(
                 selectinload(DBCoverLetter.applications)
@@ -328,7 +328,7 @@ class CoverLetterRepository:
             min_words, max_words = word_count_result.first() or (0, 0)
             
             # Get recent activity (last 30 days)
-            recent_cutoff = datetime.utcnow() - timedelta(days=30)
+            recent_cutoff = datetime.now(timezone.utc) - timedelta(days=30)
             recent_stmt = select(func.count(DBCoverLetter.id)).where(
                 DBCoverLetter.created_at >= recent_cutoff
             )
