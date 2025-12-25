@@ -161,6 +161,26 @@ export interface CoverLetterResponse {
   confidence_score: number;
 }
 
+export interface CareerInsightsRequest {
+  application_history: any[];
+  skills: string[];
+  experience_level?: string;
+  career_goals?: string;
+}
+
+export interface CareerInsightsResponse {
+  market_analysis: string;
+  salary_insights: {
+    estimated_range: string;
+    market_trend: string;
+    location_factor: string;
+  };
+  recommended_roles: string[];
+  skill_gaps: string[];
+  strategic_advice: string[];
+  confidence_score: number;
+}
+
 // User Types
 export interface User {
   id: string;

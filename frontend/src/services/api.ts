@@ -11,6 +11,8 @@ import type {
   AIOptimizationResponse,
   CoverLetterRequest,
   CoverLetterResponse,
+  CareerInsightsRequest,
+  CareerInsightsResponse,
   ApplicationStats,
   SearchFilters,
   SortOptions
@@ -459,6 +461,12 @@ export const aiService = {
   // Extract skills
   extractSkills: async (text: string): Promise<{ skills: string[]; confidence: number }> => {
     const response = await apiClient.post('/api/v1/ai/extract-skills', { text });
+    return handleApiResponse(response);
+  },
+
+  // Generate career insights
+  generateCareerInsights: async (request: CareerInsightsRequest): Promise<CareerInsightsResponse> => {
+    const response = await apiClient.post('/api/v1/ai/career-insights', request);
     return handleApiResponse(response);
   },
 };

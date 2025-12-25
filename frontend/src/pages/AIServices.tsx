@@ -41,7 +41,7 @@ const AIServices: React.FC = () => {
   const [isCareerInsightsOpen, setIsCareerInsightsOpen] = useState(false);
   const [skillsResult, setSkillsResult] = useState<{ skills: string[]; confidence: number } | null>(null);
   const [interviewPrepResult, setInterviewPrepResult] = useState<string>('');
-  const [careerInsightsResult, setCareerInsightsResult] = useState<string>('');
+  const [careerInsightsResult, setCareerInsightsResult] = useState<any>(null);
 
   const { resumes, applications } = useAppStore();
 
@@ -120,6 +120,38 @@ const AIServices: React.FC = () => {
     },
     onError: () => {
       setSkillsResult({ skills: [], confidence: 0 });
+    },
+  });
+
+  // Career insights mutation
+  const careerInsightsMutation = useMutation({
+    mutationFn: async () => {
+      // Gather data for insights
+      const applicationHistory = applications.map(app => ({
+        title: app.job_title,
+        company: app.company,
+        status: app.status,
+        date: app.applied_date
+      }));
+
+      // Get skills from the most recent or default resume
+      let skills: string[] = [];
+      const defaultResume = resumes.find(r => r.is_default) || resumes[0];
+      if (defaultResume) {
+        skills = defaultResume.skills || [];
+      }
+
+      return aiService.generateCareerInsights({
+        application_history: applicationHistory,
+        skills: skills,
+        experience_level: defaultResume?.experience_years ? `${defaultResume.experience_years} years` : undefined
+      });
+    },
+    onSuccess: (result) => {
+      setCareerInsightsResult(result);
+    },
+    onError: (error) => {
+      setCareerInsightsResult({ error: 'Failed to generate career insights. Please try again.' });
     },
   });
 
@@ -674,29 +706,110 @@ const AIServices: React.FC = () => {
         isOpen={isCareerInsightsOpen}
         onClose={() => {
           setIsCareerInsightsOpen(false);
-          setCareerInsightsResult('');
+          setCareerInsightsResult(null);
         }}
         title="Career Insights"
-        size="lg"
+        size="xl"
       >
-        <div className="space-y-4">
-          <p className="text-gray-600">
-            Get personalized career advice based on your application history and skills.
-          </p>
+        <div className="space-y-6">
+          <div className="bg-primary-50 p-4 rounded-lg border border-primary-100">
+            <h4 className="font-medium text-primary-900 mb-2">How it works</h4>
+            <p className="text-sm text-primary-700">
+              Our AI analyzes your job application history and resume skills to provide personalized career advice,
+              market trends, and strategic recommendations for your growth.
+            </p>
+          </div>
+
           <Button
             variant="primary"
-            onClick={() => {
-              // TODO: Implement career insights API call when backend endpoint is available
-              setCareerInsightsResult('Career insights feature coming soon. This will analyze your application history, skills, and provide personalized career growth recommendations.');
-            }}
+            onClick={() => careerInsightsMutation.mutate()}
+            loading={careerInsightsMutation.isPending}
             className="w-full"
           >
             <ChartBarIcon className="h-4 w-4 mr-2" />
             Generate Career Insights
           </Button>
+
           {careerInsightsResult && (
-            <div className="mt-4">
-              <Alert type="info" message={careerInsightsResult} />
+            <div className="mt-6 space-y-6">
+              {careerInsightsResult.error ? (
+                <Alert type="error" message={careerInsightsResult.error} />
+              ) : (
+                <>
+                  {/* Market Analysis */}
+                  <div className="p-4 bg-white border border-gray-200 rounded-lg shadow-sm">
+                    <h4 className="text-lg font-medium text-gray-900 mb-3 flex items-center">
+                      <ChartBarIcon className="h-5 w-5 mr-2 text-primary-600" />
+                      Market Analysis
+                    </h4>
+                    <p className="text-gray-700">{careerInsightsResult.market_analysis}</p>
+                  </div>
+
+                  {/* Salary Insights */}
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div className="p-4 bg-success-50 border border-success-100 rounded-lg">
+                      <div className="text-sm text-success-700 font-medium">Estimated Salary</div>
+                      <div className="text-lg font-bold text-success-900 mt-1">
+                        {careerInsightsResult.salary_insights.estimated_range}
+                      </div>
+                    </div>
+                    <div className="p-4 bg-blue-50 border border-blue-100 rounded-lg">
+                      <div className="text-sm text-blue-700 font-medium">Market Trend</div>
+                      <div className="text-lg font-bold text-blue-900 mt-1">
+                        {careerInsightsResult.salary_insights.market_trend}
+                      </div>
+                    </div>
+                    <div className="p-4 bg-purple-50 border border-purple-100 rounded-lg">
+                      <div className="text-sm text-purple-700 font-medium">Location Factor</div>
+                      <div className="text-lg font-bold text-purple-900 mt-1">
+                        {careerInsightsResult.salary_insights.location_factor}
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Recommendations Grid */}
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    {/* Recommended Roles */}
+                    <div className="p-4 bg-gray-50 border border-gray-200 rounded-lg">
+                      <h4 className="font-medium text-gray-900 mb-3">Recommended Roles</h4>
+                      <ul className="space-y-2">
+                        {careerInsightsResult.recommended_roles.map((role: string, idx: number) => (
+                          <li key={idx} className="flex items-start space-x-2">
+                            <CheckCircleIcon className="h-5 w-5 text-success-500 flex-shrink-0" />
+                            <span className="text-gray-700">{role}</span>
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+
+                    {/* Skill Gaps */}
+                    <div className="p-4 bg-gray-50 border border-gray-200 rounded-lg">
+                      <h4 className="font-medium text-gray-900 mb-3">Skills to Acquire</h4>
+                      <ul className="space-y-2">
+                        {careerInsightsResult.skill_gaps.map((skill: string, idx: number) => (
+                          <li key={idx} className="flex items-start space-x-2">
+                            <LightBulbIcon className="h-5 w-5 text-warning-500 flex-shrink-0" />
+                            <span className="text-gray-700">{skill}</span>
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  </div>
+
+                  {/* Strategic Advice */}
+                  <div className="p-4 bg-primary-50 border border-primary-100 rounded-lg">
+                    <h4 className="font-medium text-primary-900 mb-3">Strategic Advice</h4>
+                    <ul className="space-y-3">
+                      {careerInsightsResult.strategic_advice.map((advice: string, idx: number) => (
+                        <li key={idx} className="flex items-start space-x-2">
+                          <SparklesIcon className="h-5 w-5 text-primary-600 flex-shrink-0 mt-0.5" />
+                          <span className="text-primary-800">{advice}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                </>
+              )}
             </div>
           )}
         </div>
