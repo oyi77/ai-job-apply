@@ -14,7 +14,7 @@ import {
   Spinner
 } from '../components';
 import { useAppStore } from '../stores/appStore';
-import { applicationService, resumeService, coverLetterService } from '../services/api';
+import { applicationService, resumeService, coverLetterService, authService } from '../services/api';
 import {
   UserCircleIcon,
   BellIcon,
@@ -44,14 +44,25 @@ const Settings: React.FC = () => {
 
   const handleProfileUpdate = async (data: any) => {
     try {
+      // Prepare data for API (combine first and last name for backend 'name' field)
+      const apiData = {
+        ...data,
+        name: `${data.first_name} ${data.last_name}`.trim(),
+      };
+
+      // Update user profile via API
+      const updatedProfile = await authService.updateProfile(apiData);
+
       // Update local user state
-      // TODO: Add API endpoint for profile update when backend auth is implemented
-      setUser({ ...user, ...data });
+      // We merge: existing user state + form data (to keep fields backend might ignore) + API response
+      setUser({ ...user, ...data, ...updatedProfile });
+
       setIsProfileModalOpen(false);
       setShowSuccessMessage(true);
       setTimeout(() => setShowSuccessMessage(false), 3000);
     } catch (error) {
       console.error('Error updating profile:', error);
+      alert('Failed to update profile. Please try again.');
     }
   };
 
