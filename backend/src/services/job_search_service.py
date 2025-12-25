@@ -2,7 +2,7 @@
 
 import asyncio
 from typing import List, Dict, Any, Optional
-from datetime import datetime
+from datetime import datetime, timezone
 from loguru import logger
 import re # Added for regex operations
 
@@ -120,7 +120,7 @@ class JobSearchService(JobSearchService):
                     "location": request.location,
                     "experience_level": request.experience_level,
                     "sites_searched": [],
-                    "timestamp": datetime.utcnow(),
+                    "timestamp": datetime.now(timezone.utc),
                     "method": "fallback",
                     "error": f"Job search failed: {str(e)}",
                     "fallback_used": True
@@ -247,7 +247,7 @@ class JobSearchService(JobSearchService):
                     "location": request.location,
                     "experience_level": request.experience_level,
                     "sites_searched": list(jobs_by_platform.keys()),
-                    "timestamp": datetime.utcnow().isoformat(),
+                    "timestamp": datetime.now(timezone.utc).isoformat(),
                     "method": "fallback",
                     "fallback_used": True,
                     "fallback_reason": fallback_reason or "JobSpy not available",
@@ -277,7 +277,7 @@ class JobSearchService(JobSearchService):
                     "location": request.location,
                     "experience_level": request.experience_level,
                     "sites_searched": [],
-                    "timestamp": datetime.utcnow().isoformat(),
+                    "timestamp": datetime.now(timezone.utc).isoformat(),
                     "method": "fallback",
                     "fallback_used": True,
                     "error": f"Fallback search failed: {str(e)}"
@@ -376,8 +376,8 @@ class JobSearchService(JobSearchService):
                 salary="Not specified",
                 posted_date="Recently",
                 experience_level="mid",
-                created_at=datetime.utcnow(),
-                updated_at=datetime.utcnow()
+                created_at=datetime.now(timezone.utc),
+                updated_at=datetime.now(timezone.utc)
             )
             
             self.logger.info(f"Retrieved mock job details for {job_id} on {platform}")
@@ -444,7 +444,9 @@ class JobSearchService(JobSearchService):
                     "keywords": request.keywords,
                     "location": request.location,
                     "experience_level": request.experience_level,
-                    "sources": list(jobs_by_platform.keys())
+                    "sources": list(jobs_by_platform.keys()),
+                    "timestamp": datetime.now(timezone.utc).isoformat(),
+                    "method": "jobspy"
                 }
             )
             
@@ -506,8 +508,8 @@ class JobSearchService(JobSearchService):
                 contact_phone=contact_phone,
                 external_application=external_application,
                 application_method=self._determine_application_method(apply_url, contact_email, platform),
-                created_at=datetime.utcnow(),
-                updated_at=datetime.utcnow()
+                created_at=datetime.now(timezone.utc),
+                updated_at=datetime.now(timezone.utc)
             )
             
             return job
@@ -655,7 +657,12 @@ class JobSearchService(JobSearchService):
         
         # Generate job titles based on keywords and experience level
         keyword_str = " ".join(request.keywords).lower()
-        experience = request.experience_level or "mid"
+        # Ensure experience is a string value even if Enum is passed
+        experience = request.experience_level
+        if hasattr(experience, "value"):
+            experience = experience.value
+        elif not experience:
+            experience = "mid"
         
         # Base titles that match common keywords
         base_titles = []
@@ -831,8 +838,8 @@ class JobSearchService(JobSearchService):
                 contact_phone=contact_phone,
                 external_application=external_application,
                 application_method=app_method,
-                created_at=datetime.utcnow(),
-                updated_at=datetime.utcnow()
+                created_at=datetime.now(timezone.utc),
+                updated_at=datetime.now(timezone.utc)
             )
             mock_jobs.append(job)
         

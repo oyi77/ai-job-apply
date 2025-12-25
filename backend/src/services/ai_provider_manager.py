@@ -4,6 +4,7 @@ from typing import Dict, List, Optional, Type
 from ...core.ai_provider import AIProvider, AIProviderConfig, AIResponse
 from .providers.openai_provider import OpenAIProvider
 from .providers.local_ai_provider import LocalAIProvider
+from .providers.openrouter_provider import OpenRouterProvider
 from loguru import logger
 
 class AIProviderManager:
@@ -39,6 +40,8 @@ class AIProviderManager:
                 provider = OpenAIProvider(config)
             elif config.provider_name == "local_ai":
                 provider = LocalAIProvider(config)
+            elif config.provider_name == "openrouter":
+                provider = OpenRouterProvider(config)
             else:
                 logger.warning(f"Unknown provider type: {config.provider_name}")
                 return None

@@ -2,7 +2,7 @@
 
 import uuid
 from typing import List, Optional, Dict, Any
-from datetime import datetime
+from datetime import datetime, timezone
 
 from ..core.cover_letter_service import CoverLetterService
 from ..models.cover_letter import CoverLetter, CoverLetterCreate, CoverLetterUpdate
@@ -70,10 +70,10 @@ class CoverLetterService(CoverLetterService):
                 company_name=cover_letter_data.company_name,
                 content=cover_letter_data.content,
                 tone=getattr(cover_letter_data, 'tone', 'professional'),
-                word_count=getattr(cover_letter_data, 'word_count', len(cover_letter_data.content.split())),
+                word_count=cover_letter_data.word_count or len(cover_letter_data.content.split()),
                 file_path=getattr(cover_letter_data, 'file_path', None),
-                created_at=datetime.utcnow(),
-                updated_at=datetime.utcnow()
+                created_at=datetime.now(timezone.utc),
+                updated_at=datetime.now(timezone.utc)
             )
             
             # Store cover letter
@@ -115,7 +115,7 @@ class CoverLetterService(CoverLetterService):
             if hasattr(updates, 'resume_summary') and updates.resume_summary is not None:
                 cover_letter.resume_summary = updates.resume_summary
             
-            cover_letter.updated_at = datetime.utcnow()
+            cover_letter.updated_at = datetime.now(timezone.utc)
             
             # Save to repository if available
             if self.repository:
@@ -130,7 +130,7 @@ class CoverLetterService(CoverLetterService):
                     update_dict['word_count'] = len(updates.content.split())
                 if hasattr(updates, 'tone') and updates.tone is not None:
                     update_dict['tone'] = updates.tone
-                if hasattr(updates, 'word_count') and updates.word_count is not None:
+                if updates.word_count is not None:
                     update_dict['word_count'] = updates.word_count
                 if update_dict:
                     cover_letter = await self.repository.update(cover_letter_id, update_dict, user_id=user_id)
@@ -171,7 +171,8 @@ class CoverLetterService(CoverLetterService):
         company_name: str, 
         job_description: str, 
         resume_summary: str, 
-        tone: str = "professional"
+        tone: str = "professional",
+        user_id: Optional[str] = None
     ) -> CoverLetter:
         """Generate a cover letter using AI or templates."""
         try:
@@ -203,7 +204,7 @@ class CoverLetterService(CoverLetterService):
                         word_count=generated_cover_letter.word_count
                     )
                     
-                    cover_letter = await self.create_cover_letter(cover_letter_data)
+                    cover_letter = await self.create_cover_letter(cover_letter_data, user_id=user_id)
                     
                     self.logger.info(f"AI cover letter generated successfully: {cover_letter.job_title} at {cover_letter.company_name}")
                     return cover_letter
@@ -212,7 +213,7 @@ class CoverLetterService(CoverLetterService):
                     self.logger.warning(f"AI generation failed, falling back to template: {ai_error}")
             
             # Fallback to template-based generation
-            return await self._generate_template_cover_letter(job_title, company_name, job_description, resume_summary, tone)
+            return await self._generate_template_cover_letter(job_title, company_name, job_description, resume_summary, tone, user_id=user_id)
             
         except Exception as e:
             self.logger.error(f"Error generating cover letter: {e}", exc_info=True)
@@ -224,7 +225,8 @@ class CoverLetterService(CoverLetterService):
         company_name: str, 
         job_description: str, 
         resume_summary: str, 
-        tone: str = "professional"
+        tone: str = "professional",
+        user_id: Optional[str] = None
     ) -> CoverLetter:
         """Generate a template-based cover letter as fallback."""
         try:
@@ -248,7 +250,7 @@ class CoverLetterService(CoverLetterService):
                 word_count=word_count
             )
             
-            cover_letter = await self.create_cover_letter(cover_letter_data)
+            cover_letter = await self.create_cover_letter(cover_letter_data, user_id=user_id)
             
             self.logger.info(f"Template cover letter generated: {cover_letter.job_title} at {cover_letter.company_name}")
             return cover_letter

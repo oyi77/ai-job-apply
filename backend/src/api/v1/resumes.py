@@ -53,7 +53,7 @@ async def upload_resume(
             )
         
         # Validate file size (10MB limit)
-        if not validate_file_size(file.filename, 10.0):
+        if not validate_file_size(file.size, 10.0):
             logger.warning(f"File too large: {file.filename}, size: {file.size}")
             raise HTTPException(
                 status_code=400,
@@ -79,7 +79,7 @@ async def upload_resume(
         
         # Create uploads directory if it doesn't exist
         uploads_dir = Path("backend/uploads")
-        uploads_dir.mkdir(exist_ok=True)
+        uploads_dir.mkdir(parents=True, exist_ok=True)
         
         # Save file to uploads directory
         file_path = uploads_dir / unique_filename

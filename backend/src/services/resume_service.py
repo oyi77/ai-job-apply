@@ -3,7 +3,7 @@
 import uuid
 from pathlib import Path
 from typing import List, Optional, Dict, Any
-from datetime import datetime
+from datetime import datetime, timezone
 import PyPDF2
 import docx
 import io
@@ -45,8 +45,8 @@ class ResumeService(ResumeService):
             education=["Bachelor of Science in Computer Science"],
             certifications=["AWS Certified Developer", "Scrum Master Certified"],
             is_default=True,
-            created_at=datetime.utcnow(),
-            updated_at=datetime.utcnow()
+            created_at=datetime.now(timezone.utc),
+            updated_at=datetime.now(timezone.utc)
         )
         
         self.resumes[sample_resume.id] = sample_resume
@@ -106,8 +106,8 @@ class ResumeService(ResumeService):
                 education=self._extract_education(content) if content else None,
                 certifications=self._extract_certifications(content) if content else None,
                 is_default=is_first_resume,  # First resume is default
-                created_at=datetime.utcnow(),
-                updated_at=datetime.utcnow()
+                created_at=datetime.now(timezone.utc),
+                updated_at=datetime.now(timezone.utc)
             )
             
             # Store resume
@@ -182,16 +182,16 @@ class ResumeService(ResumeService):
             self.logger.error(f"Error getting default resume: {e}", exc_info=True)
             return None
     
-    async def set_default_resume(self, resume_id: str) -> bool:
+    async def set_default_resume(self, resume_id: str, user_id: Optional[str] = None) -> bool:
         """Set a resume as the default."""
         try:
-            resume = await self.get_resume(resume_id)
+            resume = await self.get_resume(resume_id, user_id=user_id)
             if not resume:
                 self.logger.warning(f"Cannot set default, resume not found: {resume_id}")
                 return False
             
             if self.repository:
-                return await self.repository.set_default_resume(resume_id)
+                return await self.repository.set_default_resume(resume_id, user_id=user_id)
             
             # Fallback to in-memory
             # Unset current default
@@ -202,7 +202,7 @@ class ResumeService(ResumeService):
             
             # Set new default
             resume.is_default = True
-            resume.updated_at = datetime.utcnow()
+            resume.updated_at = datetime.now(timezone.utc)
             self.default_resume_id = resume_id
             
             self.logger.info(f"Set default resume: {resume.name} (ID: {resume_id})")
@@ -212,7 +212,7 @@ class ResumeService(ResumeService):
             self.logger.error(f"Error setting default resume {resume_id}: {e}", exc_info=True)
             return False
     
-    async def delete_resume(self, resume_id: str) -> bool:
+    async def delete_resume(self, resume_id: str, user_id: Optional[str] = None) -> bool:
         """Delete a resume."""
         try:
             resume = await self.get_resume(resume_id, user_id=user_id)
@@ -278,7 +278,7 @@ class ResumeService(ResumeService):
             self.logger.error(f"Error extracting text from file {file_path}: {e}", exc_info=True)
             return ""
     
-    async def update_resume(self, resume_id: str, updates: dict) -> Optional[Resume]:
+    async def update_resume(self, resume_id: str, updates: dict, user_id: Optional[str] = None) -> Optional[Resume]:
         """Update resume information."""
         try:
             resume = await self.get_resume(resume_id, user_id=user_id)
@@ -292,7 +292,7 @@ class ResumeService(ResumeService):
             if 'is_default' in updates and updates['is_default']:
                 await self.set_default_resume(resume_id)
             
-            resume.updated_at = datetime.utcnow()
+            resume.updated_at = datetime.now(timezone.utc)
             
             # Save to repository if available
             if self.repository:

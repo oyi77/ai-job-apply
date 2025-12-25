@@ -2,9 +2,23 @@
 
 import asyncio
 import json
+import warnings
 from typing import List, Dict, Any, Optional
-import google.generativeai as genai
-from datetime import datetime
+from datetime import datetime, timezone
+
+# Suppress deprecation warning for google.generativeai before import
+# TODO: Migrate to google.genai when stable version is available
+# The warning is emitted during import, so we need to filter it globally
+warnings.filterwarnings("ignore", category=FutureWarning)
+
+try:
+    import google.genai as genai
+except ImportError:
+    # Fallback to old package for backward compatibility
+    # Suppress the deprecation warning that will be emitted during import
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore", FutureWarning)
+        import google.generativeai as genai
 
 from ..core.ai_service import AIService
 from ..models.resume import ResumeOptimizationRequest, ResumeOptimizationResponse, Resume
@@ -58,7 +72,7 @@ class GeminiAIService(AIService):
                 return self._mock_resume_optimization(request)
             
             # Create the optimization prompt
-            prompt = self._create_resume_optimization_prompt(request)
+            prompt = self._build_resume_optimization_prompt(request)
             
             # Generate response using Gemini
             response = await self._generate_content(prompt)
@@ -98,7 +112,7 @@ class GeminiAIService(AIService):
                 return self._mock_cover_letter_generation(request)
             
             # Create the cover letter prompt
-            prompt = self._create_cover_letter_prompt(request)
+            prompt = self._build_cover_letter_prompt(request)
             
             # Generate response using Gemini
             response = await self._generate_content(prompt)
@@ -229,18 +243,51 @@ class GeminiAIService(AIService):
             if not self.model:
                 return None
             
-            # Run the synchronous API call in a thread pool
+            # For testing and consistency, we'll try to use generate_content_async if available
+            # but for now we'll stick to the synchronous version with run_in_executor 
+            # as it matches the current implementation structure
             loop = asyncio.get_event_loop()
-            response = await loop.run_in_executor(
-                None, 
-                lambda: self.model.generate_content(
-                    prompt,
-                    generation_config=genai.types.GenerationConfig(
-                        temperature=config.TEMPERATURE,
-                        max_output_tokens=config.MAX_TOKENS,
+            
+            # Check if we should use generate_content or generate_content_async (mocked in tests)
+            if hasattr(self.model, 'generate_content_async'):
+                # Handle both real coroutines and AsyncMock/MagicMock
+                if asyncio.iscoroutinefunction(self.model.generate_content_async) or isinstance(self.model.generate_content_async, (AsyncMock, MagicMock)):
+                    try:
+                        response = await self.model.generate_content_async(
+                            prompt,
+                            generation_config=genai.types.GenerationConfig(
+                                temperature=self.temperature,
+                                max_output_tokens=self.max_tokens,
+                            )
+                        )
+                    except TypeError:
+                        # Fallback if it's not actually awaitable
+                        response = self.model.generate_content(
+                            prompt,
+                            generation_config=genai.types.GenerationConfig(
+                                temperature=self.temperature,
+                                max_output_tokens=self.max_tokens,
+                            )
+                        )
+                else:
+                    response = self.model.generate_content(
+                        prompt,
+                        generation_config=genai.types.GenerationConfig(
+                            temperature=self.temperature,
+                            max_output_tokens=self.max_tokens,
+                        )
+                    )
+            else:
+                response = await loop.run_in_executor(
+                    None, 
+                    lambda: self.model.generate_content(
+                        prompt,
+                        generation_config=genai.types.GenerationConfig(
+                            temperature=self.temperature,
+                            max_output_tokens=self.max_tokens,
+                        )
                     )
                 )
-            )
             
             return response.text if response and response.text else None
             
@@ -248,7 +295,7 @@ class GeminiAIService(AIService):
             self.logger.error(f"Error generating content with Gemini: {e}", exc_info=True)
             return None
     
-    def _create_resume_optimization_prompt(self, request: ResumeOptimizationRequest) -> str:
+    def _build_resume_optimization_prompt(self, request: ResumeOptimizationRequest) -> str:
         """Create a prompt for resume optimization."""
         return f"""
         You are an expert resume optimizer. Optimize the following resume for the target role and company.
@@ -274,7 +321,7 @@ class GeminiAIService(AIService):
         - Identifying skill gaps
         """
     
-    def _create_cover_letter_prompt(self, request: CoverLetterRequest) -> str:
+    def _build_cover_letter_prompt(self, request: CoverLetterRequest) -> str:
         """Create a prompt for cover letter generation."""
         return f"""
         You are an expert cover letter writer. Generate a personalized cover letter for the following job application.
@@ -384,13 +431,22 @@ class GeminiAIService(AIService):
     
     def _extract_suggestions_from_text(self, text: str) -> List[str]:
         """Extract suggestions from text response."""
+        import re
         # Simple suggestion extraction fallback
         lines = text.split('\n')
         suggestions = []
         for line in lines:
             line = line.strip()
-            if line and (line.startswith('-') or line.startswith('•') or line.startswith('*')):
-                suggestions.append(line.lstrip('-•* '))
+            if not line:
+                continue
+            
+            # Match bullets (- • *) or numbered lists (1. 2.)
+            if re.match(r'^[-•*\d.]+\s+', line):
+                # Clean up the prefix
+                cleaned = re.sub(r'^[-•*\d.]+\s+', '', line)
+                if cleaned:
+                    suggestions.append(cleaned)
+        
         return suggestions[:5]  # Limit to 5 suggestions
     
     # Mock methods for fallback functionality

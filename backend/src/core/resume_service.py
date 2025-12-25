@@ -14,27 +14,27 @@ class ResumeService(ABC):
         pass
     
     @abstractmethod
-    async def get_resume(self, resume_id: str) -> Optional[Resume]:
+    async def get_resume(self, resume_id: str, user_id: Optional[str] = None) -> Optional[Resume]:
         """Get a resume by ID."""
         pass
     
     @abstractmethod
-    async def get_all_resumes(self) -> List[Resume]:
+    async def get_all_resumes(self, user_id: Optional[str] = None) -> List[Resume]:
         """Get all available resumes."""
         pass
     
     @abstractmethod
-    async def get_default_resume(self) -> Optional[Resume]:
+    async def get_default_resume(self, user_id: Optional[str] = None) -> Optional[Resume]:
         """Get the default resume."""
         pass
     
     @abstractmethod
-    async def set_default_resume(self, resume_id: str) -> bool:
+    async def set_default_resume(self, resume_id: str, user_id: Optional[str] = None) -> bool:
         """Set a resume as the default."""
         pass
     
     @abstractmethod
-    async def delete_resume(self, resume_id: str) -> bool:
+    async def delete_resume(self, resume_id: str, user_id: Optional[str] = None) -> bool:
         """Delete a resume."""
         pass
     
@@ -44,6 +44,6 @@ class ResumeService(ABC):
         pass
     
     @abstractmethod
-    async def update_resume(self, resume_id: str, updates: dict) -> Optional[Resume]:
+    async def update_resume(self, resume_id: str, updates: dict, user_id: Optional[str] = None) -> Optional[Resume]:
         """Update resume information."""
         pass
