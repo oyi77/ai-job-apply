@@ -35,7 +35,7 @@ def test_cors_allows_frontend_origin(client):
     
     assert response.status_code == 200
     # CORS headers should be present
-    assert "access-control-allow-origin" in response.headers.lower() or True  # May be in lowercase
+    assert "access-control-allow-origin" in response.headers or "Access-Control-Allow-Origin" in response.headers
 
 
 def test_cors_preflight_request(client):

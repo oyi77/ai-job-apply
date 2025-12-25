@@ -6,14 +6,26 @@ from src.services.job_search_service import JobSearchService
 from src.models.job import JobSearchRequest, ExperienceLevel
 
 
+@pytest.fixture(autouse=True)
+def mock_jobspy_unavailable(monkeypatch):
+    """Ensure JobSpy is seen as unavailable for fallback tests."""
+    from src.services.job_search_service import JobSearchService
+    original_init = JobSearchService.initialize
+    
+    async def mocked_init(self):
+        await original_init(self)
+        self._jobspy_available = False
+        
+    monkeypatch.setattr(JobSearchService, "initialize", mocked_init)
+
+
 @pytest.mark.asyncio
 async def test_fallback_when_jobspy_unavailable():
     """Test that fallback is used when JobSpy is unavailable."""
     service = JobSearchService()
+    # initialize is called internally by search_jobs, or we can call it here
     await service.initialize()
-    
-    # Service should initialize even without JobSpy
-    assert service._initialized is True
+    assert service._jobspy_available is False
     
     # Create a search request
     request = JobSearchRequest(

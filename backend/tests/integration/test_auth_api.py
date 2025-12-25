@@ -5,6 +5,7 @@ from httpx import AsyncClient, ASGITransport
 from fastapi import FastAPI
 from unittest.mock import AsyncMock, MagicMock, patch
 import json
+from datetime import datetime
 
 from src.api.app import create_app
 
@@ -97,7 +98,7 @@ class TestUserRegistration:
                 "/api/v1/auth/register",
                 json={
                     "email": "newuser@example.com",
-                    "password": "password123",
+                    "password": "Password123",
                     "name": "New User"
                 }
             )
@@ -119,7 +120,7 @@ class TestUserRegistration:
                 "/api/v1/auth/register",
                 json={
                     "email": "existing@example.com",
-                    "password": "password123",
+                    "password": "Password123",
                     "name": "New User"
                 }
             )
@@ -152,7 +153,7 @@ class TestUserLogin:
                 "/api/v1/auth/login",
                 json={
                     "email": "test@example.com",
-                    "password": "password123"
+                    "password": "Password123"
                 }
             )
         
@@ -235,13 +236,18 @@ class TestUserLogout:
     """Test user logout endpoint."""
     
     @pytest.mark.asyncio
-    async def test_logout_success(self, client: AsyncClient, mock_auth_service):
+    async def test_logout_success(self, app: FastAPI, client: AsyncClient, mock_auth_service):
         """Test successful logout."""
         # Mock get_current_user dependency
         mock_user = MagicMock()
         mock_user.id = "test-user-id"
+        mock_user.email = "test@example.com"
+        mock_user.name = "Test User"
         
-        with patch('src.api.v1.auth.get_current_user', return_value=mock_user):
+        from src.api.dependencies import get_current_user
+        app.dependency_overrides[get_current_user] = lambda: mock_user
+        
+        try:
             with patch('src.services.service_registry.service_registry.get_auth_service', return_value=mock_auth_service):
                 response = await client.post(
                     "/api/v1/auth/logout",
@@ -250,6 +256,8 @@ class TestUserLogout:
                     },
                     headers={"Authorization": "Bearer test-access-token"}
                 )
+        finally:
+            app.dependency_overrides = {}
         
         assert response.status_code == 200
         assert "message" in response.json()
@@ -271,19 +279,26 @@ class TestUserProfile:
     """Test user profile endpoints."""
     
     @pytest.mark.asyncio
-    async def test_get_profile_success(self, client: AsyncClient, mock_auth_service):
+    async def test_get_profile_success(self, app: FastAPI, client: AsyncClient, mock_auth_service):
         """Test getting user profile."""
         mock_user = MagicMock()
         mock_user.id = "test-user-id"
         mock_user.email = "test@example.com"
         mock_user.name = "Test User"
         mock_user.is_active = True
+        mock_user.created_at = datetime.utcnow()
+        mock_user.updated_at = datetime.utcnow()
         
-        with patch('src.api.v1.auth.get_current_user', return_value=mock_user):
+        from src.api.dependencies import get_current_user
+        app.dependency_overrides[get_current_user] = lambda: mock_user
+        
+        try:
             response = await client.get(
                 "/api/v1/auth/me",
                 headers={"Authorization": "Bearer test-access-token"}
             )
+        finally:
+            app.dependency_overrides = {}
         
         assert response.status_code == 200
         data = response.json()
@@ -298,12 +313,27 @@ class TestUserProfile:
         assert response.status_code == 403  # Forbidden
     
     @pytest.mark.asyncio
-    async def test_update_profile_success(self, client: AsyncClient, mock_auth_service):
+    async def test_update_profile_success(self, app: FastAPI, client: AsyncClient, mock_auth_service):
         """Test updating user profile."""
         mock_user = MagicMock()
         mock_user.id = "test-user-id"
+        mock_user.email = "test@example.com"
+        mock_user.name = "Test User"
         
-        with patch('src.api.v1.auth.get_current_user', return_value=mock_user):
+        from src.api.dependencies import get_current_user
+        app.dependency_overrides[get_current_user] = lambda: mock_user
+        
+        # Ensure the response from service has all required fields for UserProfile model
+        updated_profile = MagicMock()
+        updated_profile.id = "test-user-id"
+        updated_profile.email = "test@example.com"
+        updated_profile.name = "Updated Name"
+        updated_profile.is_active = True
+        updated_profile.created_at = datetime.utcnow()
+        updated_profile.updated_at = datetime.utcnow()
+        mock_auth_service.update_user_profile.return_value = updated_profile
+        
+        try:
             with patch('src.services.service_registry.service_registry.get_auth_service', return_value=mock_auth_service):
                 response = await client.put(
                     "/api/v1/auth/me",
@@ -312,20 +342,25 @@ class TestUserProfile:
                     },
                     headers={"Authorization": "Bearer test-access-token"}
                 )
+        finally:
+            app.dependency_overrides = {}
         
         assert response.status_code == 200
         data = response.json()
         assert data["name"] == "Updated Name"
     
     @pytest.mark.asyncio
-    async def test_update_profile_email_taken(self, client: AsyncClient, mock_auth_service):
+    async def test_update_profile_email_taken(self, app: FastAPI, client: AsyncClient, mock_auth_service):
         """Test updating profile with email already in use."""
         mock_user = MagicMock()
         mock_user.id = "test-user-id"
         
+        from src.api.dependencies import get_current_user
+        app.dependency_overrides[get_current_user] = lambda: mock_user
+        
         mock_auth_service.update_user_profile.side_effect = ValueError("Email already in use")
         
-        with patch('src.api.v1.auth.get_current_user', return_value=mock_user):
+        try:
             with patch('src.services.service_registry.service_registry.get_auth_service', return_value=mock_auth_service):
                 response = await client.put(
                     "/api/v1/auth/me",
@@ -334,6 +369,8 @@ class TestUserProfile:
                     },
                     headers={"Authorization": "Bearer test-access-token"}
                 )
+        finally:
+            app.dependency_overrides = {}
         
         assert response.status_code == 400
         assert "Email already in use" in response.json()["detail"]
@@ -343,43 +380,53 @@ class TestPasswordChange:
     """Test password change endpoint."""
     
     @pytest.mark.asyncio
-    async def test_change_password_success(self, client: AsyncClient, mock_auth_service):
+    async def test_change_password_success(self, app: FastAPI, client: AsyncClient, mock_auth_service):
         """Test successful password change."""
         mock_user = MagicMock()
         mock_user.id = "test-user-id"
         
-        with patch('src.api.v1.auth.get_current_user', return_value=mock_user):
+        from src.api.dependencies import get_current_user
+        app.dependency_overrides[get_current_user] = lambda: mock_user
+        
+        try:
             with patch('src.services.service_registry.service_registry.get_auth_service', return_value=mock_auth_service):
                 response = await client.post(
                     "/api/v1/auth/change-password",
                     json={
-                        "current_password": "oldpassword123",
-                        "new_password": "newpassword456"
+                        "current_password": "OldPassword123",
+                        "new_password": "NewPassword456"
                     },
                     headers={"Authorization": "Bearer test-access-token"}
                 )
+        finally:
+            app.dependency_overrides = {}
         
         assert response.status_code == 200
         assert "message" in response.json()
     
     @pytest.mark.asyncio
-    async def test_change_password_incorrect_current(self, client: AsyncClient, mock_auth_service):
+    async def test_change_password_incorrect_current(self, app: FastAPI, client: AsyncClient, mock_auth_service):
         """Test password change with incorrect current password."""
         mock_user = MagicMock()
         mock_user.id = "test-user-id"
         
+        from src.api.dependencies import get_current_user
+        app.dependency_overrides[get_current_user] = lambda: mock_user
+        
         mock_auth_service.change_password.side_effect = ValueError("Current password is incorrect")
         
-        with patch('src.api.v1.auth.get_current_user', return_value=mock_user):
+        try:
             with patch('src.services.service_registry.service_registry.get_auth_service', return_value=mock_auth_service):
                 response = await client.post(
                     "/api/v1/auth/change-password",
                     json={
-                        "current_password": "wrongpassword",
-                        "new_password": "newpassword456"
+                        "current_password": "WrongPassword",
+                        "new_password": "NewPassword456"
                     },
                     headers={"Authorization": "Bearer test-access-token"}
                 )
+        finally:
+            app.dependency_overrides = {}
         
         assert response.status_code == 400
         assert "Current password is incorrect" in response.json()["detail"]
@@ -419,7 +466,7 @@ class TestProtectedRoutes:
         assert response.status_code == 401  # Unauthorized
     
     @pytest.mark.asyncio
-    async def test_protected_route_with_valid_token(self, client: AsyncClient, mock_auth_service):
+    async def test_protected_route_with_valid_token(self, app: FastAPI, client: AsyncClient, mock_auth_service):
         """Test accessing protected route with valid token."""
         mock_user = MagicMock()
         mock_user.id = "test-user-id"
@@ -429,14 +476,19 @@ class TestProtectedRoutes:
         
         # Mock the application service
         mock_app_service = AsyncMock()
-        mock_app_service.get_all_applications.return_value = ([], 0)
+        mock_app_service.get_all_applications.return_value = []
         
-        with patch('src.api.dependencies.get_current_user', return_value=mock_user):
+        from src.api.dependencies import get_current_user
+        app.dependency_overrides[get_current_user] = lambda: mock_user
+        
+        try:
             with patch('src.services.service_registry.service_registry.get_application_service', return_value=mock_app_service):
                 response = await client.get(
                     "/api/v1/applications",
                     headers={"Authorization": "Bearer valid-token"}
                 )
+        finally:
+            app.dependency_overrides = {}
         
         # Should succeed (status depends on implementation)
         assert response.status_code in [200, 404]  # 200 if empty list, 404 if not found

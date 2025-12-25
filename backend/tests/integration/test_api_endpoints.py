@@ -65,33 +65,87 @@ def mock_service_registry():
         "service_registry": "healthy",
         "services": {}
     })
-    mock_registry.get_file_service = AsyncMock(return_value=mock_file_service)
-    mock_registry.get_resume_service = AsyncMock(return_value=mock_resume_service)
-    mock_registry.get_application_service = AsyncMock(return_value=mock_app_service)
-    mock_registry.get_ai_service = AsyncMock(return_value=mock_ai_service)
-    mock_registry.get_cover_letter_service = AsyncMock(return_value=mock_cover_letter_service)
-    mock_registry.get_job_search_service = AsyncMock(return_value=mock_job_search_service)
-    mock_registry.get_job_application_service = AsyncMock(return_value=mock_job_app_service)
+    
+    # Store services on the registry for easy access in tests
+    mock_registry.file_service = mock_file_service
+    mock_registry.resume_service = mock_resume_service
+    mock_registry.app_service = mock_app_service
+    mock_registry.ai_service = mock_ai_service
+    mock_registry.cover_letter_service = mock_cover_letter_service
+    mock_registry.job_search_service = mock_job_search_service
+    mock_registry.job_app_service = mock_job_app_service
+    
+    mock_registry.get_file_service.side_effect = lambda: mock_registry.file_service
+    mock_registry.get_resume_service.side_effect = lambda: mock_registry.resume_service
+    mock_registry.get_application_service.side_effect = lambda: mock_registry.app_service
+    mock_registry.get_ai_service.side_effect = lambda: mock_registry.ai_service
+    mock_registry.get_cover_letter_service.side_effect = lambda: mock_registry.cover_letter_service
+    mock_registry.get_job_search_service.side_effect = lambda: mock_registry.job_search_service
+    mock_registry.get_job_application_service.side_effect = lambda: mock_registry.job_app_service
     
     return mock_registry
+
+
+@pytest.fixture
+async def client(mock_service_registry):
+    """Create test client with mocked service registry."""
+    from src.services.service_registry import service_registry
+    
+    # Patch the methods on the actual global service_registry instance
+    # We patch multiple modules to be safe, as some might have different imports
+    patches = [
+        patch.object(service_registry, 'get_file_service', AsyncMock(return_value=mock_service_registry.file_service)),
+        patch.object(service_registry, 'get_resume_service', AsyncMock(return_value=mock_service_registry.resume_service)),
+        patch.object(service_registry, 'get_application_service', AsyncMock(return_value=mock_service_registry.app_service)),
+        patch.object(service_registry, 'get_ai_service', AsyncMock(return_value=mock_service_registry.ai_service)),
+        patch.object(service_registry, 'get_cover_letter_service', AsyncMock(return_value=mock_service_registry.cover_letter_service)),
+        patch.object(service_registry, 'get_job_search_service', AsyncMock(return_value=mock_service_registry.job_search_service)),
+        patch.object(service_registry, 'get_job_application_service', AsyncMock(return_value=mock_service_registry.job_app_service))
+    ]
+    
+    # Apply all patches
+    for p in patches:
+        p.start()
+        
+    try:
+        app = create_app()
+        
+        # Mock current user to bypass authentication
+        mock_user = MagicMock()
+        mock_user.id = "test-user-id"
+        mock_user.email = "test@example.com"
+        mock_user.name = "Test User"
+        
+        from src.api.dependencies import get_current_user
+        app.dependency_overrides[get_current_user] = lambda: mock_user
+        
+        transport = ASGITransport(app=app)
+        async with AsyncClient(transport=transport, base_url="http://test") as ac:
+            yield ac
+    finally:
+        # Stop all patches
+        for p in reversed(patches):
+            p.stop()
+        
+        # Clean up overrides
+        if 'app' in locals():
+            app.dependency_overrides = {}
 
 
 class TestResumeEndpoints:
     """Integration tests for resume endpoints."""
     
-    @pytest.fixture
-    async def client(self, mock_service_registry):
-        """Create test client with mocked service registry."""
-        with patch('src.services.service_registry.service_registry', mock_service_registry):
-            with patch('src.api.app.service_registry', mock_service_registry):
-                app = create_app()
-                transport = ASGITransport(app=app)
-                async with AsyncClient(transport=transport, base_url="http://test") as ac:
-                    yield ac
-    
     @pytest.mark.asyncio
-    async def test_get_all_resumes(self, client):
+    async def test_get_all_resumes(self, client, mock_service_registry):
         """Test getting all resumes."""
+        from src.models.resume import Resume
+        # Configure real models
+        mock_resumes = [
+            Resume(id="1", name="Resume 1", file_path="/path/1.pdf", file_type="pdf"),
+            Resume(id="2", name="Resume 2", file_path="/path/2.pdf", file_type="pdf")
+        ]
+        mock_service_registry.resume_service.get_all_resumes.return_value = mock_resumes
+        
         response = await client.get("/api/v1/resumes")
         
         assert response.status_code == 200
@@ -99,39 +153,42 @@ class TestResumeEndpoints:
         assert "success" in data
         assert "data" in data
         assert isinstance(data["data"], list)
+        assert len(data["data"]) == 2
     
     @pytest.mark.asyncio
-    async def test_upload_resume_success(self, client):
+    async def test_upload_resume_success(self, client, mock_service_registry):
         """Test successful resume upload."""
+        from src.models.resume import Resume
         # Create a temporary PDF file
         pdf_content = b"%PDF-1.4\n1 0 obj\n<<\n/Type /Catalog\n/Pages 2 0 R\n>>\nendobj\n"
         
-        with patch('src.services.service_registry.service_registry') as mock_registry:
-            # Mock the services
-            mock_file_service = AsyncMock()
-            mock_file_service.save_file.return_value = True
+        # Configure existing services from registry
+        mock_file_service = mock_service_registry.file_service
+        mock_file_service.save_file = AsyncMock(return_value=True)
+        mock_service_registry.file_service = mock_file_service
+        
+        mock_resume = Resume(
+            id="test-id",
+            name="test_resume.pdf",
+            file_path="/test/path.pdf",
+            file_type="pdf",
+            is_default=True
+        )
+        mock_service_registry.resume_service.upload_resume.return_value = mock_resume
+        
+        # Upload file
+        files = {"file": ("test_resume.pdf", io.BytesIO(pdf_content), "application/pdf")}
+        data = {"name": "Test Resume"}
+        
+        response = await client.post("/api/v1/resumes/upload", files=files, data=data)
+        
+        if response.status_code != 200:
+            print(f"FAILED: {response.status_code} - {response.text}")
             
-            mock_resume_service = AsyncMock()
-            mock_resume_service.upload_resume.return_value = AsyncMock(
-                id="test-id",
-                name="Test Resume",
-                file_path="/test/path.pdf",
-                file_type="pdf"
-            )
-            
-            mock_registry.get_file_service.return_value = mock_file_service
-            mock_registry.get_resume_service.return_value = mock_resume_service
-            
-            # Upload file
-            files = {"file": ("test_resume.pdf", io.BytesIO(pdf_content), "application/pdf")}
-            data = {"name": "Test Resume"}
-            
-            response = await client.post("/api/v1/resumes/upload", files=files, data=data)
-            
-            assert response.status_code == 200
-            response_data = response.json()
-            assert response_data["success"] is True
-            assert "data" in response_data
+        assert response.status_code == 200
+        response_data = response.json()
+        assert response_data["success"] is True
+        assert "data" in response_data
     
     @pytest.mark.asyncio
     async def test_upload_resume_invalid_file_type(self, client):
@@ -149,100 +206,83 @@ class TestResumeEndpoints:
         assert "Invalid file type" in response_data["detail"]
     
     @pytest.mark.asyncio
-    async def test_get_resume_by_id(self, client):
+    async def test_get_resume_by_id(self, client, mock_service_registry):
         """Test getting a specific resume by ID."""
-        with patch('src.services.service_registry.service_registry') as mock_registry:
-            mock_resume_service = AsyncMock()
-            mock_resume_service.get_resume.return_value = AsyncMock(
-                id="test-id",
-                name="Test Resume",
-                file_path="/test/path.pdf",
-                file_type="pdf"
-            )
-            mock_registry.get_resume_service.return_value = mock_resume_service
-            
-            response = await client.get("/api/v1/resumes/test-id")
-            
-            assert response.status_code == 200
-            data = response.json()
-            assert data["id"] == "test-id"
-            assert data["name"] == "Test Resume"
+        from src.models.resume import Resume
+        # Create a real Resume object
+        mock_resume = Resume(
+            id="test-id",
+            name="Test Resume",
+            file_path="/test/path.pdf",
+            file_type="pdf"
+        )
+        
+        mock_service_registry.resume_service.get_resume.return_value = mock_resume
+        
+        response = await client.get("/api/v1/resumes/test-id")
+        
+        assert response.status_code == 200
+        data = response.json()
+        assert data["id"] == "test-id"
+        assert data["name"] == "Test Resume"
     
     @pytest.mark.asyncio
-    async def test_get_resume_not_found(self, client):
+    async def test_get_resume_not_found(self, client, mock_service_registry):
         """Test getting a non-existent resume."""
-        with patch('src.services.service_registry.service_registry') as mock_registry:
-            mock_resume_service = AsyncMock()
-            mock_resume_service.get_resume.return_value = None
-            mock_registry.get_resume_service.return_value = mock_resume_service
-            
-            response = await client.get("/api/v1/resumes/nonexistent-id")
-            
-            assert response.status_code == 404
+        mock_service_registry.resume_service.get_resume.return_value = None
+        
+        response = await client.get("/api/v1/resumes/nonexistent-id")
+        
+        assert response.status_code == 404
     
     @pytest.mark.asyncio
-    async def test_update_resume(self, client):
+    async def test_update_resume(self, client, mock_service_registry):
         """Test updating a resume."""
-        with patch('src.services.service_registry.service_registry') as mock_registry:
-            mock_resume_service = AsyncMock()
-            updated_resume = AsyncMock(
-                id="test-id",
-                name="Updated Resume Name",
-                file_path="/test/path.pdf",
-                file_type="pdf"
-            )
-            mock_resume_service.update_resume.return_value = updated_resume
-            mock_registry.get_resume_service.return_value = mock_resume_service
-            
-            response = await client.put("/api/v1/resumes/test-id?name=Updated%20Resume%20Name")
-            
-            assert response.status_code == 200
-            data = response.json()
-            assert data["name"] == "Updated Resume Name"
+        from src.models.resume import Resume
+        updated_resume = Resume(
+            id="test-id",
+            name="Updated Resume Name",
+            file_path="/test/path.pdf",
+            file_type="pdf"
+        )
+        
+        mock_service_registry.resume_service.update_resume.return_value = updated_resume
+        
+        response = await client.put("/api/v1/resumes/test-id?name=Updated%20Resume%20Name")
+        
+        assert response.status_code == 200
+        data = response.json()
+        assert data["name"] == "Updated Resume Name"
     
     @pytest.mark.asyncio
-    async def test_delete_resume(self, client):
+    async def test_delete_resume(self, client, mock_service_registry):
         """Test deleting a resume."""
-        with patch('src.services.service_registry.service_registry') as mock_registry:
-            mock_resume_service = AsyncMock()
-            mock_resume_service.delete_resume.return_value = True
-            mock_registry.get_resume_service.return_value = mock_resume_service
-            
-            response = await client.delete("/api/v1/resumes/test-id")
-            
-            assert response.status_code == 200
-            data = response.json()
-            assert "message" in data
-            assert "successfully" in data["message"]
+        mock_service_registry.resume_service.delete_resume.return_value = True
+        
+        response = await client.delete("/api/v1/resumes/test-id")
+        
+        assert response.status_code == 200
+        data = response.json()
+        assert "message" in data
+        assert "successfully" in data["message"]
     
     @pytest.mark.asyncio
-    async def test_set_default_resume(self, client):
+    async def test_set_default_resume(self, client, mock_service_registry):
         """Test setting a resume as default."""
-        with patch('src.services.service_registry.service_registry') as mock_registry:
-            mock_resume_service = AsyncMock()
-            mock_resume_service.set_default_resume.return_value = True
-            mock_registry.get_resume_service.return_value = mock_resume_service
-            
-            response = await client.post("/api/v1/resumes/test-id/set-default")
-            
-            assert response.status_code == 200
-            data = response.json()
-            assert "message" in data
-            assert "default" in data["message"]
+        mock_service_registry.resume_service.set_default_resume.return_value = True
+        
+        response = await client.post("/api/v1/resumes/test-id/set-default")
+        
+        assert response.status_code == 200
+        data = response.json()
+        assert "message" in data
+        assert "default" in data["message"]
 
 
 class TestApplicationEndpoints:
     """Integration tests for application endpoints."""
     
-    @pytest.fixture
-    async def client(self, mock_service_registry):
-        """Create test client with mocked service registry."""
-        with patch('src.services.service_registry.service_registry', mock_service_registry):
-            with patch('src.api.app.service_registry', mock_service_registry):
-                app = create_app()
-                transport = ASGITransport(app=app)
-                async with AsyncClient(transport=transport, base_url="http://test") as ac:
-                    yield ac
+
     
     @pytest.mark.asyncio
     async def test_get_all_applications(self, client):
@@ -256,9 +296,11 @@ class TestApplicationEndpoints:
         assert isinstance(data["data"], list)
     
     @pytest.mark.asyncio
-    async def test_create_application(self, client):
+    async def test_create_application(self, client, mock_service_registry):
         """Test creating a new application."""
+        from src.models.application import JobApplication
         application_data = {
+            "job_id": "test-job-id",
             "job_title": "Software Engineer",
             "company": "Tech Corp",
             "location": "San Francisco, CA",
@@ -266,39 +308,48 @@ class TestApplicationEndpoints:
             "portal": "LinkedIn"
         }
         
+        # Mock create_application to return a real JobApplication
+        mock_app = JobApplication(
+            id="test-app-id",
+            job_id="test-job-id",
+            job_title="Software Engineer",
+            company="Tech Corp",
+            status="draft"
+        )
+        mock_service_registry.app_service.create_application.return_value = mock_app
+        
         response = await client.post("/api/v1/applications/", json=application_data)
         
         assert response.status_code == 200
         data = response.json()
-        assert data["job_title"] == "Software Engineer"
-        assert data["company"] == "Tech Corp"
-        assert data["status"] == "draft"  # Default status
+        assert data["data"]["job_title"] == "Software Engineer"
+        assert data["data"]["company"] == "Tech Corp"
+        assert data["data"]["status"] == "draft"  # Default status
     
     @pytest.mark.asyncio
-    async def test_get_application_statistics(self, client):
+    async def test_get_application_statistics(self, client, mock_service_registry):
         """Test getting application statistics."""
-        response = await client.get("/api/v1/applications/statistics")
+        # Configure already existing app_service from registry
+        mock_service_registry.app_service.get_application_stats.return_value = {
+            "total_applications": 10,
+            "status_breakdown": {"draft": 5},
+            "success_rate": 50.0
+        }
+        
+        response = await client.get("/api/v1/applications/stats")
         
         assert response.status_code == 200
         data = response.json()
-        assert "total_applications" in data
-        assert "status_counts" in data
-        assert "success_rate" in data
-        assert isinstance(data["total_applications"], int)
+        assert "total_applications" in data["data"]
+        assert "status_breakdown" in data["data"]
+        assert "success_rate" in data["data"]
+        assert data["data"]["total_applications"] == 10
 
 
 class TestAIEndpoints:
     """Integration tests for AI endpoints."""
     
-    @pytest.fixture
-    async def client(self, mock_service_registry):
-        """Create test client with mocked service registry."""
-        with patch('src.services.service_registry.service_registry', mock_service_registry):
-            with patch('src.api.app.service_registry', mock_service_registry):
-                app = create_app()
-                transport = ASGITransport(app=app)
-                async with AsyncClient(transport=transport, base_url="http://test") as ac:
-                    yield ac
+
     
     @pytest.mark.asyncio
     async def test_ai_health_check(self, client):
@@ -312,14 +363,32 @@ class TestAIEndpoints:
         assert isinstance(data["available"], bool)
     
     @pytest.mark.asyncio
-    async def test_optimize_resume(self, client):
+    async def test_optimize_resume(self, client, mock_service_registry):
         """Test resume optimization endpoint."""
+        from src.models.resume import Resume, ResumeOptimizationResponse
         optimization_request = {
             "resume_id": "test-resume-id",
             "target_role": "Software Engineer",
             "job_description": "Python development position with React frontend",
             "current_resume_content": "Basic software engineer resume"
         }
+        
+        mock_resume = Resume(
+            id="test-resume-id",
+            name="Test Resume",
+            file_path="/test/path.pdf",
+            file_type="pdf"
+        )
+        
+        mock_response = ResumeOptimizationResponse(
+            original_resume=mock_resume,
+            optimized_content="Optimized Content",
+            suggestions=["Suggestion 1"],
+            confidence_score=0.95,
+            skill_gaps=[],
+            improvements=[]
+        )
+        mock_service_registry.ai_service.optimize_resume.return_value = mock_response
         
         response = await client.post("/api/v1/ai/optimize-resume", json=optimization_request)
         
@@ -331,8 +400,9 @@ class TestAIEndpoints:
         assert isinstance(data["suggestions"], list)
     
     @pytest.mark.asyncio
-    async def test_generate_cover_letter(self, client):
+    async def test_generate_cover_letter(self, client, mock_service_registry):
         """Test cover letter generation endpoint."""
+        from src.models.cover_letter import CoverLetter
         cover_letter_request = {
             "job_title": "Senior Developer",
             "company_name": "Innovation Labs",
@@ -340,6 +410,17 @@ class TestAIEndpoints:
             "resume_summary": "5 years of full stack development experience",
             "tone": "professional"
         }
+        
+        mock_cl = CoverLetter(
+            id="test-cl-id",
+            job_title="Senior Developer",
+            company_name="Innovation Labs",
+            content="Test content",
+            job_description="Test description",
+            tone="professional",
+            word_count=200
+        )
+        mock_service_registry.ai_service.generate_cover_letter.return_value = mock_cl
         
         response = await client.post("/api/v1/ai/generate-cover-letter", json=cover_letter_request)
         
@@ -355,42 +436,54 @@ class TestAIEndpoints:
 class TestJobSearchEndpoints:
     """Integration tests for job search endpoints."""
     
-    @pytest.fixture
-    async def client(self, mock_service_registry):
-        """Create test client with mocked service registry."""
-        with patch('src.services.service_registry.service_registry', mock_service_registry):
-            with patch('src.api.app.service_registry', mock_service_registry):
-                app = create_app()
-                transport = ASGITransport(app=app)
-                async with AsyncClient(transport=transport, base_url="http://test") as ac:
-                    yield ac
+
     
     @pytest.mark.asyncio
-    async def test_search_jobs(self, client):
+    async def test_search_jobs(self, client, mock_service_registry):
         """Test job search endpoint."""
-        search_params = {
-            "query": "software engineer",
+        from src.models.job import JobSearchResponse, Job
+        # Configure already existing job_search_service from registry
+        mock_jobs = {
+            "linkedin": [
+                Job(
+                    title="Engineer", 
+                    company="Corp",
+                    location="SF",
+                    url="http://example.com/",
+                    portal="LinkedIn"
+                )
+            ]
+        }
+        mock_response = JobSearchResponse(
+            jobs=mock_jobs,
+            total_jobs=1,
+            search_metadata={"keywords": ["software engineer"]}
+        )
+        mock_service_registry.job_search_service.search_jobs.return_value = mock_response
+        
+        search_request = {
+            "keywords": ["software engineer"],
             "location": "San Francisco",
             "experience_level": "mid"
         }
         
-        response = await client.get("/api/v1/jobs/search", params=search_params)
+        response = await client.post("/api/v1/jobs/search", json=search_request)
         
-        # Note: This might return 500 if JobSpy is not properly configured
-        # In a real test environment, we'd mock the job search service
-        assert response.status_code in [200, 500]
-        
-        if response.status_code == 200:
-            data = response.json()
-            assert "jobs" in data
-            assert isinstance(data["jobs"], dict)
+        assert response.status_code == 200
+        data = response.json()
+        assert "jobs" in data
+        assert isinstance(data["jobs"], dict)
+        assert data["total_jobs"] == 1
     
     @pytest.mark.asyncio
-    async def test_get_available_sites(self, client):
+    async def test_get_available_sites(self, client, mock_service_registry):
         """Test getting available job sites."""
+        # This is a synchronous method in the service
+        mock_service_registry.job_search_service.get_available_sites = MagicMock(return_value=["linkedin", "indeed"])
+        
         response = await client.get("/api/v1/jobs/sites")
         
         assert response.status_code == 200
         data = response.json()
         assert isinstance(data, list)
-        assert len(data) > 0
+        assert "linkedin" in data

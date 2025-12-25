@@ -1,6 +1,7 @@
 """Unit tests for AI service."""
 
 import pytest
+import json
 from unittest.mock import AsyncMock, MagicMock, patch
 import sys
 
@@ -43,20 +44,30 @@ class TestGeminiAIService:
     async def test_is_available_without_api_key(self, ai_service):
         """Test service availability without API key."""
         with patch('src.services.gemini_ai_service.config.GEMINI_API_KEY', None):
+            # We need to manually update it or recreate the service because it's set in __init__
+            ai_service.api_key = None
             available = await ai_service.is_available()
             assert available is False
     
     @pytest.mark.asyncio
     async def test_optimize_resume_with_api_key(self, ai_service):
         """Test resume optimization with API key available."""
-        # Mock the Gemini API response
+        # Mock the Gemini API response with valid JSON
         mock_response = MagicMock()
-        mock_response.text = "Optimized resume content with improved keywords and structure."
+        mock_response.text = json.dumps({
+            "optimized_content": "Optimized resume content with improved keywords and structure.",
+            "suggestions": ["Add keywords", "Improve formatting"],
+            "skill_gaps": ["None"],
+            "improvements": ["Structure"],
+            "confidence_score": 0.9
+        })
         
         with patch('src.services.gemini_ai_service.genai.GenerativeModel') as mock_model_class:
             mock_model = MagicMock()
-            mock_model.generate_content_async.return_value = mock_response
+            # Set up the mock to look like a coroutine function for our improved check
+            mock_model.generate_content_async = AsyncMock(return_value=mock_response)
             mock_model_class.return_value = mock_model
+            ai_service.model = mock_model # Assign it directly to be sure
             
             request = ResumeOptimizationRequest(
                 resume_id="test-resume-id",
@@ -94,14 +105,17 @@ class TestGeminiAIService:
     @pytest.mark.asyncio
     async def test_generate_cover_letter_with_api_key(self, ai_service):
         """Test cover letter generation with API key available."""
-        # Mock the Gemini API response
+        # Mock the Gemini API response with valid JSON
         mock_response = MagicMock()
-        mock_response.text = "Professional cover letter content tailored to the position."
+        mock_response.text = json.dumps({
+            "content": "Professional cover letter content tailored to the position."
+        })
         
         with patch('src.services.gemini_ai_service.genai.GenerativeModel') as mock_model_class:
             mock_model = MagicMock()
-            mock_model.generate_content_async.return_value = mock_response
+            mock_model.generate_content_async = AsyncMock(return_value=mock_response)
             mock_model_class.return_value = mock_model
+            ai_service.model = mock_model # Assign it directly to be sure
             
             request = CoverLetterRequest(
                 job_title="Software Engineer",

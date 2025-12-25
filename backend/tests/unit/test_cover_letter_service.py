@@ -13,6 +13,7 @@ from src.core.cover_letter_service import CoverLetterService as ICoverLetterServ
 def mock_ai_service():
     """Create a mock AI service."""
     mock = AsyncMock()
+    from datetime import timezone
     mock.generate_cover_letter.return_value = CoverLetter(
         id="test-id",
         job_title="Software Engineer",
@@ -20,8 +21,8 @@ def mock_ai_service():
         content="Generated cover letter content",
         tone="professional",
         word_count=250,
-        created_at=datetime.utcnow(),
-        updated_at=datetime.utcnow()
+        created_at=datetime.now(timezone.utc),
+        updated_at=datetime.now(timezone.utc)
     )
     return mock
 
@@ -133,7 +134,14 @@ async def test_generate_cover_letter_with_ai(cover_letter_service, mock_ai_servi
         tone="professional"
     )
     
-    generated = await cover_letter_service.generate_cover_letter(create_data)
+    # Pass individual arguments as per the new signature
+    generated = await cover_letter_service.generate_cover_letter(
+        job_title=create_data.job_title,
+        company_name=create_data.company_name,
+        job_description="Python developer position",
+        resume_summary="Experienced developer",
+        tone=create_data.tone
+    )
     
     assert generated is not None
     assert generated.job_title == "Software Engineer"

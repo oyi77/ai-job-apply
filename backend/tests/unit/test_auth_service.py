@@ -14,9 +14,18 @@ from src.config import config
 async def auth_service():
     """Create an auth service instance for testing."""
     service = JWTAuthService()
-    # Mock the repository to avoid database dependencies
-    service._repository = AsyncMock()
-    service._session = AsyncMock()
+    # Mock the repository and session
+    mock_repo = AsyncMock()
+    mock_session = AsyncMock()
+    
+    # Mock the _get_session_repo context manager
+    service._get_session_repo = MagicMock()
+    service._get_session_repo.return_value.__aenter__.return_value = (mock_session, mock_repo)
+    
+    # Keep references for assertions
+    service._repository = mock_repo
+    service._session = mock_session
+    
     return service
 
 
