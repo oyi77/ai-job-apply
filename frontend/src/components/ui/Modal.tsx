@@ -47,10 +47,10 @@ const Modal: React.FC<ModalProps> = ({
 
   return (
     <Transition appear show={isOpen} as={Fragment}>
-      <Dialog 
-        as="div" 
-        className="relative z-50" 
-        onClose={closeOnBackdrop ? onClose : () => {}}
+      <Dialog
+        as="div"
+        className="relative z-50"
+        onClose={closeOnBackdrop ? onClose : () => { }}
       >
         <Transition.Child
           as={Fragment}
@@ -61,7 +61,7 @@ const Modal: React.FC<ModalProps> = ({
           leaveFrom="opacity-100"
           leaveTo="opacity-0"
         >
-          <div className="fixed inset-0 bg-black bg-opacity-25" />
+          <div className="fixed inset-0 bg-gray-900/40 backdrop-blur-sm" />
         </Transition.Child>
 
         <div className="fixed inset-0 overflow-y-auto">
@@ -75,16 +75,16 @@ const Modal: React.FC<ModalProps> = ({
               leaveFrom="opacity-100 scale-100"
               leaveTo="opacity-0 scale-95"
             >
-              <Dialog.Panel 
-                className={`w-full ${sizeClasses[size]} transform overflow-hidden rounded-2xl bg-white p-6 text-left align-middle shadow-xl transition-all ${className}`}
+              <Dialog.Panel
+                className={`w-full ${sizeClasses[size]} transform overflow-hidden rounded-[2rem] bg-white/90 backdrop-blur-2xl p-8 text-left align-middle shadow-2xl border border-white transition-all ${className}`}
               >
                 {/* Header */}
                 {(title || showCloseButton) && (
-                  <div className="flex items-center justify-between mb-4">
+                  <div className="flex items-center justify-between mb-6">
                     {title && (
                       <Dialog.Title
                         as="h3"
-                        className="text-lg font-medium leading-6 text-gray-900"
+                        className="text-2xl font-extrabold text-gray-900 tracking-tight"
                       >
                         {title}
                       </Dialog.Title>
@@ -92,23 +92,23 @@ const Modal: React.FC<ModalProps> = ({
                     {showCloseButton && (
                       <button
                         type="button"
-                        className="text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-full p-1"
+                        className="text-gray-400 hover:text-gray-900 hover:bg-gray-100 transition-all rounded-xl p-2"
                         onClick={onClose}
                       >
-                        <XMarkIcon className="h-5 w-5" />
+                        <XMarkIcon className="h-6 w-6" />
                       </button>
                     )}
                   </div>
                 )}
 
                 {/* Content */}
-                <div className="mt-2">
+                <div className="mt-2 text-gray-600 font-medium">
                   {children}
                 </div>
 
                 {/* Footer */}
                 {footer && (
-                  <div className="mt-6 flex justify-end space-x-3">
+                  <div className="mt-8 flex justify-end space-x-4">
                     {footer}
                   </div>
                 )}

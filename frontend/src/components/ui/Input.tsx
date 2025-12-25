@@ -1,7 +1,7 @@
-import React from 'react';
+import React, { forwardRef } from 'react';
 import type { InputProps } from '../../types';
 
-const Input: React.FC<InputProps> = ({
+const Input = forwardRef<HTMLInputElement | HTMLTextAreaElement, InputProps>(({
   name,
   label,
   type = 'text',
@@ -18,32 +18,33 @@ const Input: React.FC<InputProps> = ({
   rightIcon,
   as = 'input',
   rows = 4,
-  ref,
-}) => {
+  helpText,
+  ...props
+}, ref) => {
   const inputId = `input-${name}`;
-  
+
   const baseClasses = 'block w-full border rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-offset-0 transition-colors duration-200';
   const stateClasses = error
     ? 'border-danger-300 focus:ring-danger-500 focus:border-danger-500'
     : success
-    ? 'border-success-300 focus:ring-success-500 focus:border-success-500'
-    : 'border-gray-300 focus:ring-primary-500 focus:border-primary-500';
+      ? 'border-success-300 focus:ring-success-500 focus:border-success-500'
+      : 'border-gray-300 focus:ring-primary-500 focus:border-primary-500';
   const disabledClasses = disabled ? 'bg-gray-50 cursor-not-allowed' : 'bg-white';
-  
+
   const sizeClasses = {
     sm: 'px-2 py-1 text-xs',
     md: 'px-3 py-2 text-sm',
-    lg: 'px-4 py-3 text-base',
+    lg: 'px-4 py-3 text-lg',
   };
-  
+
   const classes = `${baseClasses} ${stateClasses} ${disabledClasses} ${sizeClasses[size]} ${className}`;
-  
+
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     if (onChange) {
       onChange(e.target.value);
     }
   };
-  
+
   if (as === 'textarea') {
     return (
       <div className="space-y-1">
@@ -70,6 +71,7 @@ const Input: React.FC<InputProps> = ({
             rows={rows}
             className={`${classes} ${icon ? 'pl-10' : ''} ${rightIcon ? 'pr-10' : ''}`}
             ref={ref as React.Ref<HTMLTextAreaElement>}
+            {...props}
           />
           {rightIcon && (
             <div className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400">
@@ -83,7 +85,7 @@ const Input: React.FC<InputProps> = ({
       </div>
     );
   }
-  
+
   return (
     <div className="space-y-1">
       {label && (
@@ -109,6 +111,7 @@ const Input: React.FC<InputProps> = ({
           disabled={disabled}
           className={`${classes} ${icon ? 'pl-10' : ''} ${rightIcon ? 'pr-10' : ''}`}
           ref={ref as React.Ref<HTMLInputElement>}
+          {...props}
         />
         {rightIcon && (
           <div className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400">
@@ -119,8 +122,13 @@ const Input: React.FC<InputProps> = ({
       {error && (
         <p className="text-sm text-danger-600">{error}</p>
       )}
+      {!error && helpText && (
+        <p className="text-xs text-gray-500">{helpText}</p>
+      )}
     </div>
   );
-};
+});
+
+Input.displayName = 'Input';
 
 export default Input;

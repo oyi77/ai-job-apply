@@ -1,53 +1,94 @@
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&display=swap');
 
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
 @layer base {
+  :root {
+    --bg-mesh: radial-gradient(at 0% 0%, hsla(210, 100%, 98%, 1) 0, transparent 50%),
+               radial-gradient(at 100% 0%, hsla(220, 100%, 96%, 1) 0, transparent 50%),
+               radial-gradient(at 100% 100%, hsla(230, 100%, 97%, 1) 0, transparent 50%),
+               radial-gradient(at 0% 100%, hsla(240, 100%, 98%, 1) 0, transparent 50%);
+  }
+
   html {
-    font-family: 'Inter', system-ui, sans-serif;
+    font-family: 'Outfit', system-ui, sans-serif;
+    scroll-behavior: smooth;
   }
   
   body {
-    @apply bg-gray-50 text-gray-900;
+    @apply text-gray-900 antialiased;
+    background: var(--bg-mesh);
+    background-attachment: fixed;
+    min-height: 100vh;
+  }
+
+  /* Modern Scrollbar */
+  ::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+  ::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  ::-webkit-scrollbar-thumb {
+    @apply bg-gray-300 rounded-full hover:bg-gray-400 transition-colors;
   }
 }
 
 @layer components {
   .btn {
-    @apply inline-flex items-center justify-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-offset-2 transition-colors duration-200;
+    @apply inline-flex items-center justify-center px-5 py-2.5 border border-transparent text-sm font-semibold rounded-xl shadow-sm focus:outline-none focus:ring-2 focus:ring-offset-2 transition-all duration-300 active:scale-95;
   }
   
   .btn-primary {
-    @apply btn bg-primary-600 text-white hover:bg-primary-700 focus:ring-primary-500;
+    @apply btn bg-gradient-to-r from-primary-600 to-primary-700 text-white hover:from-primary-700 hover:to-primary-800 shadow-md hover:shadow-lg focus:ring-primary-500;
   }
   
   .btn-secondary {
-    @apply btn bg-white text-gray-700 border-gray-300 hover:bg-gray-50 focus:ring-primary-500;
+    @apply btn bg-white/80 backdrop-blur-md text-gray-700 border-gray-200 hover:bg-gray-50 hover:border-gray-300 focus:ring-primary-500;
   }
   
   .btn-danger {
-    @apply btn bg-danger-600 text-white hover:bg-danger-700 focus:ring-danger-500;
+    @apply btn bg-gradient-to-r from-danger-600 to-danger-700 text-white hover:from-danger-700 hover:to-danger-800 shadow-md hover:shadow-lg focus:ring-danger-500;
   }
   
   .input {
-    @apply block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-primary-500 focus:border-primary-500 sm:text-sm;
+    @apply block w-full px-4 py-2.5 bg-white/50 backdrop-blur-sm border border-gray-200 rounded-xl shadow-sm placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 transition-all duration-300 sm:text-sm;
   }
   
   .card {
-    @apply bg-white overflow-hidden shadow rounded-lg;
+    @apply bg-white/70 backdrop-blur-xl overflow-hidden shadow-xl shadow-gray-200/50 rounded-2xl border border-white;
   }
   
   .card-header {
-    @apply px-4 py-5 sm:px-6 border-b border-gray-200;
+    @apply px-6 py-5 border-b border-gray-100 bg-white/30;
   }
   
   .card-body {
-    @apply px-4 py-5 sm:p-6;
+    @apply px-6 py-6;
   }
   
   .card-footer {
-    @apply px-4 py-4 sm:px-6 border-t border-gray-200 bg-gray-50;
+    @apply px-6 py-4 border-t border-gray-100 bg-gray-50/50;
+  }
+
+  .glass {
+    @apply bg-white/40 backdrop-blur-lg border border-white/40 shadow-xl;
+  }
+
+  .glass-dark {
+    @apply bg-gray-900/40 backdrop-blur-lg border border-white/10 shadow-xl;
+  }
+  
+  .animate-float {
+    animation: float 6s ease-in-out infinite;
+  }
+
+  @keyframes float {
+    0% { transform: translateY(0px); }
+    50% { transform: translateY(-10px); }
+    100% { transform: translateY(0px); }
   }
 }

@@ -34,7 +34,7 @@ describe('Input Component', () => {
   it('renders large input', () => {
     render(<Input name="test" size="lg" placeholder="Enter text" />);
     const input = screen.getByRole('textbox');
-    expect(input).toHaveClass('px-4 py-3 text-base');
+    expect(input).toHaveClass('px-4 py-3 text-lg');
   });
 
   it('renders textarea', () => {

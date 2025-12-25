@@ -11,7 +11,7 @@ const mockData = [
 describe('Chart', () => {
   it('renders bar chart by default', () => {
     render(<Chart data={mockData} />);
-    
+
     mockData.forEach(item => {
       expect(screen.getByText(item.label)).toBeInTheDocument();
       expect(screen.getByText(item.value.toString())).toBeInTheDocument();
@@ -20,7 +20,7 @@ describe('Chart', () => {
 
   it('renders bar chart with custom height', () => {
     render(<Chart data={mockData} height={400} />);
-    const chartContainer = screen.getByText('A').closest('div');
+    const chartContainer = screen.getByTestId('chart-container');
     expect(chartContainer).toHaveStyle({ height: '400px' });
   });
 
@@ -47,13 +47,14 @@ describe('Chart', () => {
 
   it('applies custom className', () => {
     render(<Chart data={mockData} className="custom-chart" />);
-    const chartContainer = screen.getByText('A').closest('div');
+    const chartContainer = screen.getByTestId('chart-container');
     expect(chartContainer).toHaveClass('custom-chart');
   });
 
   it('handles empty data gracefully', () => {
     render(<Chart data={[]} />);
-    expect(screen.getByText('A')).not.toBeInTheDocument();
+    expect(screen.queryByText('A')).not.toBeInTheDocument();
+    expect(screen.getByText('No data available')).toBeInTheDocument();
   });
 
   it('uses default colors when not provided', () => {
@@ -62,7 +63,7 @@ describe('Chart', () => {
       { label: 'B', value: 20 },
     ];
     render(<Chart data={dataWithoutColors} />);
-    
+
     dataWithoutColors.forEach(item => {
       expect(screen.getByText(item.label)).toBeInTheDocument();
       expect(screen.getByText(item.value.toString())).toBeInTheDocument();
@@ -75,7 +76,7 @@ describe('Chart', () => {
       { label: 'High', value: 100 },
     ];
     render(<Chart data={dataWithHighValues} />);
-    
+
     // The high value should be displayed
     expect(screen.getByText('100')).toBeInTheDocument();
   });
@@ -83,7 +84,7 @@ describe('Chart', () => {
   it('renders with single data point', () => {
     const singleData = [{ label: 'Single', value: 50 }];
     render(<Chart data={singleData} />);
-    
+
     expect(screen.getByText('Single')).toBeInTheDocument();
     expect(screen.getByText('50')).toBeInTheDocument();
   });

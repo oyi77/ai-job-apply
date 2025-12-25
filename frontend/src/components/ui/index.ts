@@ -7,7 +7,7 @@ export { default as Modal } from './Modal';
 export { default as Select } from './Select';
 export { default as Spinner } from './Spinner';
 export { default as Chart } from './Chart';
-export { default as Notification } from './Notification';
+export { default as Notification, NotificationContainer, useNotifications, type AppNotification, type AppNotificationType } from './Notification';
 export { default as ThemeToggle } from './ThemeToggle';
 export { default as Progress } from './Progress';
 export { default as Tooltip } from './Tooltip';
