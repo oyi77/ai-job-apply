@@ -23,6 +23,7 @@ except ImportError:
 from ..core.ai_service import AIService
 from ..models.resume import ResumeOptimizationRequest, ResumeOptimizationResponse, Resume
 from ..models.cover_letter import CoverLetterRequest, CoverLetter
+from ..models.career_insights import CareerInsightsRequest, CareerInsightsResponse
 from ..config import config
 from loguru import logger
 
@@ -232,6 +233,29 @@ class GeminiAIService(AIService):
         except Exception as e:
             self.logger.error(f"Error generating improvement suggestions: {e}", exc_info=True)
             return self._mock_improvement_suggestions()
+
+    async def generate_career_insights(self, request: CareerInsightsRequest) -> CareerInsightsResponse:
+        """Generate career insights using Gemini AI."""
+        try:
+            self.logger.info("Generating career insights using Gemini AI")
+
+            if not await self.is_available():
+                return self._mock_career_insights(request)
+
+            # Create the career insights prompt
+            prompt = self._build_career_insights_prompt(request)
+
+            # Generate response using Gemini
+            response = await self._generate_content(prompt)
+
+            if response:
+                return self._parse_career_insights_response(response)
+            else:
+                return self._mock_career_insights(request)
+
+        except Exception as e:
+            self.logger.error(f"Error generating career insights: {e}", exc_info=True)
+            return self._mock_career_insights(request)
     
     async def is_available(self) -> bool:
         """Check if the Gemini AI service is available."""
@@ -374,6 +398,40 @@ class GeminiAIService(AIService):
             "confidence": 0.82
         }}
         """
+
+    def _build_career_insights_prompt(self, request: CareerInsightsRequest) -> str:
+        """Create a prompt for career insights generation."""
+        # Summarize application history for context
+        history_summary = json.dumps(request.application_history, indent=2)
+
+        return f"""
+        You are an expert career counselor. Analyze the candidate's profile and provide strategic career advice.
+
+        Skills: {', '.join(request.skills)}
+        Experience Level: {request.experience_level or 'Not specified'}
+        Career Goals: {request.career_goals or 'Not specified'}
+        Application History: {history_summary}
+
+        Please provide a JSON response with the following structure:
+        {{
+            "market_analysis": "Detailed analysis of the current job market for this profile...",
+            "salary_insights": {{
+                "estimated_range": "$X - $Y",
+                "market_trend": "Growing/Stable/Declining",
+                "location_factor": "High/Medium/Low impact"
+            }},
+            "recommended_roles": ["Role 1", "Role 2", "Role 3"],
+            "skill_gaps": ["Skill 1", "Skill 2"],
+            "strategic_advice": ["Advice 1", "Advice 2", "Advice 3"],
+            "confidence_score": 0.85
+        }}
+
+        Focus on:
+        - Identifying patterns in application history
+        - Matching skills to high-demand roles
+        - Providing actionable steps for career growth
+        - Realistic salary expectations
+        """
     
     def _parse_resume_optimization_response(self, response: str) -> Dict[str, Any]:
         """Parse the resume optimization response from Gemini."""
@@ -419,6 +477,26 @@ class GeminiAIService(AIService):
                 "recommendations": ["Highlight relevant projects", "Add missing skills"],
                 "confidence": 0.7
             }
+
+    def _parse_career_insights_response(self, response: str) -> CareerInsightsResponse:
+        """Parse the career insights response from Gemini."""
+        try:
+            data = json.loads(response)
+            return CareerInsightsResponse(**data)
+        except (json.JSONDecodeError, ValueError):
+            # Fallback parsing
+            return CareerInsightsResponse(
+                market_analysis=response[:500] + "...",
+                salary_insights={
+                    "estimated_range": "Unknown",
+                    "market_trend": "Unknown",
+                    "location_factor": "Unknown"
+                },
+                recommended_roles=[],
+                skill_gaps=[],
+                strategic_advice=["Update resume", "Network more"],
+                confidence_score=0.5
+            )
     
     def _extract_skills_from_text(self, text: str) -> List[str]:
         """Extract skills from text response."""
@@ -536,3 +614,30 @@ Best regards,
             "Use consistent bullet point formatting",
             "Add industry-specific keywords"
         ]
+
+    def _mock_career_insights(self, request: CareerInsightsRequest) -> CareerInsightsResponse:
+        """Mock career insights response."""
+        return CareerInsightsResponse(
+            market_analysis="The current job market shows strong demand for professionals with your skill set. "
+                           "There is particularly high growth in tech-focused roles.",
+            salary_insights={
+                "estimated_range": "$80,000 - $120,000",
+                "market_trend": "Growing",
+                "location_factor": "High impact"
+            },
+            recommended_roles=[
+                "Senior Software Engineer",
+                "Full Stack Developer",
+                "Technical Lead"
+            ],
+            skill_gaps=[
+                "Cloud Architecture",
+                "System Design"
+            ],
+            strategic_advice=[
+                "Focus on highlighting your leadership experience",
+                "Consider obtaining cloud certifications",
+                "Network with professionals in your target industry"
+            ],
+            confidence_score=0.85
+        )
