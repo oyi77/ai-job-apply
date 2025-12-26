@@ -2,27 +2,16 @@
 
 import asyncio
 import json
-import warnings
 from typing import List, Dict, Any, Optional
 from datetime import datetime, timezone
 
-# Suppress deprecation warning for google.generativeai before import
-# TODO: Migrate to google.genai when stable version is available
-# The warning is emitted during import, so we need to filter it globally
-warnings.filterwarnings("ignore", category=FutureWarning)
-
-try:
-    import google.genai as genai
-except ImportError:
-    # Fallback to old package for backward compatibility
-    # Suppress the deprecation warning that will be emitted during import
-    with warnings.catch_warnings():
-        warnings.simplefilter("ignore", FutureWarning)
-        import google.generativeai as genai
+from google import genai
+from google.genai import types
 
 from ..core.ai_service import AIService
 from ..models.resume import ResumeOptimizationRequest, ResumeOptimizationResponse, Resume
 from ..models.cover_letter import CoverLetterRequest, CoverLetter
+from ..models.career_insights import CareerInsightsRequest, CareerInsightsResponse
 from ..config import config
 from loguru import logger
 
@@ -33,7 +22,7 @@ class GeminiAIService(AIService):
     def __init__(self):
         """Initialize the Gemini AI service."""
         self.logger = logger.bind(module="GeminiAIService")
-        self.model = None
+        self.client = None
         
         # Use main configuration
         self.api_key = config.GEMINI_API_KEY
@@ -47,21 +36,14 @@ class GeminiAIService(AIService):
         """Initialize the Gemini client."""
         try:
             if self.api_key:
-                genai.configure(api_key=self.api_key)
-                self.model = genai.GenerativeModel(
-                    self.model_name,
-                    generation_config=genai.types.GenerationConfig(
-                        temperature=self.temperature,
-                        max_output_tokens=self.max_tokens,
-                    )
-                )
-                self.logger.info(f"Gemini AI service initialized: {self.model_name}")
+                self.client = genai.Client(api_key=self.api_key)
+                self.logger.info(f"Gemini AI service initialized with model: {self.model_name}")
             else:
                 self.logger.warning("Gemini API key not configured, running in mock mode")
-                self.model = None
+                self.client = None
         except Exception as e:
             self.logger.error(f"Failed to initialize Gemini AI service: {e}")
-            self.model = None
+            self.client = None
     
     async def optimize_resume(self, request: ResumeOptimizationRequest) -> ResumeOptimizationResponse:
         """Optimize resume for a specific job using Gemini AI."""
@@ -232,62 +214,48 @@ class GeminiAIService(AIService):
         except Exception as e:
             self.logger.error(f"Error generating improvement suggestions: {e}", exc_info=True)
             return self._mock_improvement_suggestions()
+
+    async def generate_career_insights(self, request: CareerInsightsRequest) -> CareerInsightsResponse:
+        """Generate career insights using Gemini AI."""
+        try:
+            self.logger.info("Generating career insights using Gemini AI")
+
+            if not await self.is_available():
+                return self._mock_career_insights(request)
+
+            # Create the career insights prompt
+            prompt = self._build_career_insights_prompt(request)
+
+            # Generate response using Gemini
+            response = await self._generate_content(prompt)
+
+            if response:
+                return self._parse_career_insights_response(response)
+            else:
+                return self._mock_career_insights(request)
+
+        except Exception as e:
+            self.logger.error(f"Error generating career insights: {e}", exc_info=True)
+            return self._mock_career_insights(request)
     
     async def is_available(self) -> bool:
         """Check if the Gemini AI service is available."""
-        return self.model is not None and self.api_key is not None
+        return self.client is not None and self.api_key is not None
     
     async def _generate_content(self, prompt: str) -> Optional[str]:
         """Generate content using Gemini AI."""
         try:
-            if not self.model:
+            if not self.client:
                 return None
             
-            # For testing and consistency, we'll try to use generate_content_async if available
-            # but for now we'll stick to the synchronous version with run_in_executor 
-            # as it matches the current implementation structure
-            loop = asyncio.get_event_loop()
-            
-            # Check if we should use generate_content or generate_content_async (mocked in tests)
-            if hasattr(self.model, 'generate_content_async'):
-                # Handle both real coroutines and AsyncMock/MagicMock
-                if asyncio.iscoroutinefunction(self.model.generate_content_async) or isinstance(self.model.generate_content_async, (AsyncMock, MagicMock)):
-                    try:
-                        response = await self.model.generate_content_async(
-                            prompt,
-                            generation_config=genai.types.GenerationConfig(
-                                temperature=self.temperature,
-                                max_output_tokens=self.max_tokens,
-                            )
-                        )
-                    except TypeError:
-                        # Fallback if it's not actually awaitable
-                        response = self.model.generate_content(
-                            prompt,
-                            generation_config=genai.types.GenerationConfig(
-                                temperature=self.temperature,
-                                max_output_tokens=self.max_tokens,
-                            )
-                        )
-                else:
-                    response = self.model.generate_content(
-                        prompt,
-                        generation_config=genai.types.GenerationConfig(
-                            temperature=self.temperature,
-                            max_output_tokens=self.max_tokens,
-                        )
-                    )
-            else:
-                response = await loop.run_in_executor(
-                    None, 
-                    lambda: self.model.generate_content(
-                        prompt,
-                        generation_config=genai.types.GenerationConfig(
-                            temperature=self.temperature,
-                            max_output_tokens=self.max_tokens,
-                        )
-                    )
+            response = await self.client.aio.models.generate_content(
+                model=self.model_name,
+                contents=prompt,
+                config=types.GenerateContentConfig(
+                    temperature=self.temperature,
+                    max_output_tokens=self.max_tokens,
                 )
+            )
             
             return response.text if response and response.text else None
             
@@ -374,6 +342,40 @@ class GeminiAIService(AIService):
             "confidence": 0.82
         }}
         """
+
+    def _build_career_insights_prompt(self, request: CareerInsightsRequest) -> str:
+        """Create a prompt for career insights generation."""
+        # Summarize application history for context
+        history_summary = json.dumps(request.application_history, indent=2)
+
+        return f"""
+        You are an expert career counselor. Analyze the candidate's profile and provide strategic career advice.
+
+        Skills: {', '.join(request.skills)}
+        Experience Level: {request.experience_level or 'Not specified'}
+        Career Goals: {request.career_goals or 'Not specified'}
+        Application History: {history_summary}
+
+        Please provide a JSON response with the following structure:
+        {{
+            "market_analysis": "Detailed analysis of the current job market for this profile...",
+            "salary_insights": {{
+                "estimated_range": "$X - $Y",
+                "market_trend": "Growing/Stable/Declining",
+                "location_factor": "High/Medium/Low impact"
+            }},
+            "recommended_roles": ["Role 1", "Role 2", "Role 3"],
+            "skill_gaps": ["Skill 1", "Skill 2"],
+            "strategic_advice": ["Advice 1", "Advice 2", "Advice 3"],
+            "confidence_score": 0.85
+        }}
+
+        Focus on:
+        - Identifying patterns in application history
+        - Matching skills to high-demand roles
+        - Providing actionable steps for career growth
+        - Realistic salary expectations
+        """
     
     def _parse_resume_optimization_response(self, response: str) -> Dict[str, Any]:
         """Parse the resume optimization response from Gemini."""
@@ -419,6 +421,26 @@ class GeminiAIService(AIService):
                 "recommendations": ["Highlight relevant projects", "Add missing skills"],
                 "confidence": 0.7
             }
+
+    def _parse_career_insights_response(self, response: str) -> CareerInsightsResponse:
+        """Parse the career insights response from Gemini."""
+        try:
+            data = json.loads(response)
+            return CareerInsightsResponse(**data)
+        except (json.JSONDecodeError, ValueError):
+            # Fallback parsing
+            return CareerInsightsResponse(
+                market_analysis=response[:500] + "...",
+                salary_insights={
+                    "estimated_range": "Unknown",
+                    "market_trend": "Unknown",
+                    "location_factor": "Unknown"
+                },
+                recommended_roles=[],
+                skill_gaps=[],
+                strategic_advice=["Update resume", "Network more"],
+                confidence_score=0.5
+            )
     
     def _extract_skills_from_text(self, text: str) -> List[str]:
         """Extract skills from text response."""
@@ -536,3 +558,30 @@ Best regards,
             "Use consistent bullet point formatting",
             "Add industry-specific keywords"
         ]
+
+    def _mock_career_insights(self, request: CareerInsightsRequest) -> CareerInsightsResponse:
+        """Mock career insights response."""
+        return CareerInsightsResponse(
+            market_analysis="The current job market shows strong demand for professionals with your skill set. "
+                           "There is particularly high growth in tech-focused roles.",
+            salary_insights={
+                "estimated_range": "$80,000 - $120,000",
+                "market_trend": "Growing",
+                "location_factor": "High impact"
+            },
+            recommended_roles=[
+                "Senior Software Engineer",
+                "Full Stack Developer",
+                "Technical Lead"
+            ],
+            skill_gaps=[
+                "Cloud Architecture",
+                "System Design"
+            ],
+            strategic_advice=[
+                "Focus on highlighting your leadership experience",
+                "Consider obtaining cloud certifications",
+                "Network with professionals in your target industry"
+            ],
+            confidence_score=0.85
+        )

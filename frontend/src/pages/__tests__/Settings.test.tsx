@@ -1,13 +1,24 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen, waitFor } from '@testing-library/react';
+import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import Settings from '../Settings';
 import { useAppStore } from '../../stores/appStore';
 import { authService } from '../../services/api';
+import { useTranslation } from 'react-i18next';
+
+// Mock dependencies
+vi.mock('react-router-dom', () => ({
+  useNavigate: () => vi.fn(),
+}));
 
 // Mock the store
 vi.mock('../../stores/appStore', () => ({
   useAppStore: vi.fn(),
+}));
+
+// Mock i18next
+vi.mock('react-i18next', () => ({
+  useTranslation: vi.fn(),
 }));
 
 // Mock the API service
@@ -30,6 +41,7 @@ describe('Settings', () => {
   const mockSetUser = vi.fn();
   const mockSetTheme = vi.fn();
   const mockUpdateAISettings = vi.fn();
+  const mockChangeLanguage = vi.fn();
 
   beforeEach(() => {
     vi.clearAllMocks();
@@ -53,17 +65,38 @@ describe('Settings', () => {
       aiSettings: { provider_preference: 'openai' },
       updateAISettings: mockUpdateAISettings,
     });
+
+    (useTranslation as any).mockReturnValue({
+      t: (key: string) => {
+        const translations: Record<string, string> = {
+          'settings.title': 'Settings',
+          'settings.description': 'Manage your account preferences and application settings.',
+          'settings.language.title': 'Language & Region',
+          'settings.language.description': 'Set your preferred language and regional settings.',
+          'settings.language.current': 'Current:',
+          'settings.language.button': 'Change Language',
+          'common.close': 'Close',
+        };
+        return translations[key] || key;
+      },
+      i18n: {
+        language: 'en',
+        changeLanguage: mockChangeLanguage,
+      },
+    });
   });
 
   it('renders correctly', () => {
     render(<Settings />);
     expect(screen.getByText('Settings')).toBeInTheDocument();
+    expect(screen.getByText('Manage your account preferences and application settings.')).toBeInTheDocument();
   });
 
   it('opens profile modal when Edit Profile is clicked', async () => {
     const user = userEvent.setup();
     render(<Settings />);
-    const editButton = screen.getByText('Edit Profile');
+    // Using translation key or text if it matches translation mock
+    const editButton = screen.getByText('settings.profile.button');
     await user.click(editButton);
     expect(screen.getByText('Edit Profile', { selector: 'h3' })).toBeInTheDocument();
   });
@@ -79,7 +112,7 @@ describe('Settings', () => {
     render(<Settings />);
 
     // Open modal
-    await user.click(screen.getByText('Edit Profile'));
+    await user.click(screen.getByText('settings.profile.button'));
 
     // Fill form
     const firstNameInput = screen.getByPlaceholderText('Enter your first name');
@@ -101,11 +134,6 @@ describe('Settings', () => {
 
     await waitFor(() => {
       // The updateProfile call arguments should contain the form data
-      // Note: We might need to be more permissive with the expectation if exact object structure fails
-      // due to extra fields or structure mismatch.
-      // But looking at the implementation:
-      // apiData = { ...data, name: ... }
-      // So it should contain first_name, last_name, email, and name.
       expect(authService.updateProfile).toHaveBeenCalledWith(expect.objectContaining({
         first_name: 'Updated',
         last_name: 'User',
@@ -118,5 +146,29 @@ describe('Settings', () => {
         first_name: 'Updated',
         last_name: 'User'
     }));
+  });
+
+  it('opens language modal when clicking change language button', () => {
+    render(<Settings />);
+
+    const changeLanguageBtn = screen.getByText('Change Language');
+    fireEvent.click(changeLanguageBtn);
+
+    expect(screen.getByText('Choose Language')).toBeInTheDocument();
+    expect(screen.getAllByText('English')[0]).toBeInTheDocument();
+    expect(screen.getByText('Español')).toBeInTheDocument();
+  });
+
+  it('calls changeLanguage when selecting a new language', () => {
+    render(<Settings />);
+
+    // Open modal
+    fireEvent.click(screen.getByText('Change Language'));
+
+    // Click Spanish option
+    const spanishOption = screen.getByText('Español');
+    fireEvent.click(spanishOption);
+
+    expect(mockChangeLanguage).toHaveBeenCalledWith('es');
   });
 });

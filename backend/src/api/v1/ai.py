@@ -5,6 +5,7 @@ from typing import Dict, Any
 from datetime import datetime
 from ...models.resume import Resume, ResumeOptimizationRequest, ResumeOptimizationResponse
 from ...models.cover_letter import CoverLetterRequest, CoverLetter
+from ...models.career_insights import CareerInsightsRequest, CareerInsightsResponse
 from ...models.user import UserProfile
 from ...api.dependencies import get_current_user
 from ...utils.logger import get_logger
@@ -193,6 +194,37 @@ async def improve_resume_suggestions(
         raise HTTPException(status_code=500, detail=f"Failed to get improvement suggestions: {str(e)}")
 
 
+@router.post("/career-insights", response_model=CareerInsightsResponse)
+async def generate_career_insights(
+    request: CareerInsightsRequest,
+    current_user: UserProfile = Depends(get_current_user)
+) -> CareerInsightsResponse:
+    """
+    Generate career insights based on application history and skills.
+
+    Args:
+        request: Career insights request
+
+    Returns:
+        Career insights
+    """
+    try:
+        logger.info("Career insights request received")
+
+        # Get AI service from unified registry
+        ai_service = await service_registry.get_ai_service()
+
+        # Use the real AI service for career insights
+        response = await ai_service.generate_career_insights(request)
+
+        logger.info("Career insights generation completed successfully")
+        return response
+
+    except Exception as e:
+        logger.error(f"Error generating career insights: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail=f"Career insights generation failed: {str(e)}")
+
+
 @router.get("/health")
 async def ai_service_health() -> Dict[str, Any]:
     """
@@ -218,7 +250,8 @@ async def ai_service_health() -> Dict[str, Any]:
                 "cover_letter_generation", 
                 "job_match_analysis",
                 "skills_extraction",
-                "resume_improvement"
+                "resume_improvement",
+                "career_insights"
             ]
         }
         
