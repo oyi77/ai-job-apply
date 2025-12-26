@@ -32,10 +32,12 @@ const FormField: React.FC<FormFieldProps> = ({
   const value = watch(name);
   const error = errors[name]?.message as string;
 
+  const { onChange, ...registerProps } = register(name, { required: required ? `${label || name} is required` : false, ...validation });
+
   return (
     <div className={className}>
       <Input
-        {...register(name, { required: required ? `${label || name} is required` : false, ...validation })}
+        {...registerProps}
         name={name}
         label={label}
         type={type}
@@ -44,7 +46,9 @@ const FormField: React.FC<FormFieldProps> = ({
         error={error}
         required={required}
         disabled={disabled}
-        onChange={() => {}} // Handled by react-hook-form
+        onChange={(val) => {
+          onChange({ target: { name, value: val } } as any);
+        }}
       />
     </div>
   );
