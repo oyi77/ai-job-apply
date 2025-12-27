@@ -51,10 +51,17 @@ Track these steps as TODOs and complete them one by one.
 1. **Read proposal.md** - Understand what's being built
 2. **Read design.md** (if exists) - Review technical decisions
 3. **Read tasks.md** - Get implementation checklist
-4. **Implement tasks sequentially** - Complete in order
-5. **Confirm completion** - Ensure every item in `tasks.md` is finished before updating statuses
-6. **Update checklist** - After all work is done, set every task to `- [x]` so the list reflects reality
-7. **Approval gate** - Do not start implementation until the proposal is reviewed and approved
+4. **Create Vibe Kanban Task** - Create main task from OpenSpec proposal (REQUIRED)
+5. **Create Subtasks** - Create Vibe Kanban subtasks from tasks.md sections (REQUIRED)
+6. **Link Documents** - Link Vibe Kanban task to OpenSpec proposal, design, and tasks (REQUIRED)
+7. **Add Tags** - Use workflow tags from `scripts/workflow-tags.md` (e.g., @openspec_link, @openspec_review)
+8. **Implement tasks sequentially** - Complete in order, updating both tasks.md and Vibe Kanban subtasks
+9. **Sync Status** - Keep OpenSpec STATUS.md and Vibe Kanban task status in sync
+10. **Confirm completion** - Ensure every item in `tasks.md` is finished before updating statuses
+11. **Update checklist** - After all work is done, set every task to `- [x]` so the list reflects reality
+12. **Approval gate** - Do not start implementation until the proposal is reviewed and approved
+
+**WORKFLOW ENFORCEMENT**: All OpenSpec changes MUST have corresponding Vibe Kanban tasks. Use `scripts/workflow-orchestrator.py` to generate task descriptions and metadata.
 
 ### Stage 3: Archiving Changes
 After deployment, create separate PR to:
@@ -71,6 +78,8 @@ After deployment, create separate PR to:
 - [ ] Read `openspec/project.md` for conventions
 - [ ] Run `openspec list` to see active changes
 - [ ] Run `openspec list --specs` to see existing capabilities
+- [ ] **Check Vibe Kanban** for existing tasks related to OpenSpec changes
+- [ ] **Review workflow enforcement** rules in `scripts/workflow-enforcement.md`
 
 **Before Creating Specs:**
 - Always check if capability already exists
@@ -97,6 +106,11 @@ openspec list --specs          # List specifications
 openspec show [item]           # Display change or spec
 openspec validate [item]       # Validate changes or specs
 openspec archive <change-id> [--yes|-y]   # Archive after deployment (add --yes for non-interactive runs)
+
+# Workflow Orchestration (OpenSpec ↔ Vibe Kanban)
+python scripts/workflow-orchestrator.py --summary    # Show workflow summary
+python scripts/workflow-orchestrator.py --report     # Generate workflow report (JSON)
+python scripts/workflow-orchestrator.py --project-id <id>  # Generate task metadata
 
 # Project management
 openspec init [path]           # Initialize OpenSpec
