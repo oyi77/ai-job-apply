@@ -332,6 +332,26 @@ export const applicationService = {
     const response = await apiClient.get('/api/v1/applications/stats');
     return handleApiResponse(response);
   },
+
+  // Bulk update applications
+  bulkUpdate: async (ids: string[], updates: Partial<JobApplication>): Promise<JobApplication[]> => {
+    const response = await apiClient.put('/api/v1/applications/bulk', { ids, updates });
+    return handleApiResponse(response);
+  },
+
+  // Bulk delete applications
+  bulkDelete: async (ids: string[]): Promise<boolean> => {
+    const response = await apiClient.delete('/api/v1/applications/bulk', { data: { ids } });
+    return handleApiResponse(response);
+  },
+
+  // Export applications
+  exportApplications: async (ids?: string[], format = 'csv'): Promise<Blob> => {
+    const response = await apiClient.post('/api/v1/applications/export', { ids, format }, {
+      responseType: 'blob'
+    });
+    return response.data;
+  },
 };
 
 // Resume Services
@@ -381,6 +401,12 @@ export const resumeService = {
     const response = await apiClient.patch(`/api/v1/resumes/${id}/default`);
     return handleApiResponse(response);
   },
+
+  // Bulk delete resumes
+  bulkDelete: async (ids: string[]): Promise<boolean> => {
+    const response = await apiClient.delete('/api/v1/resumes/bulk', { data: { ids } });
+    return handleApiResponse(response);
+  },
 };
 
 // Cover Letter Services
@@ -425,6 +451,12 @@ export const coverLetterService = {
   // Delete cover letter
   deleteCoverLetter: async (id: string): Promise<boolean> => {
     const response = await apiClient.delete(`/api/v1/cover-letters/${id}`);
+    return handleApiResponse(response);
+  },
+
+  // Bulk delete cover letters
+  bulkDelete: async (ids: string[]): Promise<boolean> => {
+    const response = await apiClient.delete('/api/v1/cover-letters/bulk', { data: { ids } });
     return handleApiResponse(response);
   },
 };

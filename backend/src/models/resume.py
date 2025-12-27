@@ -77,3 +77,8 @@ class ResumeOptimizationResponse(BaseModel):
             datetime: lambda v: v.isoformat()
         }
     }
+
+
+class BulkDeleteRequest(BaseModel):
+    """Bulk deletion request model."""
+    ids: List[str] = Field(..., description="List of IDs to delete")

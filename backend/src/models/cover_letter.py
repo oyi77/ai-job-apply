@@ -81,3 +81,8 @@ class CoverLetter(BaseModel):
     def reading_time_minutes(self) -> float:
         """Estimate reading time in minutes (average 200 words per minute)."""
         return round(self.word_count / 200, 1)
+
+
+class BulkDeleteRequest(BaseModel):
+    """Bulk deletion request model."""
+    ids: List[str] = Field(..., description="List of IDs to delete")

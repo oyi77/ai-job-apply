@@ -45,6 +45,7 @@ const CoverLetters: React.FC = () => {
   const [selectedJob, setSelectedJob] = useState<JobApplication | null>(null);
   const [generationResult, setGenerationResult] = useState<string>('');
   const [generationProgress, setGenerationProgress] = useState(0);
+  const [selectedIds, setSelectedIds] = useState<string[]>([]);
 
   const { coverLetters, resumes, applications } = useAppStore();
   const itemsPerPage = 10;
@@ -79,6 +80,15 @@ const CoverLetters: React.FC = () => {
     mutationFn: coverLetterService.deleteCoverLetter,
     onSuccess: () => {
       refetchCoverLetters();
+    },
+  });
+
+  // Bulk delete mutation
+  const bulkDeleteMutation = useMutation({
+    mutationFn: coverLetterService.bulkDelete,
+    onSuccess: () => {
+      refetchCoverLetters();
+      setSelectedIds([]);
     },
   });
 
@@ -193,6 +203,27 @@ const CoverLetters: React.FC = () => {
     a.click();
     document.body.removeChild(a);
     URL.revokeObjectURL(url);
+  };
+
+  const handleSelectAll = () => {
+    if (selectedIds.length === paginatedCoverLetters.length) {
+      setSelectedIds([]);
+    } else {
+      setSelectedIds(paginatedCoverLetters.map(cl => cl.id!));
+    }
+  };
+
+  const handleToggleSelect = (id: string) => {
+    setSelectedIds(prev => 
+      prev.includes(id) ? prev.filter(i => i !== id) : [...prev, id]
+    );
+  };
+
+  const handleBulkDelete = () => {
+    if (selectedIds.length === 0) return;
+    if (window.confirm(`Are you sure you want to delete ${selectedIds.length} cover letters?`)) {
+      bulkDeleteMutation.mutate(selectedIds);
+    }
   };
 
   const getStatusColor = (status: string) => {
@@ -349,10 +380,50 @@ const CoverLetters: React.FC = () => {
         </CardBody>
       </Card>
 
+        </CardBody>
+      </Card>
+
+      {/* Bulk Actions Toolbar */}
+      {selectedIds.length > 0 && (
+        <div className="bg-primary-50 border border-primary-100 rounded-lg p-3 flex items-center justify-between animate-fade-in">
+          <div className="flex items-center space-x-4">
+            <span className="text-primary-800 font-medium">
+              {selectedIds.length} items selected
+            </span>
+          </div>
+          <div className="flex items-center space-x-2">
+            <Button 
+              variant="danger" 
+              size="sm" 
+              onClick={handleBulkDelete}
+              className="flex items-center"
+            >
+              <TrashIcon className="h-4 w-4 mr-1" />
+              Delete Selected
+            </Button>
+            <Button 
+              variant="ghost" 
+              size="sm" 
+              onClick={() => setSelectedIds([])}
+            >
+              Cancel
+            </Button>
+          </div>
+        </div>
+      )}
+
       {/* Cover Letters List */}
       <Card>
-        <CardHeader>
-          <h3 className="text-lg font-semibold text-gray-900">Cover Letters</h3>
+        <CardHeader className="flex justify-between items-center">
+          <div className="flex items-center space-x-3">
+            <input
+              type="checkbox"
+              className="h-4 w-4 rounded border-gray-300 text-primary-600 focus:ring-primary-500"
+              checked={selectedIds.length === paginatedCoverLetters.length && paginatedCoverLetters.length > 0}
+              onChange={handleSelectAll}
+            />
+            <h3 className="text-lg font-semibold text-gray-900">Cover Letters</h3>
+          </div>
         </CardHeader>
         <CardBody>
           {paginatedCoverLetters.length === 0 ? (
@@ -372,85 +443,99 @@ const CoverLetters: React.FC = () => {
               {paginatedCoverLetters.map((coverLetter) => (
                 <div
                   key={coverLetter.id}
-                  className="border border-gray-200 rounded-lg p-4 hover:bg-gray-50 transition-colors"
+                  className={`border rounded-lg p-4 transition-colors ${
+                    selectedIds.includes(coverLetter.id!) 
+                      ? 'border-primary-300 bg-primary-50' 
+                      : 'border-gray-200 hover:bg-gray-50'
+                  }`}
                 >
-                  <div className="flex items-start justify-between">
+                  <div className="flex items-start space-x-4">
+                    <input
+                      type="checkbox"
+                      className="h-4 w-4 rounded border-gray-300 text-primary-600 focus:ring-primary-500 mt-1"
+                      checked={selectedIds.includes(coverLetter.id!)}
+                      onChange={() => handleToggleSelect(coverLetter.id!)}
+                    />
                     <div className="flex-1">
-                      <div className="flex items-center space-x-3 mb-2">
-                        <h4 className="text-lg font-medium text-gray-900">
-                          {coverLetter.job_title}
-                        </h4>
-                        <Badge variant={getStatusColor(coverLetter.status || 'draft') as any}>
-                          <div className="flex items-center space-x-1">
-                            {getStatusIcon(coverLetter.status || 'draft')}
-                            <span>{coverLetter.status || 'draft'}</span>
+                      <div className="flex items-start justify-between">
+                        <div className="flex-1">
+                          <div className="flex items-center space-x-3 mb-2">
+                            <h4 className="text-lg font-medium text-gray-900">
+                              {coverLetter.job_title}
+                            </h4>
+                            <Badge variant={getStatusColor(coverLetter.status || 'draft') as any}>
+                              <div className="flex items-center space-x-1">
+                                {getStatusIcon(coverLetter.status || 'draft')}
+                                <span>{coverLetter.status || 'draft'}</span>
+                              </div>
+                            </Badge>
                           </div>
-                        </Badge>
+                          <p className="text-gray-600 mb-2">{coverLetter.company}</p>
+                          <p className="text-sm text-gray-500 mb-3">
+                            {coverLetter.content.substring(0, 150)}...
+                          </p>
+                          <div className="flex items-center space-x-2 text-xs text-gray-400">
+                            <span>Created: {coverLetter.created_at ? new Date(coverLetter.created_at).toLocaleDateString() : 'N/A'}</span>
+                            {coverLetter.updated_at && (
+                              <span>• Updated: {new Date(coverLetter.updated_at).toLocaleDateString()}</span>
+                            )}
+                          </div>
+                        </div>
+                        <div className="flex space-x-2">
+                          <Tooltip content="View cover letter">
+                            <Button
+                              onClick={() => {
+                                setSelectedCoverLetter(coverLetter);
+                                setIsViewModalOpen(true);
+                              }}
+                              variant="ghost"
+                              size="sm"
+                            >
+                              <EyeIcon className="h-4 w-4" />
+                            </Button>
+                          </Tooltip>
+                          <Tooltip content="Edit cover letter">
+                            <Button
+                              onClick={() => {
+                                setSelectedCoverLetter(coverLetter);
+                                setIsEditModalOpen(true);
+                              }}
+                              variant="ghost"
+                              size="sm"
+                            >
+                              <PencilIcon className="h-4 w-4" />
+                            </Button>
+                          </Tooltip>
+                          <Tooltip content="Download cover letter">
+                            <Button
+                              onClick={() => handleDownload(coverLetter)}
+                              variant="ghost"
+                              size="sm"
+                            >
+                              <DocumentArrowDownIcon className="h-4 w-4" />
+                            </Button>
+                          </Tooltip>
+                          <Tooltip content="Delete cover letter">
+                            <Button
+                              onClick={async () => {
+                                if (window.confirm('Are you sure you want to delete this cover letter?')) {
+                                  try {
+                                    await deleteCoverLetterMutation.mutateAsync(coverLetter.id!);
+                                  } catch (error) {
+                                    console.error('Error deleting cover letter:', error);
+                                    alert('Failed to delete cover letter. Please try again.');
+                                  }
+                                }
+                              }}
+                              variant="ghost"
+                              size="sm"
+                              className="text-red-600 hover:text-red-700"
+                            >
+                              <TrashIcon className="h-4 w-4" />
+                            </Button>
+                          </Tooltip>
+                        </div>
                       </div>
-                      <p className="text-gray-600 mb-2">{coverLetter.company}</p>
-                      <p className="text-sm text-gray-500 mb-3">
-                        {coverLetter.content.substring(0, 150)}...
-                      </p>
-                      <div className="flex items-center space-x-2 text-xs text-gray-400">
-                        <span>Created: {coverLetter.created_at ? new Date(coverLetter.created_at).toLocaleDateString() : 'N/A'}</span>
-                        {coverLetter.updated_at && (
-                          <span>• Updated: {new Date(coverLetter.updated_at).toLocaleDateString()}</span>
-                        )}
-                      </div>
-                    </div>
-                    <div className="flex space-x-2">
-                      <Tooltip content="View cover letter">
-                        <Button
-                          onClick={() => {
-                            setSelectedCoverLetter(coverLetter);
-                            setIsViewModalOpen(true);
-                          }}
-                          variant="ghost"
-                          size="sm"
-                        >
-                          <EyeIcon className="h-4 w-4" />
-                        </Button>
-                      </Tooltip>
-                      <Tooltip content="Edit cover letter">
-                        <Button
-                          onClick={() => {
-                            setSelectedCoverLetter(coverLetter);
-                            setIsEditModalOpen(true);
-                          }}
-                          variant="ghost"
-                          size="sm"
-                        >
-                          <PencilIcon className="h-4 w-4" />
-                        </Button>
-                      </Tooltip>
-                      <Tooltip content="Download cover letter">
-                        <Button
-                          onClick={() => handleDownload(coverLetter)}
-                          variant="ghost"
-                          size="sm"
-                        >
-                          <DocumentArrowDownIcon className="h-4 w-4" />
-                        </Button>
-                      </Tooltip>
-                      <Tooltip content="Delete cover letter">
-                        <Button
-                          onClick={async () => {
-                            if (window.confirm('Are you sure you want to delete this cover letter?')) {
-                              try {
-                                await deleteCoverLetterMutation.mutateAsync(coverLetter.id!);
-                              } catch (error) {
-                                console.error('Error deleting cover letter:', error);
-                                alert('Failed to delete cover letter. Please try again.');
-                              }
-                            }
-                          }}
-                          variant="ghost"
-                          size="sm"
-                          className="text-red-600 hover:text-red-700"
-                        >
-                          <TrashIcon className="h-4 w-4" />
-                        </Button>
-                      </Tooltip>
                     </div>
                   </div>
                 </div>

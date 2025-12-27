@@ -1,8 +1,16 @@
 """Applications API endpoints for the AI Job Application Assistant."""
 
-from fastapi import APIRouter, HTTPException, Depends
+from fastapi import APIRouter, HTTPException, Depends, Response
 from typing import List, Dict, Any, Optional
-from ...models.application import JobApplication, ApplicationUpdateRequest, ApplicationStatus
+from ...models.application import (
+    JobApplication, 
+    ApplicationUpdateRequest, 
+    ApplicationStatus,
+    BulkApplicationCreate,
+    BulkApplicationUpdate,
+    BulkDeleteRequest,
+    BulkExportRequest
+)
 from ...models.user import UserProfile
 from ...services.service_registry import service_registry
 from ...utils.response_wrapper import success_response, error_response, paginated_response
@@ -41,6 +49,79 @@ async def create_application(
     except Exception as e:
         logger.error(f"Error creating application: {e}", exc_info=True)
         raise HTTPException(status_code=500, detail=f"Application creation failed: {str(e)}")
+
+
+@router.post("/bulk", response_model=Dict[str, Any])
+async def bulk_create_applications(
+    request: BulkApplicationCreate,
+    current_user: UserProfile = Depends(get_current_user)
+) -> Dict[str, Any]:
+    """Bulk create applications."""
+    try:
+        application_service = await service_registry.get_application_service()
+        applications = await application_service.bulk_create_applications(request.applications, user_id=current_user.id)
+        return success_response([app.dict() for app in applications], f"Successfully created {len(applications)} applications").dict()
+    except Exception as e:
+        logger.error(f"Error in bulk creation: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.put("/bulk", response_model=Dict[str, Any])
+async def bulk_update_applications(
+    request: BulkApplicationUpdate,
+    current_user: UserProfile = Depends(get_current_user)
+) -> Dict[str, Any]:
+    """Bulk update applications."""
+    try:
+        application_service = await service_registry.get_application_service()
+        applications = await application_service.bulk_update_applications(request.ids, request.updates, user_id=current_user.id)
+        return success_response([app.dict() for app in applications], f"Successfully updated {len(applications)} applications").dict()
+    except Exception as e:
+        logger.error(f"Error in bulk update: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.delete("/bulk", response_model=Dict[str, Any])
+async def bulk_delete_applications(
+    request: BulkDeleteRequest,
+    current_user: UserProfile = Depends(get_current_user)
+) -> Dict[str, Any]:
+    """Bulk delete applications."""
+    try:
+        application_service = await service_registry.get_application_service()
+        success = await application_service.bulk_delete_applications(request.ids, user_id=current_user.id)
+        if success:
+            return success_response(None, f"Successfully deleted {len(request.ids)} applications").dict()
+        else:
+            return error_response("Some applications could not be deleted", status_code=207).dict()
+    except Exception as e:
+        logger.error(f"Error in bulk deletion: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.post("/export")
+async def export_applications(
+    request: BulkExportRequest,
+    current_user: UserProfile = Depends(get_current_user)
+) -> Response:
+    """Export applications."""
+    try:
+        application_service = await service_registry.get_application_service()
+        export_data = await application_service.export_applications(request.ids, request.format, user_id=current_user.id)
+        
+        media_type = "text/csv" if request.format == "csv" else "application/json"
+        extension = request.format
+        
+        return Response(
+            content=export_data,
+            media_type=media_type,
+            headers={
+                "Content-Disposition": f"attachment; filename=applications_export.{extension}"
+            }
+        )
+    except Exception as e:
+        logger.error(f"Error in export: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail=str(e))
 
 
 @router.get("", response_model=Dict[str, Any])

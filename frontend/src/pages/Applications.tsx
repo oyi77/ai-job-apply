@@ -23,6 +23,8 @@ import {
   PencilIcon,
   TrashIcon,
   FunnelIcon,
+  ArrowDownTrayIcon,
+  CheckIcon,
 } from '@heroicons/react/24/outline';
 
 const Applications: React.FC = () => {
@@ -30,6 +32,7 @@ const Applications: React.FC = () => {
   const [selectedApplication, setSelectedApplication] = useState<JobApplication | null>(null);
   const [isViewModalOpen, setIsViewModalOpen] = useState(false);
   const [statusFilter, setStatusFilter] = useState<ApplicationStatus | ''>('');
+  const [selectedIds, setSelectedIds] = useState<string[]>([]);
   
   const queryClient = useQueryClient();
   const { applications, setApplications, addApplication, updateApplication, deleteApplication } = useAppStore();
@@ -76,6 +79,25 @@ const Applications: React.FC = () => {
     },
   });
 
+  // Bulk update mutation
+  const bulkUpdateMutation = useMutation({
+    mutationFn: ({ ids, data }: { ids: string[]; data: Partial<JobApplication> }) =>
+      applicationService.bulkUpdate(ids, data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['applications'] });
+      setSelectedIds([]);
+    },
+  });
+
+  // Bulk delete mutation
+  const bulkDeleteMutation = useMutation({
+    mutationFn: applicationService.bulkDelete,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['applications'] });
+      setSelectedIds([]);
+    },
+  });
+
   const handleCreateApplication = (data: any) => {
     createMutation.mutate({
       ...data,
@@ -94,6 +116,50 @@ const Applications: React.FC = () => {
   const handleDelete = (applicationId: string) => {
     if (window.confirm('Are you sure you want to delete this application?')) {
       deleteMutation.mutate(applicationId);
+    }
+  };
+
+  const handleSelectAll = () => {
+    if (selectedIds.length === filteredApplications.length) {
+      setSelectedIds([]);
+    } else {
+      setSelectedIds(filteredApplications.map(app => app.id));
+    }
+  };
+
+  const handleToggleSelect = (id: string) => {
+    setSelectedIds(prev => 
+      prev.includes(id) ? prev.filter(i => i !== id) : [...prev, id]
+    );
+  };
+
+  const handleBulkStatusChange = (status: ApplicationStatus) => {
+    if (selectedIds.length === 0) return;
+    bulkUpdateMutation.mutate({ ids: selectedIds, data: { status } });
+  };
+
+  const handleBulkDelete = () => {
+    if (selectedIds.length === 0) return;
+    if (window.confirm(`Are you sure you want to delete ${selectedIds.length} applications?`)) {
+      bulkDeleteMutation.mutate(selectedIds);
+    }
+  };
+
+  const handleExport = async (format: 'csv' | 'json') => {
+    try {
+      const blob = await applicationService.exportApplications(
+        selectedIds.length > 0 ? selectedIds : undefined,
+        format
+      );
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `applications_export.${format}`;
+      document.body.appendChild(a);
+      a.click();
+      window.URL.revokeObjectURL(url);
+    } catch (err) {
+      console.error('Export failed:', err);
     }
   };
 
@@ -185,6 +251,17 @@ const Applications: React.FC = () => {
                 placeholder="Filter by status"
               />
             </div>
+            <div className="flex items-center space-x-2">
+              <Button 
+                variant="secondary" 
+                size="sm" 
+                onClick={() => handleExport('csv')}
+                className="flex items-center"
+              >
+                <ArrowDownTrayIcon className="h-4 w-4 mr-1" />
+                Export CSV
+              </Button>
+            </div>
             <div className="text-sm text-gray-500">
               {filteredApplications.length} of {applications.length} applications
             </div>
@@ -192,10 +269,68 @@ const Applications: React.FC = () => {
         </CardBody>
       </Card>
 
+      {/* Bulk Actions Toolbar */}
+      {selectedIds.length > 0 && (
+        <div className="bg-primary-50 border border-primary-100 rounded-lg p-3 flex items-center justify-between animate-fade-in">
+          <div className="flex items-center space-x-4">
+            <span className="text-primary-800 font-medium">
+              {selectedIds.length} items selected
+            </span>
+            <div className="h-4 w-px bg-primary-200"></div>
+            <div className="flex items-center space-x-2">
+              <span className="text-sm text-primary-700">Update Status:</span>
+              <div className="w-48">
+                <Select
+                  name="bulk-status"
+                  value=""
+                  onChange={(value) => handleBulkStatusChange(value as ApplicationStatus)}
+                  options={statusOptions.slice(1)}
+                  placeholder="Select status..."
+                />
+              </div>
+            </div>
+          </div>
+          <div className="flex items-center space-x-2">
+            <Button 
+              variant="secondary" 
+              size="sm" 
+              onClick={() => handleExport('csv')}
+              className="text-primary-700"
+            >
+              Export Selected
+            </Button>
+            <Button 
+              variant="danger" 
+              size="sm" 
+              onClick={handleBulkDelete}
+              className="flex items-center"
+            >
+              <TrashIcon className="h-4 w-4 mr-1" />
+              Delete Selected
+            </Button>
+            <Button 
+              variant="ghost" 
+              size="sm" 
+              onClick={() => setSelectedIds([])}
+            >
+              Cancel
+            </Button>
+          </div>
+        </div>
+      )}
+
       {/* Applications List */}
       <Card>
-        <CardHeader>
-          <h3 className="text-lg font-medium text-gray-900">Your Applications</h3>
+        <CardHeader className="flex justify-between items-center">
+          <div className="flex items-center space-x-3">
+            <input
+              type="checkbox"
+              className="h-4 w-4 rounded border-gray-300 text-primary-600 focus:ring-primary-500"
+              checked={selectedIds.length === filteredApplications.length && filteredApplications.length > 0}
+              onChange={handleSelectAll}
+            />
+            <h3 className="text-lg font-medium text-gray-900">Your Applications</h3>
+          </div>
         </CardHeader>
         <CardBody>
           {filteredApplications.length === 0 ? (
@@ -218,54 +353,68 @@ const Applications: React.FC = () => {
               {filteredApplications.map((application) => (
                 <div
                   key={application.id}
-                  className="border border-gray-200 rounded-lg p-4 hover:bg-gray-50 transition-colors"
+                  className={`border rounded-lg p-4 transition-colors ${
+                    selectedIds.includes(application.id) 
+                      ? 'border-primary-300 bg-primary-50' 
+                      : 'border-gray-200 hover:bg-gray-50'
+                  }`}
                 >
-                  <div className="flex items-center justify-between">
+                  <div className="flex items-center space-x-4">
+                    <input
+                      type="checkbox"
+                      className="h-4 w-4 rounded border-gray-300 text-primary-600 focus:ring-primary-500"
+                      checked={selectedIds.includes(application.id)}
+                      onChange={() => handleToggleSelect(application.id)}
+                    />
                     <div className="flex-1">
-                      <div className="flex items-center space-x-3">
-                        <h4 className="text-lg font-medium text-gray-900">
-                          {application.job_title}
-                        </h4>
-                        <Badge variant={getStatusColor(application.status) as any}>
-                          {application.status.replace('_', ' ')}
-                        </Badge>
+                      <div className="flex items-center justify-between">
+                        <div className="flex-1">
+                          <div className="flex items-center space-x-3">
+                            <h4 className="text-lg font-medium text-gray-900">
+                              {application.job_title}
+                            </h4>
+                            <Badge variant={getStatusColor(application.status) as any}>
+                              {application.status.replace('_', ' ')}
+                            </Badge>
+                          </div>
+                          <p className="text-gray-600 mt-1">{application.company}</p>
+                          <p className="text-sm text-gray-500 mt-1">
+                            Applied: {new Date(application.applied_date).toLocaleDateString()}
+                          </p>
+                          {application.notes && (
+                            <p className="text-sm text-gray-600 mt-2 truncate">
+                              {application.notes}
+                            </p>
+                          )}
+                        </div>
+                        
+                        <div className="flex items-center space-x-2">
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => {
+                              setSelectedApplication(application);
+                              setIsViewModalOpen(true);
+                            }}
+                          >
+                            <EyeIcon className="h-4 w-4" />
+                          </Button>
+                          <Select
+                            name={`status-${application.id}`}
+                            value={application.status}
+                            onChange={(value) => handleStatusChange(application.id, value as ApplicationStatus)}
+                            options={statusOptions.slice(1)} // Remove "All Statuses" option
+                          />
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => handleDelete(application.id)}
+                            className="text-danger-600 hover:text-danger-700"
+                          >
+                            <TrashIcon className="h-4 w-4" />
+                          </Button>
+                        </div>
                       </div>
-                      <p className="text-gray-600 mt-1">{application.company}</p>
-                      <p className="text-sm text-gray-500 mt-1">
-                        Applied: {new Date(application.applied_date).toLocaleDateString()}
-                      </p>
-                      {application.notes && (
-                        <p className="text-sm text-gray-600 mt-2 truncate">
-                          {application.notes}
-                        </p>
-                      )}
-                    </div>
-                    
-                    <div className="flex items-center space-x-2">
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => {
-                          setSelectedApplication(application);
-                          setIsViewModalOpen(true);
-                        }}
-                      >
-                        <EyeIcon className="h-4 w-4" />
-                      </Button>
-                      <Select
-                        name={`status-${application.id}`}
-                        value={application.status}
-                        onChange={(value) => handleStatusChange(application.id, value as ApplicationStatus)}
-                        options={statusOptions.slice(1)} // Remove "All Statuses" option
-                      />
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => handleDelete(application.id)}
-                        className="text-danger-600 hover:text-danger-700"
-                      >
-                        <TrashIcon className="h-4 w-4" />
-                      </Button>
                     </div>
                   </div>
                 </div>

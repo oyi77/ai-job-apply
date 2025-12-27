@@ -469,7 +469,84 @@ class ApplicationService(ApplicationService):
         except Exception as e:
             self.logger.error(f"Error getting timeline for application {application_id}: {e}", exc_info=True)
             return []
-    
+
+    async def bulk_create_applications(self, applications_data: List[Dict[str, Any]], user_id: Optional[str] = None) -> List[JobApplication]:
+        """Create multiple job applications."""
+        created_applications = []
+        try:
+            for app_data in applications_data:
+                application = await self.create_application(app_data, user_id=user_id)
+                created_applications.append(application)
+            return created_applications
+        except Exception as e:
+            self.logger.error(f"Error in bulk application creation: {e}", exc_info=True)
+            raise
+
+    async def bulk_update_applications(self, application_ids: List[str], updates: ApplicationUpdateRequest, user_id: Optional[str] = None) -> List[JobApplication]:
+        """Update multiple job applications."""
+        updated_applications = []
+        try:
+            for app_id in application_ids:
+                application = await self.update_application(app_id, updates)
+                if application:
+                    updated_applications.append(application)
+            return updated_applications
+        except Exception as e:
+            self.logger.error(f"Error in bulk application update: {e}", exc_info=True)
+            raise
+
+    async def bulk_delete_applications(self, application_ids: List[str], user_id: Optional[str] = None) -> bool:
+        """Delete multiple job applications."""
+        success = True
+        try:
+            for app_id in application_ids:
+                result = await self.delete_application(app_id, user_id=user_id)
+                if not result:
+                    success = False
+            return success
+        except Exception as e:
+            self.logger.error(f"Error in bulk application deletion: {e}", exc_info=True)
+            return False
+
+    async def export_applications(self, application_ids: Optional[List[str]] = None, format: str = "csv", user_id: Optional[str] = None) -> bytes:
+        """Export applications in the specified format."""
+        try:
+            if application_ids:
+                applications = []
+                for app_id in application_ids:
+                    app = await self.get_application(app_id, user_id=user_id)
+                    if app:
+                        applications.append(app)
+            else:
+                applications = await self.get_all_applications(user_id=user_id)
+
+            if format.lower() == "csv":
+                import csv
+                import io
+                output = io.StringIO()
+                writer = csv.writer(output)
+                # Header
+                writer.writerow(["ID", "Job Title", "Company", "Status", "Applied Date", "Notes"])
+                for app in applications:
+                    writer.writerow([
+                        app.id,
+                        app.job_title,
+                        app.company,
+                        app.status,
+                        app.applied_date.isoformat() if app.applied_date else "",
+                        app.notes or ""
+                    ])
+                return output.getvalue().encode('utf-8')
+            elif format.lower() == "json":
+                import json
+                apps_dict = [app.dict() for app in applications]
+                return json.dumps(apps_dict, default=str).encode('utf-8')
+            else:
+                raise ValueError(f"Unsupported export format: {format}")
+        except Exception as e:
+            self.logger.error(f"Error exporting applications: {e}", exc_info=True)
+            raise
+
     async def health_check(self) -> Dict[str, Any]:
         """Check service health."""
         try:

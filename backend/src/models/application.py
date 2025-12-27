@@ -57,3 +57,25 @@ class ApplicationUpdateRequest(BaseModel):
             datetime: lambda v: v.isoformat()
         }
     }
+
+
+class BulkApplicationCreate(BaseModel):
+    """Bulk application creation model."""
+    applications: list[Dict[str, Any]] = Field(..., description="List of applications to create")
+
+
+class BulkApplicationUpdate(BaseModel):
+    """Bulk application update model."""
+    ids: list[str] = Field(..., description="List of application IDs to update")
+    updates: ApplicationUpdateRequest = Field(..., description="Updates to apply to all selected applications")
+
+
+class BulkDeleteRequest(BaseModel):
+    """Bulk deletion request model."""
+    ids: list[str] = Field(..., description="List of IDs to delete")
+
+
+class BulkExportRequest(BaseModel):
+    """Bulk export request model."""
+    ids: Optional[list[str]] = Field(None, description="List of application IDs to export. If None, all will be exported.")
+    format: str = Field(default="csv", description="Export format (csv, json, excel)")

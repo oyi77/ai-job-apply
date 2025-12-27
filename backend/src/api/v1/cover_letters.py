@@ -2,7 +2,7 @@
 
 from fastapi import APIRouter, HTTPException, Depends
 from typing import List, Dict, Any
-from ...models.cover_letter import CoverLetter, CoverLetterCreate, CoverLetterUpdate
+from ...models.cover_letter import CoverLetter, CoverLetterCreate, CoverLetterUpdate, BulkDeleteRequest
 from ...models.user import UserProfile
 from ...api.dependencies import get_current_user
 from ...utils.logger import get_logger
@@ -12,6 +12,24 @@ from ...utils.response_wrapper import success_response, error_response
 logger = get_logger(__name__)
 
 router = APIRouter()
+
+
+@router.delete("/bulk", response_model=Dict[str, Any])
+async def bulk_delete_cover_letters(
+    request: BulkDeleteRequest,
+    current_user: UserProfile = Depends(get_current_user)
+) -> Dict[str, Any]:
+    """Bulk delete cover letters."""
+    try:
+        cover_letter_service = await service_registry.get_cover_letter_service()
+        success = await cover_letter_service.bulk_delete_cover_letters(request.ids, user_id=current_user.id)
+        if success:
+            return success_response(None, f"Successfully deleted {len(request.ids)} cover letters").dict()
+        else:
+            return error_response("Some cover letters could not be deleted", status_code=207).dict()
+    except Exception as e:
+        logger.error(f"Error in bulk deletion: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail=str(e))
 
 
 @router.get("", response_model=List[CoverLetter])

@@ -164,7 +164,20 @@ class CoverLetterService(CoverLetterService):
         except Exception as e:
             self.logger.error(f"Error deleting cover letter {cover_letter_id}: {e}", exc_info=True)
             return False
-    
+
+    async def bulk_delete_cover_letters(self, cover_letter_ids: List[str], user_id: Optional[str] = None) -> bool:
+        """Delete multiple cover letters."""
+        success = True
+        try:
+            for cl_id in cover_letter_ids:
+                result = await self.delete_cover_letter(cl_id, user_id=user_id)
+                if not result:
+                    success = False
+            return success
+        except Exception as e:
+            self.logger.error(f"Error in bulk cover letter deletion: {e}", exc_info=True)
+            return False
+
     async def generate_cover_letter(
         self, 
         job_title: str, 

@@ -47,3 +47,8 @@ class ResumeService(ABC):
     async def update_resume(self, resume_id: str, updates: dict, user_id: Optional[str] = None) -> Optional[Resume]:
         """Update resume information."""
         pass
+
+    @abstractmethod
+    async def bulk_delete_resumes(self, resume_ids: List[str], user_id: Optional[str] = None) -> bool:
+        """Delete multiple resumes."""
+        pass

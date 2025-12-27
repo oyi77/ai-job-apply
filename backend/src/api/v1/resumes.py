@@ -2,7 +2,7 @@
 
 from fastapi import APIRouter, HTTPException, UploadFile, File, Depends
 from typing import List, Optional, Dict, Any
-from ...models.resume import Resume, ResumeOptimizationRequest, ResumeOptimizationResponse
+from ...models.resume import Resume, ResumeOptimizationRequest, ResumeOptimizationResponse, BulkDeleteRequest
 from ...models.user import UserProfile
 from ...utils.logger import get_logger
 from ...utils.validators import validate_file_type, validate_file_size
@@ -101,6 +101,24 @@ async def upload_resume(
     except Exception as e:
         logger.error(f"Error uploading resume: {e}", exc_info=True)
         raise HTTPException(status_code=500, detail=f"Resume upload failed: {str(e)}")
+
+
+@router.delete("/bulk", response_model=Dict[str, Any])
+async def bulk_delete_resumes(
+    request: BulkDeleteRequest,
+    current_user: UserProfile = Depends(get_current_user)
+) -> Dict[str, Any]:
+    """Bulk delete resumes."""
+    try:
+        resume_service = await service_registry.get_resume_service()
+        success = await resume_service.bulk_delete_resumes(request.ids, user_id=current_user.id)
+        if success:
+            return create_api_response(None, message=f"Successfully deleted {len(request.ids)} resumes")
+        else:
+            return create_api_response(None, success=False, message="Some resumes could not be deleted")
+    except Exception as e:
+        logger.error(f"Error in bulk deletion: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail=str(e))
 
 
 @router.get("", response_model=Dict[str, Any])

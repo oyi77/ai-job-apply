@@ -37,3 +37,8 @@ class CoverLetterService(ABC):
     async def generate_cover_letter(self, job_title: str, company_name: str, job_description: str, resume_summary: str, tone: str = "professional", user_id: Optional[str] = None) -> CoverLetter:
         """Generate a cover letter using AI."""
         pass
+
+    @abstractmethod
+    async def bulk_delete_cover_letters(self, cover_letter_ids: List[str], user_id: Optional[str] = None) -> bool:
+        """Delete multiple cover letters."""
+        pass

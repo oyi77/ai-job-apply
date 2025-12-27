@@ -308,7 +308,20 @@ class ResumeService(ResumeService):
         except Exception as e:
             self.logger.error(f"Error updating resume {resume_id}: {e}", exc_info=True)
             return None
-    
+
+    async def bulk_delete_resumes(self, resume_ids: List[str], user_id: Optional[str] = None) -> bool:
+        """Delete multiple resumes."""
+        success = True
+        try:
+            for resume_id in resume_ids:
+                result = await self.delete_resume(resume_id, user_id=user_id)
+                if not result:
+                    success = False
+            return success
+        except Exception as e:
+            self.logger.error(f"Error in bulk resume deletion: {e}", exc_info=True)
+            return False
+
     async def _extract_text_from_pdf(self, file_path: str) -> str:
         """Extract text from PDF file."""
         try:
