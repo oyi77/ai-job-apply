@@ -104,6 +104,18 @@ coverage:
 	@echo "🧪 Running tests with coverage..."
 	pytest tests/ --cov=src --cov-report=html --cov-report=term-missing --cov-fail-under=95
 
+# Maintainance:
+db-migrate:
+	@echo "🔄 Running database migrations..."
+	cd backend && alembic upgrade head
+	@echo "✅ Migrations completed!"
+
+db-revision:
+	@echo "📝 Creating new database revision..."
+	@read -p "Revision message: " msg; \
+	cd backend && alembic revision --autogenerate -m "$$msg"
+	@echo "✅ Revision created!"
+
 # Clean up generated files
 clean:
 	@echo "🧹 Cleaning up generated files..."

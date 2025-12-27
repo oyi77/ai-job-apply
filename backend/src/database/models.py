@@ -246,10 +246,19 @@ class DBJobSearch(Base):
     search_date: Mapped[datetime] = mapped_column(DateTime, default=lambda: datetime.now(timezone.utc))
     created_at: Mapped[datetime] = mapped_column(DateTime, default=lambda: datetime.now(timezone.utc))
     
+    # Foreign keys
+    user_id: Mapped[Optional[str]] = mapped_column(String, ForeignKey("users.id", ondelete="CASCADE"), nullable=True)
+    
+    # Relationships
+    user: Mapped[Optional["DBUser"]] = relationship(
+        "DBUser", back_populates="job_searches", foreign_keys=[user_id]
+    )
+    
     # Indexes for performance
     __table_args__ = (
         Index("idx_job_search_date", "search_date"),
         Index("idx_job_search_location", "location"),
+        Index("idx_job_search_user_id", "user_id"),
     )
     
     def to_dict(self) -> dict:
@@ -280,8 +289,13 @@ class DBAIActivity(Base):
     error_message: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
     processing_time_ms: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
     confidence_score: Mapped[Optional[float]] = mapped_column(Float, nullable=True)
-    user_id: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
+    user_id: Mapped[Optional[str]] = mapped_column(String(255), ForeignKey("users.id", ondelete="CASCADE"), nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=lambda: datetime.now(timezone.utc))
+    
+    # Relationships
+    user: Mapped[Optional["DBUser"]] = relationship(
+        "DBUser", back_populates="ai_activities", foreign_keys=[user_id]
+    )
     
     # Indexes for performance
     __table_args__ = (
@@ -326,6 +340,14 @@ class DBFileMetadata(Base):
     access_count: Mapped[int] = mapped_column(Integer, default=0)
     is_active: Mapped[bool] = mapped_column(Boolean, default=True)
     
+    # Foreign keys
+    user_id: Mapped[Optional[str]] = mapped_column(String, ForeignKey("users.id", ondelete="CASCADE"), nullable=True)
+    
+    # Relationships
+    user: Mapped[Optional["DBUser"]] = relationship(
+        "DBUser", back_populates="file_metadata", foreign_keys=[user_id]
+    )
+    
     # Indexes for performance
     __table_args__ = (
         Index("idx_file_metadata_path", "file_path"),
@@ -333,6 +355,7 @@ class DBFileMetadata(Base):
         Index("idx_file_metadata_uploaded_at", "uploaded_at"),
         Index("idx_file_metadata_is_active", "is_active"),
         Index("idx_file_metadata_md5", "md5_hash"),
+        Index("idx_file_metadata_user_id", "user_id"),
     )
     
     def to_dict(self) -> dict:
@@ -379,6 +402,15 @@ class DBUser(Base):
     )
     sessions: Mapped[List["DBUserSession"]] = relationship(
         "DBUserSession", back_populates="user", cascade="all, delete-orphan"
+    )
+    job_searches: Mapped[List["DBJobSearch"]] = relationship(
+        "DBJobSearch", back_populates="user", cascade="all, delete-orphan"
+    )
+    ai_activities: Mapped[List["DBAIActivity"]] = relationship(
+        "DBAIActivity", back_populates="user", cascade="all, delete-orphan"
+    )
+    file_metadata: Mapped[List["DBFileMetadata"]] = relationship(
+        "DBFileMetadata", back_populates="user", cascade="all, delete-orphan"
     )
     
     # Indexes for performance

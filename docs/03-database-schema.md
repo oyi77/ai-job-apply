@@ -50,6 +50,51 @@ The application uses SQLAlchemy 2.0 with async support. The database schema is d
 
 ## Tables
 
+### users
+
+Stores user accounts and authentication info.
+
+**Columns**:
+- `id` (String, PK): Unique identifier (UUID)
+- `email` (String, 255, UQ): User email
+- `password_hash` (String, 255): Hashed password
+- `name` (String, 255, nullable): Display name
+- `password_reset_token` (String, 255, nullable): Reset token
+- `password_reset_token_expires` (DateTime, nullable): Token expiry
+- `is_active` (Boolean, default: true): Active status
+- `created_at` (DateTime): Creation timestamp
+- `updated_at` (DateTime): Last update timestamp
+- `user_id` (String, FK, nullable): Associated user
+
+**Indexes**:
+- Unique index on `email`
+- Index on `password_reset_token`
+
+**Relationships**:
+- One-to-Many with `user_sessions`
+- One-to-Many with `resumes`
+- One-to-Many with `cover_letters`
+- One-to-Many with `job_applications`
+- One-to-Many with `job_searches`
+- One-to-Many with `ai_activities`
+- One-to-Many with `file_metadata`
+
+### user_sessions
+
+Stores user refresh tokens for authentication.
+
+**Columns**:
+- `id` (String, PK): Unique identifier (UUID)
+- `user_id` (String, FK): Reference to user
+- `refresh_token` (String, 500, UQ): JWT refresh token
+- `expires_at` (DateTime): Token expiry
+- `created_at` (DateTime): Creation timestamp
+- `last_used_at` (DateTime): Last used timestamp
+- `is_active` (Boolean, default: true): Active status
+
+**Relationships**:
+- Many-to-One with `users`
+
 ### resumes
 
 Stores resume files and metadata.
@@ -67,6 +112,7 @@ Stores resume files and metadata.
 - `is_default` (Boolean, default: false): Default resume flag
 - `created_at` (DateTime): Creation timestamp
 - `updated_at` (DateTime): Last update timestamp
+- `user_id` (String, FK, nullable): Associated user
 
 **Indexes**:
 - Primary key on `id`
@@ -106,6 +152,7 @@ Stores generated cover letters.
 - `word_count` (Integer): Word count
 - `created_at` (DateTime): Creation timestamp
 - `updated_at` (DateTime): Last update timestamp
+- `user_id` (String, FK, nullable): Associated user
 
 **Indexes**:
 - Primary key on `id`
@@ -156,6 +203,7 @@ Tracks job applications throughout their lifecycle.
 - `interview_date` (DateTime, nullable): Interview date
 - `created_at` (DateTime): Creation timestamp
 - `updated_at` (DateTime): Last update timestamp
+- `user_id` (String, FK, nullable): Associated user
 
 **Indexes**:
 - Primary key on `id`
@@ -275,6 +323,7 @@ Tracks file uploads and metadata.
 - `uploaded_by` (String, nullable): User identifier (future)
 - `created_at` (DateTime): Upload timestamp
 - `updated_at` (DateTime): Last update timestamp
+- `user_id` (String, FK, nullable): Associated user
 
 **Indexes**:
 - Primary key on `id`

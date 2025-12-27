@@ -30,7 +30,9 @@ from src.database.models import (
     DBJobApplication,
     DBJobSearch,
     DBAIActivity,
-    DBFileMetadata
+    DBFileMetadata,
+    DBUser,
+    DBUserSession
 )
 
 # this is the Alembic Config object, which provides
