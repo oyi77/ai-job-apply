@@ -224,3 +224,23 @@ class UserRepository:
             self.logger.error(f"Error clearing password reset token: {e}", exc_info=True)
             return False
 
+    async def delete(self, user_id: str) -> bool:
+        """Delete a user."""
+        try:
+            stmt = select(DBUser).where(DBUser.id == user_id)
+            result = await self.session.execute(stmt)
+            db_user = result.scalar_one_or_none()
+
+            if not db_user:
+                return False
+
+            await self.session.delete(db_user)
+            await self.session.commit()
+
+            self.logger.info(f"Deleted user: {user_id}")
+            return True
+
+        except Exception as e:
+            await self.session.rollback()
+            self.logger.error(f"Error deleting user {user_id}: {e}", exc_info=True)
+            return False

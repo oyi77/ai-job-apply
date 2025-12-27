@@ -131,11 +131,14 @@ const Settings: React.FC = () => {
 
     setIsDeleting(true);
     try {
-      // TODO: Add API endpoint for account deletion when backend auth is implemented
-      // For now, just clear local data
+      // Call API endpoint for account deletion
+      await authService.deleteAccount();
+
+      // Clear local data
       setAuthenticated(false);
       setUser(null);
       localStorage.removeItem('auth_token');
+      localStorage.removeItem('refresh_token');
       localStorage.removeItem('token');
       setIsDeleteModalOpen(false);
       // Redirect to login

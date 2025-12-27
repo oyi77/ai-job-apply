@@ -1,0 +1,189 @@
+🚀 Starting AI Job Application Assistant Development Environment...
+🔄 Checking for existing processes...
+🐍 Python version: 3.12
+📦 Node.js version: v22.21
+🔧 Starting Backend Server (Port 8000)...
+🔌 Activating virtual environment...
+📥 Installing/updating Python dependencies...
+Requirement already satisfied: google-generativeai>=0.3.2 in ./venv/lib/python3.12/site-packages (from -r requirements.txt (line 4)) (0.8.6)
+Requirement already satisfied: requests>=2.31.0 in ./venv/lib/python3.12/site-packages (from -r requirements.txt (line 5)) (2.32.5)
+Requirement already satisfied: beautifulsoup4>=4.12.2 in ./venv/lib/python3.12/site-packages (from -r requirements.txt (line 6)) (4.14.3)
+Requirement already satisfied: python-dotenv>=1.0.0 in ./venv/lib/python3.12/site-packages (from -r requirements.txt (line 7)) (1.2.1)
+Requirement already satisfied: fastapi>=0.104.1 in ./venv/lib/python3.12/site-packages (from -r requirements.txt (line 8)) (0.127.0)
+Requirement already satisfied: uvicorn>=0.24.0 in ./venv/lib/python3.12/site-packages (from uvicorn[standard]>=0.24.0->-r requirements.txt (line 9)) (0.40.0)
+Requirement already satisfied: pydantic>=2.5.0 in ./venv/lib/python3.12/site-packages (from -r requirements.txt (line 10)) (2.12.5)
+Requirement already satisfied: pydantic-settings>=2.0.0 in ./venv/lib/python3.12/site-packages (from -r requirements.txt (line 11)) (2.12.0)
+Requirement already satisfied: jinja2>=3.1.2 in ./venv/lib/python3.12/site-packages (from -r requirements.txt (line 12)) (3.1.6)
+Requirement already satisfied: python-multipart>=0.0.6 in ./venv/lib/python3.12/site-packages (from -r requirements.txt (line 13)) (0.0.21)
+Requirement already satisfied: aiofiles>=23.2.1 in ./venv/lib/python3.12/site-packages (from -r requirements.txt (line 14)) (25.1.0)
+Requirement already satisfied: lxml>=4.9.3 in ./venv/lib/python3.12/site-packages (from -r requirements.txt (line 17)) (6.0.2)
+Requirement already satisfied: openpyxl>=3.1.2 in ./venv/lib/python3.12/site-packages (from -r requirements.txt (line 18)) (3.1.5)
+Requirement already satisfied: python-docx>=1.1.0 in ./venv/lib/python3.12/site-packages (from -r requirements.txt (line 19)) (1.2.0)
+Requirement already satisfied: PyPDF2>=2.10.0 in ./venv/lib/python3.12/site-packages (from -r requirements.txt (line 20)) (3.0.1)
+Requirement already satisfied: python-jobspy>=1.1.0 in ./venv/lib/python3.12/site-packages (from -r requirements.txt (line 23)) (1.1.82)
+Requirement already satisfied: pandas>=2.0.0 in ./venv/lib/python3.12/site-packages (from -r requirements.txt (line 24)) (2.3.3)
+Requirement already satisfied: selenium>=4.15.0 in ./venv/lib/python3.12/site-packages (from -r requirements.txt (line 25)) (4.39.0)
+Requirement already satisfied: sqlalchemy>=2.0.0 in ./venv/lib/python3.12/site-packages (from -r requirements.txt (line 28)) (2.0.45)
+Requirement already satisfied: alembic>=1.13.0 in ./venv/lib/python3.12/site-packages (from -r requirements.txt (line 29)) (1.17.2)
+Requirement already satisfied: aiosqlite>=0.19.0 in ./venv/lib/python3.12/site-packages (from -r requirements.txt (line 30)) (0.22.1)
+Requirement already satisfied: aiomysql>=0.2.0 in ./venv/lib/python3.12/site-packages (from -r requirements.txt (line 31)) (0.3.2)
+Requirement already satisfied: asyncpg>=0.29.0 in ./venv/lib/python3.12/site-packages (from -r requirements.txt (line 32)) (0.31.0)
+Requirement already satisfied: psycopg2-binary>=2.9.7 in ./venv/lib/python3.12/site-packages (from -r requirements.txt (line 33)) (2.9.11)
+Requirement already satisfied: greenlet>=3.0.0 in ./venv/lib/python3.12/site-packages (from -r requirements.txt (line 34)) (3.3.0)
+Requirement already satisfied: pytest>=7.4.0 in ./venv/lib/python3.12/site-packages (from -r requirements.txt (line 37)) (9.0.2)
+Requirement already satisfied: pytest-asyncio>=0.21.0 in ./venv/lib/python3.12/site-packages (from -r requirements.txt (line 38)) (1.3.0)
+Requirement already satisfied: pytest-cov>=4.1.0 in ./venv/lib/python3.12/site-packages (from -r requirements.txt (line 39)) (7.0.0)
+Requirement already satisfied: loguru>=0.7.0 in ./venv/lib/python3.12/site-packages (from -r requirements.txt (line 42)) (0.7.3)
+Requirement already satisfied: openai>=1.0.0 in ./venv/lib/python3.12/site-packages (from -r requirements.txt (line 45)) (2.14.0)
+Requirement already satisfied: aiohttp>=3.8.0 in ./venv/lib/python3.12/site-packages (from -r requirements.txt (line 46)) (3.13.2)
+Requirement already satisfied: python-jose>=3.3.0 in ./venv/lib/python3.12/site-packages (from python-jose[cryptography]>=3.3.0->-r requirements.txt (line 49)) (3.5.0)
+Requirement already satisfied: bcrypt>=4.0.1 in ./venv/lib/python3.12/site-packages (from -r requirements.txt (line 50)) (5.0.0)
+Requirement already satisfied: passlib>=1.7.4 in ./venv/lib/python3.12/site-packages (from passlib[bcrypt]>=1.7.4->-r requirements.txt (line 51)) (1.7.4)
+Requirement already satisfied: slowapi>=0.1.9 in ./venv/lib/python3.12/site-packages (from -r requirements.txt (line 52)) (0.1.9)
+Requirement already satisfied: email-validator>=2.0.0 in ./venv/lib/python3.12/site-packages (from -r requirements.txt (line 53)) (2.3.0)
+Requirement already satisfied: google-ai-generativelanguage==0.6.15 in ./venv/lib/python3.12/site-packages (from google-generativeai>=0.3.2->-r requirements.txt (line 4)) (0.6.15)
+Requirement already satisfied: google-api-core in ./venv/lib/python3.12/site-packages (from google-generativeai>=0.3.2->-r requirements.txt (line 4)) (2.28.1)
+Requirement already satisfied: google-api-python-client in ./venv/lib/python3.12/site-packages (from google-generativeai>=0.3.2->-r requirements.txt (line 4)) (2.187.0)
+Requirement already satisfied: google-auth>=2.15.0 in ./venv/lib/python3.12/site-packages (from google-generativeai>=0.3.2->-r requirements.txt (line 4)) (2.45.0)
+Requirement already satisfied: protobuf in ./venv/lib/python3.12/site-packages (from google-generativeai>=0.3.2->-r requirements.txt (line 4)) (5.29.5)
+Requirement already satisfied: tqdm in ./venv/lib/python3.12/site-packages (from google-generativeai>=0.3.2->-r requirements.txt (line 4)) (4.67.1)
+Requirement already satisfied: typing-extensions in ./venv/lib/python3.12/site-packages (from google-generativeai>=0.3.2->-r requirements.txt (line 4)) (4.15.0)
+Requirement already satisfied: proto-plus<2.0.0dev,>=1.22.3 in ./venv/lib/python3.12/site-packages (from google-ai-generativelanguage==0.6.15->google-generativeai>=0.3.2->-r requirements.txt (line 4)) (1.27.0)
+Requirement already satisfied: charset_normalizer<4,>=2 in ./venv/lib/python3.12/site-packages (from requests>=2.31.0->-r requirements.txt (line 5)) (3.4.4)
+Requirement already satisfied: idna<4,>=2.5 in ./venv/lib/python3.12/site-packages (from requests>=2.31.0->-r requirements.txt (line 5)) (3.11)
+Requirement already satisfied: urllib3<3,>=1.21.1 in ./venv/lib/python3.12/site-packages (from requests>=2.31.0->-r requirements.txt (line 5)) (2.6.2)
+Requirement already satisfied: certifi>=2017.4.17 in ./venv/lib/python3.12/site-packages (from requests>=2.31.0->-r requirements.txt (line 5)) (2025.11.12)
+Requirement already satisfied: soupsieve>=1.6.1 in ./venv/lib/python3.12/site-packages (from beautifulsoup4>=4.12.2->-r requirements.txt (line 6)) (2.8.1)
+Requirement already satisfied: starlette<0.51.0,>=0.40.0 in ./venv/lib/python3.12/site-packages (from fastapi>=0.104.1->-r requirements.txt (line 8)) (0.50.0)
+Requirement already satisfied: annotated-doc>=0.0.2 in ./venv/lib/python3.12/site-packages (from fastapi>=0.104.1->-r requirements.txt (line 8)) (0.0.4)
+Requirement already satisfied: click>=7.0 in ./venv/lib/python3.12/site-packages (from uvicorn>=0.24.0->uvicorn[standard]>=0.24.0->-r requirements.txt (line 9)) (8.3.1)
+Requirement already satisfied: h11>=0.8 in ./venv/lib/python3.12/site-packages (from uvicorn>=0.24.0->uvicorn[standard]>=0.24.0->-r requirements.txt (line 9)) (0.16.0)
+Requirement already satisfied: annotated-types>=0.6.0 in ./venv/lib/python3.12/site-packages (from pydantic>=2.5.0->-r requirements.txt (line 10)) (0.7.0)
+Requirement already satisfied: pydantic-core==2.41.5 in ./venv/lib/python3.12/site-packages (from pydantic>=2.5.0->-r requirements.txt (line 10)) (2.41.5)
+Requirement already satisfied: typing-inspection>=0.4.2 in ./venv/lib/python3.12/site-packages (from pydantic>=2.5.0->-r requirements.txt (line 10)) (0.4.2)
+Requirement already satisfied: MarkupSafe>=2.0 in ./venv/lib/python3.12/site-packages (from jinja2>=3.1.2->-r requirements.txt (line 12)) (3.0.3)
+Requirement already satisfied: et-xmlfile in ./venv/lib/python3.12/site-packages (from openpyxl>=3.1.2->-r requirements.txt (line 18)) (2.0.0)
+Requirement already satisfied: NUMPY==1.26.3 in ./venv/lib/python3.12/site-packages (from python-jobspy>=1.1.0->-r requirements.txt (line 23)) (1.26.3)
+Requirement already satisfied: markdownify<0.14.0,>=0.13.1 in ./venv/lib/python3.12/site-packages (from python-jobspy>=1.1.0->-r requirements.txt (line 23)) (0.13.1)
+Requirement already satisfied: regex<2025.0.0,>=2024.4.28 in ./venv/lib/python3.12/site-packages (from python-jobspy>=1.1.0->-r requirements.txt (line 23)) (2024.11.6)
+Requirement already satisfied: tls-client<2.0.0,>=1.0.1 in ./venv/lib/python3.12/site-packages (from python-jobspy>=1.1.0->-r requirements.txt (line 23)) (1.0.1)
+Requirement already satisfied: python-dateutil>=2.8.2 in ./venv/lib/python3.12/site-packages (from pandas>=2.0.0->-r requirements.txt (line 24)) (2.9.0.post0)
+Requirement already satisfied: pytz>=2020.1 in ./venv/lib/python3.12/site-packages (from pandas>=2.0.0->-r requirements.txt (line 24)) (2025.2)
+Requirement already satisfied: tzdata>=2022.7 in ./venv/lib/python3.12/site-packages (from pandas>=2.0.0->-r requirements.txt (line 24)) (2025.3)
+Requirement already satisfied: trio<1.0,>=0.31.0 in ./venv/lib/python3.12/site-packages (from selenium>=4.15.0->-r requirements.txt (line 25)) (0.32.0)
+Requirement already satisfied: trio-websocket<1.0,>=0.12.2 in ./venv/lib/python3.12/site-packages (from selenium>=4.15.0->-r requirements.txt (line 25)) (0.12.2)
+Requirement already satisfied: websocket-client<2.0,>=1.8.0 in ./venv/lib/python3.12/site-packages (from selenium>=4.15.0->-r requirements.txt (line 25)) (1.9.0)
+Requirement already satisfied: Mako in ./venv/lib/python3.12/site-packages (from alembic>=1.13.0->-r requirements.txt (line 29)) (1.3.10)
+Requirement already satisfied: PyMySQL>=1.0 in ./venv/lib/python3.12/site-packages (from aiomysql>=0.2.0->-r requirements.txt (line 31)) (1.1.2)
+Requirement already satisfied: iniconfig>=1.0.1 in ./venv/lib/python3.12/site-packages (from pytest>=7.4.0->-r requirements.txt (line 37)) (2.3.0)
+Requirement already satisfied: packaging>=22 in ./venv/lib/python3.12/site-packages (from pytest>=7.4.0->-r requirements.txt (line 37)) (25.0)
+Requirement already satisfied: pluggy<2,>=1.5 in ./venv/lib/python3.12/site-packages (from pytest>=7.4.0->-r requirements.txt (line 37)) (1.6.0)
+Requirement already satisfied: pygments>=2.7.2 in ./venv/lib/python3.12/site-packages (from pytest>=7.4.0->-r requirements.txt (line 37)) (2.19.2)
+Requirement already satisfied: coverage>=7.10.6 in ./venv/lib/python3.12/site-packages (from coverage[toml]>=7.10.6->pytest-cov>=4.1.0->-r requirements.txt (line 39)) (7.13.0)
+Requirement already satisfied: anyio<5,>=3.5.0 in ./venv/lib/python3.12/site-packages (from openai>=1.0.0->-r requirements.txt (line 45)) (4.12.0)
+Requirement already satisfied: distro<2,>=1.7.0 in ./venv/lib/python3.12/site-packages (from openai>=1.0.0->-r requirements.txt (line 45)) (1.9.0)
+Requirement already satisfied: httpx<1,>=0.23.0 in ./venv/lib/python3.12/site-packages (from openai>=1.0.0->-r requirements.txt (line 45)) (0.28.1)
+Requirement already satisfied: jiter<1,>=0.10.0 in ./venv/lib/python3.12/site-packages (from openai>=1.0.0->-r requirements.txt (line 45)) (0.12.0)
+Requirement already satisfied: sniffio in ./venv/lib/python3.12/site-packages (from openai>=1.0.0->-r requirements.txt (line 45)) (1.3.1)
+Requirement already satisfied: aiohappyeyeballs>=2.5.0 in ./venv/lib/python3.12/site-packages (from aiohttp>=3.8.0->-r requirements.txt (line 46)) (2.6.1)
+Requirement already satisfied: aiosignal>=1.4.0 in ./venv/lib/python3.12/site-packages (from aiohttp>=3.8.0->-r requirements.txt (line 46)) (1.4.0)
+Requirement already satisfied: attrs>=17.3.0 in ./venv/lib/python3.12/site-packages (from aiohttp>=3.8.0->-r requirements.txt (line 46)) (25.4.0)
+Requirement already satisfied: frozenlist>=1.1.1 in ./venv/lib/python3.12/site-packages (from aiohttp>=3.8.0->-r requirements.txt (line 46)) (1.8.0)
+Requirement already satisfied: multidict<7.0,>=4.5 in ./venv/lib/python3.12/site-packages (from aiohttp>=3.8.0->-r requirements.txt (line 46)) (6.7.0)
+Requirement already satisfied: propcache>=0.2.0 in ./venv/lib/python3.12/site-packages (from aiohttp>=3.8.0->-r requirements.txt (line 46)) (0.4.1)
+Requirement already satisfied: yarl<2.0,>=1.17.0 in ./venv/lib/python3.12/site-packages (from aiohttp>=3.8.0->-r requirements.txt (line 46)) (1.22.0)
+Requirement already satisfied: ecdsa!=0.15 in ./venv/lib/python3.12/site-packages (from python-jose>=3.3.0->python-jose[cryptography]>=3.3.0->-r requirements.txt (line 49)) (0.19.1)
+Requirement already satisfied: rsa!=4.1.1,!=4.4,<5.0,>=4.0 in ./venv/lib/python3.12/site-packages (from python-jose>=3.3.0->python-jose[cryptography]>=3.3.0->-r requirements.txt (line 49)) (4.9.1)
+Requirement already satisfied: pyasn1>=0.5.0 in ./venv/lib/python3.12/site-packages (from python-jose>=3.3.0->python-jose[cryptography]>=3.3.0->-r requirements.txt (line 49)) (0.6.1)
+Requirement already satisfied: limits>=2.3 in ./venv/lib/python3.12/site-packages (from slowapi>=0.1.9->-r requirements.txt (line 52)) (5.6.0)
+Requirement already satisfied: dnspython>=2.0.0 in ./venv/lib/python3.12/site-packages (from email-validator>=2.0.0->-r requirements.txt (line 53)) (2.8.0)
+Requirement already satisfied: cryptography>=3.4.0 in ./venv/lib/python3.12/site-packages (from python-jose[cryptography]>=3.3.0->-r requirements.txt (line 49)) (46.0.3)
+Requirement already satisfied: httptools>=0.6.3 in ./venv/lib/python3.12/site-packages (from uvicorn[standard]>=0.24.0->-r requirements.txt (line 9)) (0.7.1)
+Requirement already satisfied: pyyaml>=5.1 in ./venv/lib/python3.12/site-packages (from uvicorn[standard]>=0.24.0->-r requirements.txt (line 9)) (6.0.3)
+Requirement already satisfied: uvloop>=0.15.1 in ./venv/lib/python3.12/site-packages (from uvicorn[standard]>=0.24.0->-r requirements.txt (line 9)) (0.22.1)
+Requirement already satisfied: watchfiles>=0.13 in ./venv/lib/python3.12/site-packages (from uvicorn[standard]>=0.24.0->-r requirements.txt (line 9)) (1.1.1)
+Requirement already satisfied: websockets>=10.4 in ./venv/lib/python3.12/site-packages (from uvicorn[standard]>=0.24.0->-r requirements.txt (line 9)) (15.0.1)
+Requirement already satisfied: cffi>=2.0.0 in ./venv/lib/python3.12/site-packages (from cryptography>=3.4.0->python-jose[cryptography]>=3.3.0->-r requirements.txt (line 49)) (2.0.0)
+Requirement already satisfied: six>=1.9.0 in ./venv/lib/python3.12/site-packages (from ecdsa!=0.15->python-jose>=3.3.0->python-jose[cryptography]>=3.3.0->-r requirements.txt (line 49)) (1.17.0)
+Requirement already satisfied: googleapis-common-protos<2.0.0,>=1.56.2 in ./venv/lib/python3.12/site-packages (from google-api-core->google-generativeai>=0.3.2->-r requirements.txt (line 4)) (1.72.0)
+Requirement already satisfied: cachetools<7.0,>=2.0.0 in ./venv/lib/python3.12/site-packages (from google-auth>=2.15.0->google-generativeai>=0.3.2->-r requirements.txt (line 4)) (6.2.4)
+Requirement already satisfied: pyasn1-modules>=0.2.1 in ./venv/lib/python3.12/site-packages (from google-auth>=2.15.0->google-generativeai>=0.3.2->-r requirements.txt (line 4)) (0.4.2)
+Requirement already satisfied: httpcore==1.* in ./venv/lib/python3.12/site-packages (from httpx<1,>=0.23.0->openai>=1.0.0->-r requirements.txt (line 45)) (1.0.9)
+Requirement already satisfied: deprecated>=1.2 in ./venv/lib/python3.12/site-packages (from limits>=2.3->slowapi>=0.1.9->-r requirements.txt (line 52)) (1.3.1)
+Requirement already satisfied: sortedcontainers in ./venv/lib/python3.12/site-packages (from trio<1.0,>=0.31.0->selenium>=4.15.0->-r requirements.txt (line 25)) (2.4.0)
+Requirement already satisfied: outcome in ./venv/lib/python3.12/site-packages (from trio<1.0,>=0.31.0->selenium>=4.15.0->-r requirements.txt (line 25)) (1.3.0.post0)
+Requirement already satisfied: wsproto>=0.14 in ./venv/lib/python3.12/site-packages (from trio-websocket<1.0,>=0.12.2->selenium>=4.15.0->-r requirements.txt (line 25)) (1.3.2)
+Requirement already satisfied: pysocks!=1.5.7,<2.0,>=1.5.6 in ./venv/lib/python3.12/site-packages (from urllib3[socks]<3.0,>=2.5.0->selenium>=4.15.0->-r requirements.txt (line 25)) (1.7.1)
+Requirement already satisfied: httplib2<1.0.0,>=0.19.0 in ./venv/lib/python3.12/site-packages (from google-api-python-client->google-generativeai>=0.3.2->-r requirements.txt (line 4)) (0.31.0)
+Requirement already satisfied: google-auth-httplib2<1.0.0,>=0.2.0 in ./venv/lib/python3.12/site-packages (from google-api-python-client->google-generativeai>=0.3.2->-r requirements.txt (line 4)) (0.3.0)
+Requirement already satisfied: uritemplate<5,>=3.0.1 in ./venv/lib/python3.12/site-packages (from google-api-python-client->google-generativeai>=0.3.2->-r requirements.txt (line 4)) (4.2.0)
+Requirement already satisfied: pycparser in ./venv/lib/python3.12/site-packages (from cffi>=2.0.0->cryptography>=3.4.0->python-jose[cryptography]>=3.3.0->-r requirements.txt (line 49)) (2.23)
+Requirement already satisfied: wrapt<3,>=1.10 in ./venv/lib/python3.12/site-packages (from deprecated>=1.2->limits>=2.3->slowapi>=0.1.9->-r requirements.txt (line 52)) (2.0.1)
+Requirement already satisfied: grpcio<2.0.0,>=1.33.2 in ./venv/lib/python3.12/site-packages (from google-api-core[grpc]!=2.0.*,!=2.1.*,!=2.10.*,!=2.2.*,!=2.3.*,!=2.4.*,!=2.5.*,!=2.6.*,!=2.7.*,!=2.8.*,!=2.9.*,<3.0.0dev,>=1.34.1->google-ai-generativelanguage==0.6.15->google-generativeai>=0.3.2->-r requirements.txt (line 4)) (1.76.0)
+Requirement already satisfied: grpcio-status<2.0.0,>=1.33.2 in ./venv/lib/python3.12/site-packages (from google-api-core[grpc]!=2.0.*,!=2.1.*,!=2.10.*,!=2.2.*,!=2.3.*,!=2.4.*,!=2.5.*,!=2.6.*,!=2.7.*,!=2.8.*,!=2.9.*,<3.0.0dev,>=1.34.1->google-ai-generativelanguage==0.6.15->google-generativeai>=0.3.2->-r requirements.txt (line 4)) (1.71.2)
+Requirement already satisfied: pyparsing<4,>=3.0.4 in ./venv/lib/python3.12/site-packages (from httplib2<1.0.0,>=0.19.0->google-api-python-client->google-generativeai>=0.3.2->-r requirements.txt (line 4)) (3.3.1)
+
+[notice] A new release of pip is available: 25.0.1 -> 25.3
+[notice] To update, run: pip install --upgrade pip
+🗄️ Setting up database...
+🚀 Setting up AI Job Application Assistant Database...
+📊 Using SQLite for simple development setup
+
+2025-12-25 17:52:19 - __main__ - INFO - Setting up database...
+2025-12-25 17:52:19 - src.database.config - INFO - Initializing database: sqlite+aiosqlite:///ai_job_assistant.db
+2025-12-25 17:52:19 - src.database.config - INFO - Database initialized successfully
+2025-12-25 17:52:19 - __main__ - INFO - Database setup completed successfully!
+2025-12-25 17:52:19 - __main__ - INFO - Database file: ai_job_assistant.db
+2025-12-25 17:52:19 - __main__ - INFO - Database connection test: SUCCESS
+2025-12-25 17:52:19 - src.database.config - INFO - Database connections closed
+✅ Database setup completed successfully!
+🎯 You can now run the application with: python main.py
+🚀 Starting FastAPI server...
+INFO:     Will watch for changes in these directories: ['/app/backend']
+INFO:     Uvicorn running on http://0.0.0.0:8000 (Press CTRL+C to quit)
+INFO:     Started reloader process [24021] using WatchFiles
+❌ Backend server failed to start
+🔍 Checking backend process...
+🛑 Shutting down development servers...
+✅ Backend server stopped
+2025-12-25 17:52:22 - src.api.app - INFO - All API routers loaded successfully
+INFO:     Started server process [24025]
+INFO:     Waiting for application startup.
+2025-12-25 17:52:22 - src.api.app - INFO - 🚀 AI Job Application Assistant starting up...
+2025-12-25 17:52:22 - src.api.app - INFO - Startup event triggered successfully!
+2025-12-25 17:52:22 - src.api.app - INFO - Configuration loaded successfully
+2025-12-25 17:52:22 - src.api.app - INFO - Initializing services...
+2025-12-25 17:52:22.776 | INFO     | src.services.service_registry:initialize:57 - Initializing service registry...
+2025-12-25 17:52:22.783 | INFO     | src.services.service_registry:register_service:49 - Registered service provider: auth_service
+2025-12-25 17:52:22 - src.services.auth_service - INFO - JWT Auth Service initialized
+2025-12-25 17:52:22.783 | INFO     | src.services.service_registry:register_service:49 - Registered service provider: file_service
+2025-12-25 17:52:22.783 | DEBUG    | src.services.local_file_service:_ensure_directories:39 - Ensured directory exists: ./uploads
+2025-12-25 17:52:22.783 | DEBUG    | src.services.local_file_service:_ensure_directories:39 - Ensured directory exists: ./resumes
+2025-12-25 17:52:22.783 | DEBUG    | src.services.local_file_service:_ensure_directories:39 - Ensured directory exists: ./output
+2025-12-25 17:52:22.783 | DEBUG    | src.services.local_file_service:_ensure_directories:39 - Ensured directory exists: ./templates
+2025-12-25 17:52:22.784 | INFO     | src.services.service_registry:register_service:49 - Registered service provider: ai_service
+2025-12-25 17:52:22.784 | WARNING  | src.services.gemini_ai_service:_initialize_client:60 - Gemini API key not configured, running in mock mode
+2025-12-25 17:52:22 - src.database.config - INFO - Initializing database: sqlite+aiosqlite:///ai_job_assistant.db
+2025-12-25 17:52:22 - src.database.config - INFO - Database initialized successfully
+2025-12-25 17:52:22 - src.database.config - INFO - Database tables created successfully
+2025-12-25 17:52:22.807 | INFO     | src.services.repository_factory:initialize:27 - Repository factory initialized
+2025-12-25 17:52:22.807 | INFO     | src.services.service_registry:register_service:49 - Registered service provider: resume_service
+2025-12-25 17:52:22.808 | INFO     | src.services.service_registry:register_service:49 - Registered service provider: application_service
+2025-12-25 17:52:22.808 | INFO     | src.services.service_registry:register_service:49 - Registered service provider: cover_letter_service
+2025-12-25 17:52:22.808 | INFO     | src.services.service_registry:register_service:49 - Registered service provider: job_search_service
+2025-12-25 17:52:23.435 | INFO     | src.services.job_search_service:initialize:44 - JobSpy available for job search
+2025-12-25 17:52:23.435 | INFO     | src.services.job_search_service:initialize:58 - Job search service initialized successfully
+2025-12-25 17:52:23.436 | INFO     | src.services.service_registry:register_service:49 - Registered service provider: job_application_service
+2025-12-25 17:52:23 - src.services.job_application_service - INFO - Job application service initialized successfully
+2025-12-25 17:52:23.436 | INFO     | src.services.service_registry:initialize:64 - Service registry initialized successfully
+2025-12-25 17:52:23.469 | DEBUG    | src.services.resume_service:get_all_resumes:157 - Retrieved 0 resumes
+2025-12-25 17:52:23.479 | DEBUG    | src.services.application_service:get_all_applications:132 - Retrieved 0 applications
+2025-12-25 17:52:23.483 | DEBUG    | src.services.cover_letter_service:get_all_cover_letters:36 - Retrieved 0 cover letters
+2025-12-25 17:52:23 - src.api.app - INFO - Services health check: {'service_registry': 'healthy', 'services': {'auth_service': {'status': 'healthy', 'available': True}, 'file_service': {'status': 'healthy', 'available': True}, 'ai_service': {'status': 'degraded', 'available': False}, 'resume_service': {'status': 'healthy', 'available': True, 'resume_count': 0, 'default_resume': False, 'using_database': True}, 'application_service': {'status': 'healthy', 'available': True, 'application_count': 0, 'follow_ups_scheduled': 0, 'using_database': True}, 'cover_letter_service': {'status': 'healthy', 'available': True, 'cover_letter_count': 0, 'ai_service_available': False, 'using_database': True}, 'job_search_service': {'status': 'healthy', 'available': True, 'jobspy_available': True, 'supported_platforms': 5}, 'job_application_service': {'status': 'healthy', 'available': True, 'supported_platforms': 6, 'platforms': ['linkedin', 'indeed', 'glassdoor', 'google_jobs', 'zip_recruiter', 'mock'], 'timestamp': '2025-12-25T17:52:23.483541'}}}
+2025-12-25 17:52:23 - src.api.app - INFO - AI Service (Gemini) available: False
+2025-12-25 17:52:23 - src.api.app - WARNING - AI Service not available - running with mock responses
+2025-12-25 17:52:23 - src.api.app - INFO - Services initialized successfully
+2025-12-25 17:52:23 - src.api.app - INFO - Services initialized successfully
+2025-12-25 17:52:23 - src.api.app - INFO - 🎉 AI Job Application Assistant started successfully
+INFO:     Application startup complete.
+INFO:     Stopping reloader process [24021]
