@@ -1,6 +1,7 @@
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { Suspense, lazy, useEffect } from 'react';
+import { VibeKanbanWebCompanion } from 'vibe-kanban-web-companion';
 import Layout from './components/layout/Layout';
 import Spinner from './components/ui/Spinner';
 import { NotificationContainer, useNotifications } from './components/ui/Notification';
@@ -143,6 +144,7 @@ function AppContent({ notifications, dismissNotification }: { notifications: any
 
   return (
     <QueryClientProvider client={queryClient}>
+      <VibeKanbanWebCompanion />
       <Router>
         <div className="min-h-screen bg-gray-50">
           <NotificationContainer
