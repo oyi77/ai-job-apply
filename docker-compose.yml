@@ -1,0 +1,115 @@
+version: '3.8'
+
+services:
+  # PostgreSQL Database
+  postgres:
+    image: postgres:16-alpine
+    container_name: ai-job-apply-db
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
+      POSTGRES_DB: ${POSTGRES_DB:-ai_job_assistant}
+      PGDATA: /var/lib/postgresql/data/pgdata
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./backend/alembic:/docker-entrypoint-initdb.d
+    ports:
+      - "${POSTGRES_PORT:-5432}:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-postgres}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - ai-job-apply-network
+    restart: unless-stopped
+
+  # Backend API Service
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+      target: development  # Use development stage for hot reload
+    container_name: ai-job-apply-backend
+    environment:
+      # Application
+      DEBUG: ${DEBUG:-true}
+      ENVIRONMENT: development
+      HOST: 0.0.0.0
+      PORT: 8000
+      
+      # Database
+      DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-postgres}@postgres:5432/${POSTGRES_DB:-ai_job_assistant}
+      DB_TYPE: postgresql
+      
+      # AI Providers
+      GEMINI_API_KEY: ${GEMINI_API_KEY:-}
+      OPENAI_API_KEY: ${OPENAI_API_KEY:-}
+      OPENROUTER_API_KEY: ${OPENROUTER_API_KEY:-}
+      LOCAL_AI_BASE_URL: ${LOCAL_AI_BASE_URL:-}
+      
+      # File Storage
+      UPLOAD_DIR: /app/uploads
+      RESUME_DIR: /app/resumes
+      OUTPUT_DIR: /app/output
+      TEMPLATES_DIR: /app/templates
+      
+      # Security
+      SECRET_KEY: ${SECRET_KEY:-dev-secret-key-change-in-production}
+      JWT_SECRET_KEY: ${JWT_SECRET_KEY:-dev-jwt-secret-key-change-in-production}
+      CORS_ORIGINS: ${CORS_ORIGINS:-http://localhost:5173,http://localhost:3000}
+      
+      # Logging
+      LOG_LEVEL: ${LOG_LEVEL:-DEBUG}
+      LOG_FILE: /app/logs/app.log
+    volumes:
+      - ./backend:/app
+      - backend_uploads:/app/uploads
+      - backend_resumes:/app/resumes
+      - backend_output:/app/output
+      - backend_logs:/app/logs
+    ports:
+      - "${BACKEND_PORT:-8000}:8000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - ai-job-apply-network
+    restart: unless-stopped
+
+  # Frontend Service
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+      target: development  # Use development stage for hot reload
+    container_name: ai-job-apply-frontend
+    environment:
+      VITE_API_URL: ${VITE_API_URL:-http://localhost:8000}
+      NODE_ENV: development
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
+    ports:
+      - "${FRONTEND_PORT:-5173}:5173"
+    depends_on:
+      - backend
+    networks:
+      - ai-job-apply-network
+    restart: unless-stopped
+
+volumes:
+  postgres_data:
+    driver: local
+  backend_uploads:
+    driver: local
+  backend_resumes:
+    driver: local
+  backend_output:
+    driver: local
+  backend_logs:
+    driver: local
+
+networks:
+  ai-job-apply-network:
+    driver: bridge

@@ -1,0 +1,186 @@
+version: '3.8'
+
+services:
+  # PostgreSQL Database
+  postgres:
+    image: postgres:16-alpine
+    container_name: ai-job-apply-db-prod
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB:-ai_job_assistant}
+      PGDATA: /var/lib/postgresql/data/pgdata
+    volumes:
+      - postgres_data_prod:/var/lib/postgresql/data
+    ports:
+      - "127.0.0.1:${POSTGRES_PORT:-5432}:5432"  # Only bind to localhost
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER}"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+    networks:
+      - ai-job-apply-network-prod
+    restart: always
+    # Security: Run as non-root user
+    user: "999:999"
+    # Backup configuration
+    command: >
+      postgres
+      -c shared_buffers=256MB
+      -c max_connections=200
+      -c effective_cache_size=1GB
+      -c maintenance_work_mem=64MB
+      -c checkpoint_completion_target=0.9
+      -c wal_buffers=16MB
+      -c default_statistics_target=100
+      -c random_page_cost=1.1
+      -c effective_io_concurrency=200
+      -c work_mem=4MB
+      -c min_wal_size=1GB
+      -c max_wal_size=4GB
+
+  # Backend API Service (Production)
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+      target: production  # Use production stage
+    image: ai-job-apply-backend:latest
+    container_name: ai-job-apply-backend-prod
+    environment:
+      # Application
+      DEBUG: ${DEBUG:-false}
+      ENVIRONMENT: production
+      HOST: 0.0.0.0
+      PORT: 8000
+      
+      # Database
+      DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-ai_job_assistant}
+      DB_TYPE: postgresql
+      
+      # AI Providers
+      GEMINI_API_KEY: ${GEMINI_API_KEY}
+      OPENAI_API_KEY: ${OPENAI_API_KEY:-}
+      OPENROUTER_API_KEY: ${OPENROUTER_API_KEY:-}
+      LOCAL_AI_BASE_URL: ${LOCAL_AI_BASE_URL:-}
+      
+      # File Storage
+      UPLOAD_DIR: /app/uploads
+      RESUME_DIR: /app/resumes
+      OUTPUT_DIR: /app/output
+      TEMPLATES_DIR: /app/templates
+      
+      # Security (MUST be set in production)
+      SECRET_KEY: ${SECRET_KEY}
+      JWT_SECRET_KEY: ${JWT_SECRET_KEY}
+      CORS_ORIGINS: ${CORS_ORIGINS}
+      
+      # Logging
+      LOG_LEVEL: ${LOG_LEVEL:-INFO}
+      LOG_FILE: /app/logs/app.log
+    volumes:
+      - backend_uploads_prod:/app/uploads
+      - backend_resumes_prod:/app/resumes
+      - backend_output_prod:/app/output
+      - backend_logs_prod:/app/logs
+    ports:
+      - "127.0.0.1:${BACKEND_PORT:-8000}:8000"  # Only bind to localhost (use reverse proxy)
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - ai-job-apply-network-prod
+    restart: always
+    # Resource limits
+    deploy:
+      resources:
+        limits:
+          cpus: '2'
+          memory: 2G
+        reservations:
+          cpus: '0.5'
+          memory: 512M
+    # Health check
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  # Frontend Service (Production)
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+      target: production  # Use production stage (nginx)
+    image: ai-job-apply-frontend:latest
+    container_name: ai-job-apply-frontend-prod
+    environment:
+      VITE_API_URL: ${VITE_API_URL:-http://backend:8000}
+    ports:
+      - "127.0.0.1:${FRONTEND_PORT:-80}:80"  # Only bind to localhost (use reverse proxy)
+    depends_on:
+      - backend
+    networks:
+      - ai-job-apply-network-prod
+    restart: always
+    # Resource limits
+    deploy:
+      resources:
+        limits:
+          cpus: '1'
+          memory: 512M
+        reservations:
+          cpus: '0.25'
+          memory: 128M
+    # Health check
+    healthcheck:
+      test: ["CMD", "/healthcheck.sh"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+
+  # Nginx Reverse Proxy (Optional - for production)
+  nginx:
+    image: nginx:alpine
+    container_name: ai-job-apply-nginx-prod
+    volumes:
+      - ./nginx/nginx.prod.conf:/etc/nginx/nginx.conf:ro
+      - ./nginx/ssl:/etc/nginx/ssl:ro  # SSL certificates
+    ports:
+      - "${NGINX_HTTP_PORT:-80}:80"
+      - "${NGINX_HTTPS_PORT:-443}:443"
+    depends_on:
+      - frontend
+      - backend
+    networks:
+      - ai-job-apply-network-prod
+    restart: always
+    # Resource limits
+    deploy:
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 256M
+        reservations:
+          cpus: '0.1'
+          memory: 64M
+
+volumes:
+  postgres_data_prod:
+    driver: local
+  backend_uploads_prod:
+    driver: local
+  backend_resumes_prod:
+    driver: local
+  backend_output_prod:
+    driver: local
+  backend_logs_prod:
+    driver: local
+
+networks:
+  ai-job-apply-network-prod:
+    driver: bridge

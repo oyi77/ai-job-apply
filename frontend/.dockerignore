@@ -1,0 +1,65 @@
+# Dependencies
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# Build outputs
+dist/
+build/
+.vite/
+
+# Testing
+coverage/
+.nyc_output/
+*.test.ts
+*.test.tsx
+*.spec.ts
+*.spec.tsx
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Environment
+.env
+.env.local
+.env.*.local
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Git
+.git/
+.gitignore
+
+# Docker
+Dockerfile
+.dockerignore
+docker-compose*.yml
+nginx.conf
+
+# Documentation
+*.md
+docs/
+
+# Temporary files
+*.tmp
+*.bak
+*.swp
+
+# Logs
+*.log
+
+# Playwright
+playwright-report/
+test-results/
+playwright/.cache/
+
+# TypeScript
+*.tsbuildinfo

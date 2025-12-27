@@ -1,7 +1,7 @@
 # Makefile for AI Job Application Assistant
 # Technical Debt Prevention and Code Quality
 
-.PHONY: help install-hooks run-hooks check-quality check-debt fix-quality test coverage clean
+.PHONY: help install-hooks run-hooks check-quality check-debt fix-quality test coverage clean docker-up docker-down docker-build docker-logs docker-clean
 
 # Default target
 help:
@@ -29,6 +29,14 @@ help:
 	@echo "🧹 Maintenance:"
 	@echo "  clean            Clean up generated files and caches"
 	@echo "  update-deps      Update development dependencies"
+	@echo ""
+	@echo "🐳 Docker Commands:"
+	@echo "  docker-up        Start all Docker containers (development)"
+	@echo "  docker-down      Stop all Docker containers"
+	@echo "  docker-build     Build Docker images"
+	@echo "  docker-logs      View Docker container logs"
+	@echo "  docker-clean     Remove containers, volumes, and images"
+	@echo "  docker-prod      Start production environment"
 	@echo ""
 	@echo "📊 Reports:"
 	@echo "  debt-report      Generate technical debt report"
@@ -196,3 +204,60 @@ setup:
 help-%:
 	@echo "Help for command: $*"
 	@echo "Run 'make $*' to execute this command"
+
+# Docker Commands
+docker-up:
+	@echo "🐳 Starting Docker containers (development)..."
+	docker-compose up -d
+	@echo "✅ Containers started! Frontend: http://localhost:5173, Backend: http://localhost:8000"
+
+docker-down:
+	@echo "🛑 Stopping Docker containers..."
+	docker-compose down
+	@echo "✅ Containers stopped!"
+
+docker-build:
+	@echo "🔨 Building Docker images..."
+	docker-compose build
+	@echo "✅ Images built!"
+
+docker-logs:
+	@echo "📋 Viewing Docker logs (Ctrl+C to exit)..."
+	docker-compose logs -f
+
+docker-clean:
+	@echo "🧹 Cleaning up Docker resources..."
+	docker-compose down -v
+	docker system prune -f
+	@echo "✅ Docker cleanup completed!"
+
+docker-prod:
+	@echo "🏭 Starting production environment..."
+	@if [ ! -f .env.prod ]; then \
+		echo "⚠️  Warning: .env.prod not found. Using .env"; \
+		docker-compose -f docker-compose.prod.yml up -d --build; \
+	else \
+		docker-compose -f docker-compose.prod.yml --env-file .env.prod up -d --build; \
+	fi
+	@echo "✅ Production environment started!"
+
+docker-restart:
+	@echo "🔄 Restarting Docker containers..."
+	docker-compose restart
+	@echo "✅ Containers restarted!"
+
+docker-ps:
+	@echo "📊 Docker container status:"
+	docker-compose ps
+
+docker-shell-backend:
+	@echo "🐚 Opening backend shell..."
+	docker-compose exec backend bash
+
+docker-shell-frontend:
+	@echo "🐚 Opening frontend shell..."
+	docker-compose exec frontend sh
+
+docker-shell-db:
+	@echo "🐚 Opening database shell..."
+	docker-compose exec postgres psql -U postgres -d ai_job_assistant
