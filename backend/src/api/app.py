@@ -20,6 +20,8 @@ from src.models.application import JobApplication, ApplicationUpdateRequest
 from src.utils.logger import get_logger
 from src.services.service_registry import service_registry
 from src.middleware.response_middleware import add_response_wrapper_middleware
+from src.middleware.query_performance import setup_query_performance_monitoring
+from src.database.config import database_config
 
 # Initialize logger
 logger = get_logger(__name__)
@@ -124,6 +126,10 @@ def create_app() -> FastAPI:
             logger.info("Initializing services...")
             await initialize_services()
             logger.info("Services initialized successfully")
+
+            # Setup query performance monitoring
+            if database_config.engine:
+                setup_query_performance_monitoring(database_config.engine)
             
             logger.info("🎉 AI Job Application Assistant started successfully")
         except Exception as e:

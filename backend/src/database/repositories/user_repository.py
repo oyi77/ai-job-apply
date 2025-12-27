@@ -4,7 +4,6 @@ from typing import Optional
 from datetime import datetime, timezone
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, update
-from sqlalchemy.orm import selectinload
 
 from ..models import DBUser, DBUserSession
 from ...models.user import User, UserProfileUpdate

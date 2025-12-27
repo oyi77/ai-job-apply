@@ -10,7 +10,7 @@ from sqlalchemy.orm import selectinload
 from ..models import DBJobApplication, DBResume, DBCoverLetter
 from ...models.application import JobApplication, ApplicationUpdateRequest, ApplicationStatus
 from ...utils.logger import get_logger
-from ...middleware.query_performance import monitor_query_performance
+from ...core.cache import cache_region
 import time
 
 
@@ -21,6 +21,12 @@ class ApplicationRepository:
         """Initialize repository with database session."""
         self.session = session
         self.logger = get_logger(__name__)
+
+    async def invalidate_statistics_cache(self, user_id: Optional[str] = None):
+        """Invalidate the statistics cache."""
+        cache_key = f"statistics:{user_id}"
+        await cache_region.delete(cache_key)
+        self.logger.debug(f"Invalidated statistics cache for user: {user_id}")
     
     async def create(self, application: JobApplication, user_id: Optional[str] = None) -> JobApplication:
         """Create a new job application, optionally associated with a user."""
@@ -33,6 +39,10 @@ class ApplicationRepository:
             await self.session.refresh(db_application)
             
             self.logger.info(f"Created application: {application.job_title} at {application.company}")
+            
+            # Invalidate cache
+            await self.invalidate_statistics_cache(user_id)
+            
             return db_application.to_model()
             
         except Exception as e:
@@ -193,6 +203,9 @@ class ApplicationRepository:
             await self.session.execute(stmt)
             await self.session.commit()
             
+            # Invalidate cache
+            await self.invalidate_statistics_cache(user_id)
+            
             # Return updated application
             updated_app = await self.get_by_id(application_id)
             self.logger.info(f"Updated application: {updated_app.job_title}")
@@ -216,6 +229,8 @@ class ApplicationRepository:
             
             if result.rowcount > 0:
                 self.logger.info(f"Deleted application: {application_id}")
+                # Invalidate cache
+                await self.invalidate_statistics_cache(user_id)
                 return True
             
             self.logger.warning(f"Application not found for deletion: {application_id}")
@@ -318,6 +333,7 @@ class ApplicationRepository:
             )
             return []
     
+    @cache_region.cache_on_arguments()
     async def get_statistics(self, user_id: Optional[str] = None) -> Dict[str, Any]:
         """Get application statistics, optionally filtered by user."""
         start_time = time.time()
