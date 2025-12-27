@@ -50,6 +50,31 @@ const Settings: React.FC = () => {
     setIsLanguageModalOpen(false);
   };
 
+  // Calculate default form values from user state
+  const getProfileDefaultValues = () => {
+    if (!user) return {};
+
+    // If we have first/last name explicitly, use them
+    if (user.first_name || user.last_name) {
+      return {
+        ...user,
+        first_name: user.first_name || '',
+        last_name: user.last_name || '',
+      };
+    }
+
+    // Otherwise try to split the name field
+    const nameParts = (user.name || '').split(' ');
+    const firstName = nameParts[0] || '';
+    const lastName = nameParts.slice(1).join(' ') || '';
+
+    return {
+      ...user,
+      first_name: firstName,
+      last_name: lastName,
+    };
+  };
+
   const handleProfileUpdate = async (data: any) => {
     try {
       // Prepare data for API (combine first and last name for backend 'name' field)
@@ -361,7 +386,10 @@ const Settings: React.FC = () => {
         title="Edit Profile"
         size="lg"
       >
-        <Form onSubmit={handleProfileUpdate}>
+        <Form
+          onSubmit={handleProfileUpdate}
+          defaultValues={getProfileDefaultValues()}
+        >
           <div className="space-y-4">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <FormField
