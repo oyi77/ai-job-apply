@@ -55,6 +55,15 @@ class Settings(BaseSettings):
     jwt_algorithm: str = Field(default="HS256", env="JWT_ALGORITHM")
     jwt_access_token_expire_minutes: int = Field(default=15, env="JWT_ACCESS_TOKEN_EXPIRE_MINUTES")
     jwt_refresh_token_expire_days: int = Field(default=7, env="JWT_REFRESH_TOKEN_EXPIRE_DAYS")
+
+    # Email settings
+    smtp_host: str = Field(default="localhost", env="SMTP_HOST")
+    smtp_port: int = Field(default=1025, env="SMTP_PORT")
+    smtp_user: Optional[str] = Field(default=None, env="SMTP_USER")
+    smtp_password: Optional[str] = Field(default=None, env="SMTP_PASSWORD")
+    smtp_tls: bool = Field(default=False, env="SMTP_TLS")
+    emails_from_email: str = Field(default="noreply@example.com", env="EMAILS_FROM_EMAIL")
+    emails_from_name: Optional[str] = Field(default="AI Job Application Assistant", env="EMAILS_FROM_NAME")
     
     # Logging
     log_level: str = Field(default="INFO", env="LOG_LEVEL")
