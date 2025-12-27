@@ -482,3 +482,140 @@ class DBUserSession(Base):
             "last_used_at": self.last_used_at.isoformat(),
             "is_active": self.is_active,
         }
+
+
+class DBPerformanceMetric(Base):
+    """Database model for performance metrics."""
+    
+    __tablename__ = "performance_metrics"
+    
+    id: Mapped[str] = mapped_column(String, primary_key=True, default=lambda: str(uuid.uuid4()))
+    metric_name: Mapped[str] = mapped_column(String(100), nullable=False, index=True)
+    metric_value: Mapped[float] = mapped_column(Float, nullable=False)
+    tags: Mapped[Optional[str]] = mapped_column(Text, nullable=True)  # JSON string
+    timestamp: Mapped[datetime] = mapped_column(DateTime, nullable=False, index=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=lambda: datetime.now(timezone.utc))
+    
+    # Indexes for performance
+    __table_args__ = (
+        Index("idx_metric_name_timestamp", "metric_name", "timestamp"),
+        Index("idx_metric_timestamp", "timestamp"),
+    )
+    
+    def to_dict(self) -> dict:
+        """Convert to dictionary."""
+        import json
+        
+        return {
+            "id": self.id,
+            "metric_name": self.metric_name,
+            "metric_value": self.metric_value,
+            "tags": json.loads(self.tags) if self.tags else {},
+            "timestamp": self.timestamp.isoformat(),
+            "created_at": self.created_at.isoformat(),
+        }
+
+
+class DBErrorLog(Base):
+    """Database model for error logs."""
+    
+    __tablename__ = "error_logs"
+    
+    id: Mapped[str] = mapped_column(String, primary_key=True, default=lambda: str(uuid.uuid4()))
+    error_type: Mapped[str] = mapped_column(String(100), nullable=False, index=True)
+    error_message: Mapped[str] = mapped_column(Text, nullable=False)
+    stack_trace: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    request_path: Mapped[Optional[str]] = mapped_column(String(500), nullable=True, index=True)
+    http_method: Mapped[Optional[str]] = mapped_column(String(10), nullable=True)
+    user_id: Mapped[Optional[str]] = mapped_column(String, nullable=True, index=True)
+    severity: Mapped[str] = mapped_column(String(20), nullable=False, index=True)  # error, warning, critical
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=lambda: datetime.now(timezone.utc), index=True)
+    
+    # Indexes for performance
+    __table_args__ = (
+        Index("idx_error_type_severity", "error_type", "severity"),
+        Index("idx_error_created_at", "created_at"),
+    )
+    
+    def to_dict(self) -> dict:
+        """Convert to dictionary."""
+        return {
+            "id": self.id,
+            "error_type": self.error_type,
+            "error_message": self.error_message,
+            "stack_trace": self.stack_trace,
+            "request_path": self.request_path,
+            "http_method": self.http_method,
+            "user_id": self.user_id,
+            "severity": self.severity,
+            "created_at": self.created_at.isoformat(),
+        }
+
+
+class DBAlertRule(Base):
+    """Database model for alert rules."""
+    
+    __tablename__ = "alert_rules"
+    
+    id: Mapped[str] = mapped_column(String, primary_key=True, default=lambda: str(uuid.uuid4()))
+    rule_name: Mapped[str] = mapped_column(String(255), nullable=False, unique=True)
+    metric_name: Mapped[str] = mapped_column(String(100), nullable=False, index=True)
+    threshold: Mapped[float] = mapped_column(Float, nullable=False)
+    condition: Mapped[str] = mapped_column(String(20), nullable=False)  # gt, gte, lt, lte, eq
+    enabled: Mapped[bool] = mapped_column(Boolean, default=True, index=True)
+    cooldown_seconds: Mapped[int] = mapped_column(Integer, default=300)  # 5 minutes default
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=lambda: datetime.now(timezone.utc))
+    updated_at: Mapped[datetime] = mapped_column(DateTime, default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc))
+    
+    # Indexes for performance
+    __table_args__ = (
+        Index("idx_alert_rule_metric_enabled", "metric_name", "enabled"),
+    )
+    
+    def to_dict(self) -> dict:
+        """Convert to dictionary."""
+        return {
+            "id": self.id,
+            "rule_name": self.rule_name,
+            "metric_name": self.metric_name,
+            "threshold": self.threshold,
+            "condition": self.condition,
+            "enabled": self.enabled,
+            "cooldown_seconds": self.cooldown_seconds,
+            "created_at": self.created_at.isoformat(),
+            "updated_at": self.updated_at.isoformat(),
+        }
+
+
+class DBAlertHistory(Base):
+    """Database model for alert history."""
+    
+    __tablename__ = "alert_history"
+    
+    id: Mapped[str] = mapped_column(String, primary_key=True, default=lambda: str(uuid.uuid4()))
+    alert_rule_id: Mapped[str] = mapped_column(String, ForeignKey("alert_rules.id", ondelete="CASCADE"), nullable=False, index=True)
+    triggered_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, index=True)
+    resolved_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
+    status: Mapped[str] = mapped_column(String(20), nullable=False, index=True)  # active, resolved
+    message: Mapped[str] = mapped_column(Text, nullable=False)
+    metric_value: Mapped[Optional[float]] = mapped_column(Float, nullable=True)
+    
+    # Relationships
+    alert_rule: Mapped[DBAlertRule] = relationship("DBAlertRule")
+    
+    # Indexes for performance
+    __table_args__ = (
+        Index("idx_alert_status_triggered", "status", "triggered_at"),
+    )
+    
+    def to_dict(self) -> dict:
+        """Convert to dictionary."""
+        return {
+            "id": self.id,
+            "alert_rule_id": self.alert_rule_id,
+            "triggered_at": self.triggered_at.isoformat(),
+            "resolved_at": self.resolved_at.isoformat() if self.resolved_at else None,
+            "status": self.status,
+            "message": self.message,
+            "metric_value": self.metric_value,
+        }

@@ -12,6 +12,7 @@ from ..core.job_search import JobSearchService
 from ..core.cover_letter_service import CoverLetterService
 from ..core.job_application import JobApplicationService
 from ..core.auth_service import AuthService
+from ..core.monitoring_service import MonitoringService
 
 
 class ServiceProvider(ABC):
@@ -89,6 +90,13 @@ class ServiceRegistry:
         self.register_service('ai_service', ai_provider)
         await ai_provider.initialize()
         self._instances['ai_service'] = ai_provider.get_service()
+        
+        # Monitoring service (no dependencies, but needs database)
+        from .monitoring_service import DatabaseMonitoringService
+        monitoring_provider = MonitoringServiceProvider()
+        self.register_service('monitoring_service', monitoring_provider)
+        await monitoring_provider.initialize()
+        self._instances['monitoring_service'] = monitoring_provider.get_service()
     
     async def _initialize_business_services(self) -> None:
         """Initialize business logic services."""
@@ -174,6 +182,18 @@ class ServiceRegistry:
     async def get_auth_service(self) -> AuthService:
         """Get the authentication service instance."""
         return await self.get_service('auth_service')
+    
+    async def get_monitoring_service(self) -> MonitoringService:
+        """Get the monitoring service instance."""
+        return await self.get_service('monitoring_service')
+    
+    def get_monitoring_service_sync(self) -> MonitoringService:
+        """Get the monitoring service instance synchronously (for middleware)."""
+        if not self._initialized:
+            raise RuntimeError("Service registry not initialized")
+        if 'monitoring_service' not in self._instances:
+            raise KeyError("Monitoring service not found")
+        return self._instances['monitoring_service']
     
     async def health_check(self) -> Dict[str, Any]:
         """Check the health of all services."""
@@ -404,6 +424,66 @@ class JWTAuthServiceProvider(ServiceProvider):
         from .auth_service import JWTAuthService
         self._service = JWTAuthService()
         await self._service.initialize()
+    
+    async def cleanup(self) -> None:
+        if hasattr(self._service, 'cleanup'):
+            await self._service.cleanup()
+
+
+class MonitoringServiceProvider(ServiceProvider):
+    """Provider for monitoring service."""
+    
+    def __init__(self):
+        self._logger = logger.bind(module="MonitoringServiceProvider")
+    
+    def get_service(self) -> MonitoringService:
+        return self._service
+    
+    async def initialize(self) -> None:
+        from .monitoring_service import DatabaseMonitoringService
+        self._service = DatabaseMonitoringService()
+        # Initialize default alert rules
+        await self._initialize_default_alert_rules()
+    
+    async def _initialize_default_alert_rules(self) -> None:
+        """Initialize default alert rules."""
+        try:
+            rules = await self._service.get_alert_rules()
+            existing_rule_names = {rule.get("rule_name") for rule in rules}
+            
+            default_rules = [
+                {
+                    "rule_name": "High Error Rate",
+                    "metric_name": "error_rate",
+                    "threshold": 5.0,
+                    "condition": "gt",
+                    "cooldown_seconds": 300
+                },
+                {
+                    "rule_name": "Slow Response Time",
+                    "metric_name": "api.response_time",
+                    "threshold": 1000.0,  # 1 second in milliseconds
+                    "condition": "gt",
+                    "cooldown_seconds": 300
+                },
+                {
+                    "rule_name": "Slow Database Query",
+                    "metric_name": "database.query_time",
+                    "threshold": 100.0,  # 100ms in milliseconds
+                    "condition": "gt",
+                    "cooldown_seconds": 300
+                }
+            ]
+            
+            for rule_config in default_rules:
+                if rule_config["rule_name"] not in existing_rule_names:
+                    try:
+                        await self._service.create_alert_rule(**rule_config)
+                        self._logger.info(f"Created default alert rule: {rule_config['rule_name']}")
+                    except Exception as e:
+                        self._logger.warning(f"Could not create default alert rule {rule_config['rule_name']}: {e}")
+        except Exception as e:
+            self._logger.warning(f"Could not initialize default alert rules: {e}")
     
     async def cleanup(self) -> None:
         if hasattr(self._service, 'cleanup'):

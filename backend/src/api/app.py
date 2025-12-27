@@ -81,6 +81,7 @@ def create_app() -> FastAPI:
         from src.api.v1.ai import router as ai_router
         from src.api.v1.cover_letters import router as cover_letters_router
         from src.api.v1.job_applications import router as job_applications_router
+        from src.api.v1.monitoring import router as monitoring_router
         
         app.include_router(auth_router, prefix="/api/v1/auth", tags=["authentication"])
         app.include_router(jobs_router, prefix="/api/v1/jobs", tags=["jobs"])
@@ -89,6 +90,7 @@ def create_app() -> FastAPI:
         app.include_router(ai_router, prefix="/api/v1/ai", tags=["ai"])
         app.include_router(cover_letters_router, prefix="/api/v1/cover-letters", tags=["cover-letters"])
         app.include_router(job_applications_router, prefix="/api/v1/job-applications", tags=["job-applications"])
+        app.include_router(monitoring_router, prefix="/api/v1/monitoring", tags=["monitoring"])
         
         logger.info("All API routers loaded successfully")
     except ImportError as e:
@@ -105,6 +107,19 @@ def create_app() -> FastAPI:
     @app.get("/health")
     async def health_check():
         """Health check endpoint."""
+        try:
+            # Get detailed health if services are initialized
+            if service_registry._initialized:
+                health_status = await service_registry.health_check()
+                return {
+                    "status": "healthy",
+                    "version": "1.0.0",
+                    "environment": config.ENVIRONMENT,
+                    "services": health_status.get("services", {})
+                }
+        except Exception as e:
+            logger.warning(f"Error getting detailed health: {e}")
+        
         return {
             "status": "healthy",
             "version": "1.0.0",
@@ -129,7 +144,32 @@ def create_app() -> FastAPI:
 
             # Setup query performance monitoring
             if database_config.engine:
-                setup_query_performance_monitoring(database_config.engine)
+                # Get monitoring service for query tracking
+                try:
+                    monitoring_service = service_registry.get_monitoring_service_sync()
+                    setup_query_performance_monitoring(database_config.engine, monitoring_service)
+                except Exception as e:
+                    logger.warning(f"Could not setup query performance monitoring with monitoring service: {e}")
+                    setup_query_performance_monitoring(database_config.engine)
+            
+            # Add metrics middleware
+            try:
+                from src.middleware.metrics_middleware import MetricsMiddleware
+                monitoring_service = service_registry.get_monitoring_service_sync()
+                app.add_middleware(MetricsMiddleware, monitoring_service=monitoring_service)
+                logger.info("Metrics middleware added successfully")
+            except Exception as e:
+                logger.warning(f"Could not add metrics middleware: {e}")
+            
+            # Start background tasks for metrics aggregation and cleanup
+            try:
+                import asyncio
+                monitoring_service = service_registry.get_monitoring_service_sync()
+                asyncio.create_task(metrics_aggregation_task(monitoring_service))
+                asyncio.create_task(metrics_cleanup_task(monitoring_service))
+                logger.info("Background tasks for metrics started")
+            except Exception as e:
+                logger.warning(f"Could not start background tasks: {e}")
             
             logger.info("🎉 AI Job Application Assistant started successfully")
         except Exception as e:
@@ -163,6 +203,54 @@ async def initialize_services() -> None:
         logger.error(f"Error initializing services: {e}", exc_info=True)
         # Don't raise the exception - allow the app to start with degraded functionality
         logger.warning("Some services may not be available - continuing with reduced functionality")
+
+
+async def metrics_aggregation_task(monitoring_service):
+    """Background task for metrics aggregation."""
+    import asyncio
+    from ..services.monitoring_service import DatabaseMonitoringService
+    
+    if not isinstance(monitoring_service, DatabaseMonitoringService):
+        return
+    
+    while True:
+        try:
+            await asyncio.sleep(3600)  # Run every hour
+            logger.info("Running hourly metrics aggregation...")
+            await monitoring_service.aggregate_metrics("hourly")
+            
+            # Run daily aggregation at midnight
+            from datetime import datetime
+            now = datetime.now()
+            if now.hour == 0 and now.minute < 5:
+                logger.info("Running daily metrics aggregation...")
+                await monitoring_service.aggregate_metrics("daily")
+        except asyncio.CancelledError:
+            break
+        except Exception as e:
+            logger.error(f"Error in metrics aggregation task: {e}", exc_info=True)
+            await asyncio.sleep(60)  # Wait before retrying
+
+
+async def metrics_cleanup_task(monitoring_service):
+    """Background task for metrics cleanup."""
+    import asyncio
+    from ..services.monitoring_service import DatabaseMonitoringService
+    
+    if not isinstance(monitoring_service, DatabaseMonitoringService):
+        return
+    
+    while True:
+        try:
+            await asyncio.sleep(86400)  # Run daily
+            logger.info("Running metrics cleanup...")
+            deleted_count = await monitoring_service.cleanup_old_metrics(retention_days=7)
+            logger.info(f"Cleaned up {deleted_count} old metrics")
+        except asyncio.CancelledError:
+            break
+        except Exception as e:
+            logger.error(f"Error in metrics cleanup task: {e}", exc_info=True)
+            await asyncio.sleep(3600)  # Wait before retrying
 
 
 def get_main_html() -> str:

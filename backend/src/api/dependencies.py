@@ -88,3 +88,8 @@ async def get_optional_user(
     except Exception:
         return None
 
+
+async def get_service_registry():
+    """Get the service registry instance."""
+    return service_registry
+
