@@ -213,6 +213,41 @@ async def update_profile(
         )
 
 
+@router.delete("/me", status_code=status.HTTP_204_NO_CONTENT)
+async def delete_account(current_user: UserProfile = Depends(get_current_user)):
+    """
+    Delete current user account.
+
+    Args:
+        current_user: Current authenticated user
+    """
+    try:
+        auth_service = await service_registry.get_auth_service()
+        success = await auth_service.delete_user(current_user.id)
+
+        if success:
+            logger.info(f"User account deleted: {current_user.id}")
+            return
+        else:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Account deletion failed"
+            )
+
+    except ValueError as e:
+        logger.warning(f"Account deletion failed: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=str(e)
+        )
+    except Exception as e:
+        logger.error(f"Error deleting account: {e}", exc_info=True)
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Account deletion failed"
+        )
+
+
 @router.post("/change-password", status_code=status.HTTP_200_OK)
 async def change_password(
     password_change: PasswordChange,

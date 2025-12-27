@@ -257,6 +257,11 @@ export const authService = {
     });
   },
 
+  // Delete account
+  deleteAccount: async (): Promise<void> => {
+    await apiClient.delete('/api/v1/auth/me');
+  },
+
   // Check if user is authenticated
   isAuthenticated: (): boolean => {
     return !!localStorage.getItem(ACCESS_TOKEN_KEY);

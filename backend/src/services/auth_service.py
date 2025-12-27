@@ -283,6 +283,21 @@ class JWTAuthService(AuthService):
             
             return success
     
+    async def delete_user(self, user_id: str) -> bool:
+        """Delete a user account."""
+        async with self._get_session_repo() as (session, repository):
+            # Get user
+            user = await repository.get_by_id(user_id)
+            if not user:
+                raise ValueError("User not found")
+
+            # Delete user
+            success = await repository.delete(user_id)
+            if success:
+                self.logger.info(f"User deleted: {user_id}")
+
+            return success
+
     async def verify_token(self, token: str) -> Optional[str]:
         """Verify JWT token and return user ID."""
         try:
