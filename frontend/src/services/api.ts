@@ -354,6 +354,55 @@ export const applicationService = {
   },
 };
 
+// Export Services
+export const exportService = {
+  // Export applications
+  exportApplications: async (ids?: string[], format: 'pdf' | 'csv' | 'excel' = 'csv', dateFrom?: string, dateTo?: string): Promise<Blob> => {
+    const response = await apiClient.post('/api/v1/exports/applications', {
+      format,
+      application_ids: ids,
+      date_from: dateFrom,
+      date_to: dateTo,
+    }, {
+      responseType: 'blob',
+    });
+    return response.data;
+  },
+
+  // Export resumes
+  exportResumes: async (format: 'pdf' | 'csv' | 'excel' = 'csv'): Promise<Blob> => {
+    const response = await apiClient.post(`/api/v1/exports/resumes?format=${format}`, {}, {
+      responseType: 'blob',
+    });
+    return response.data;
+  },
+
+  // Export cover letters
+  exportCoverLetters: async (format: 'pdf' | 'csv' | 'excel' = 'pdf'): Promise<Blob> => {
+    const response = await apiClient.post(`/api/v1/exports/cover-letters?format=${format}`, {}, {
+      responseType: 'blob',
+    });
+    return response.data;
+  },
+
+  // Export analytics
+  exportAnalytics: async (format: 'pdf' | 'csv' | 'excel' = 'pdf', includeCharts = true): Promise<Blob> => {
+    const response = await apiClient.post('/api/v1/exports/analytics', {
+      format,
+      include_charts: includeCharts,
+    }, {
+      responseType: 'blob',
+    });
+    return response.data;
+  },
+
+  // Get supported formats
+  getSupportedFormats: async (): Promise<string[]> => {
+    const response = await apiClient.get('/api/v1/exports/formats');
+    return response.data.data?.formats || ['csv', 'excel', 'pdf'];
+  },
+};
+
 // Resume Services
 export const resumeService = {
   // Get all resumes
@@ -604,4 +653,5 @@ export default {
   aiService,
   jobSearchService,
   fileService,
+  exportService,
 };

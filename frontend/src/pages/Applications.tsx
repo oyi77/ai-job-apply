@@ -14,9 +14,10 @@ import {
   FormField
 } from '../components';
 import { useAppStore } from '../stores/appStore';
-import { applicationService } from '../services/api';
+import { applicationService, exportService } from '../services/api';
 import type { JobApplication } from '../types';
 import { ApplicationStatus } from '../types';
+import { ExportModal } from '../components/ExportModal';
 import {
   PlusIcon,
   EyeIcon,
@@ -33,6 +34,7 @@ const Applications: React.FC = () => {
   const [isViewModalOpen, setIsViewModalOpen] = useState(false);
   const [statusFilter, setStatusFilter] = useState<ApplicationStatus | ''>('');
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
+  const [isExportModalOpen, setIsExportModalOpen] = useState(false);
   
   const queryClient = useQueryClient();
   const { applications, setApplications, addApplication, updateApplication, deleteApplication } = useAppStore();
@@ -145,21 +147,27 @@ const Applications: React.FC = () => {
     }
   };
 
-  const handleExport = async (format: 'csv' | 'json') => {
+  const handleExport = async (format: 'pdf' | 'csv' | 'excel', options?: { dateFrom?: string; dateTo?: string }) => {
     try {
-      const blob = await applicationService.exportApplications(
+      const blob = await exportService.exportApplications(
         selectedIds.length > 0 ? selectedIds : undefined,
-        format
+        format,
+        options?.dateFrom,
+        options?.dateTo
       );
+      
+      const extension = format === 'excel' ? 'xlsx' : format;
       const url = window.URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
-      a.download = `applications_export.${format}`;
+      a.download = `applications_export.${extension}`;
       document.body.appendChild(a);
       a.click();
+      document.body.removeChild(a);
       window.URL.revokeObjectURL(url);
-    } catch (err) {
+    } catch (err: any) {
       console.error('Export failed:', err);
+      throw new Error(err.message || 'Failed to export applications');
     }
   };
 
@@ -255,11 +263,11 @@ const Applications: React.FC = () => {
               <Button 
                 variant="secondary" 
                 size="sm" 
-                onClick={() => handleExport('csv')}
+                onClick={() => setIsExportModalOpen(true)}
                 className="flex items-center"
               >
                 <ArrowDownTrayIcon className="h-4 w-4 mr-1" />
-                Export CSV
+                Export
               </Button>
             </div>
             <div className="text-sm text-gray-500">
@@ -534,6 +542,17 @@ const Applications: React.FC = () => {
           </div>
         )}
       </Modal>
+
+      {/* Export Modal */}
+      <ExportModal
+        isOpen={isExportModalOpen}
+        onClose={() => setIsExportModalOpen(false)}
+        onExport={handleExport}
+        title="Export Applications"
+        supportedFormats={['pdf', 'csv', 'excel']}
+        showDateRange={true}
+        defaultFormat="csv"
+      />
     </div>
   );
 };

@@ -82,6 +82,7 @@ def create_app() -> FastAPI:
         from src.api.v1.cover_letters import router as cover_letters_router
         from src.api.v1.job_applications import router as job_applications_router
         from src.api.v1.monitoring import router as monitoring_router
+        from src.api.v1.exports import router as exports_router
         
         app.include_router(auth_router, prefix="/api/v1/auth", tags=["authentication"])
         app.include_router(jobs_router, prefix="/api/v1/jobs", tags=["jobs"])
@@ -91,6 +92,7 @@ def create_app() -> FastAPI:
         app.include_router(cover_letters_router, prefix="/api/v1/cover-letters", tags=["cover-letters"])
         app.include_router(job_applications_router, prefix="/api/v1/job-applications", tags=["job-applications"])
         app.include_router(monitoring_router, prefix="/api/v1/monitoring", tags=["monitoring"])
+        app.include_router(exports_router, prefix="/api/v1/exports", tags=["exports"])
         
         logger.info("All API routers loaded successfully")
     except ImportError as e:

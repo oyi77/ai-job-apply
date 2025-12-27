@@ -13,6 +13,7 @@ from ..core.cover_letter_service import CoverLetterService
 from ..core.job_application import JobApplicationService
 from ..core.auth_service import AuthService
 from ..core.monitoring_service import MonitoringService
+from ..core.export_service import ExportService
 
 
 class ServiceProvider(ABC):
@@ -138,6 +139,12 @@ class ServiceRegistry:
         self.register_service('job_application_service', job_app_provider)
         await job_app_provider.initialize()
         self._instances['job_application_service'] = job_app_provider.get_service()
+        
+        # Export service (no dependencies)
+        export_provider = ExportServiceProvider()
+        self.register_service('export_service', export_provider)
+        await export_provider.initialize()
+        self._instances['export_service'] = export_provider.get_service()
     
     async def get_service(self, name: str) -> Any:
         """Get a service instance by name."""
@@ -186,6 +193,10 @@ class ServiceRegistry:
     async def get_monitoring_service(self) -> MonitoringService:
         """Get the monitoring service instance."""
         return await self.get_service('monitoring_service')
+    
+    async def get_export_service(self) -> ExportService:
+        """Get the export service instance."""
+        return await self.get_service('export_service')
     
     def get_monitoring_service_sync(self) -> MonitoringService:
         """Get the monitoring service instance synchronously (for middleware)."""
@@ -484,6 +495,21 @@ class MonitoringServiceProvider(ServiceProvider):
                         self._logger.warning(f"Could not create default alert rule {rule_config['rule_name']}: {e}")
         except Exception as e:
             self._logger.warning(f"Could not initialize default alert rules: {e}")
+    
+    async def cleanup(self) -> None:
+        if hasattr(self._service, 'cleanup'):
+            await self._service.cleanup()
+
+
+class ExportServiceProvider(ServiceProvider):
+    """Provider for export service."""
+    
+    def get_service(self) -> ExportService:
+        return self._service
+    
+    async def initialize(self) -> None:
+        from .export_service import MultiFormatExportService
+        self._service = MultiFormatExportService()
     
     async def cleanup(self) -> None:
         if hasattr(self._service, 'cleanup'):
