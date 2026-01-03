@@ -12,6 +12,7 @@ class Settings(BaseSettings):
     # Application
     app_name: str = "AI Job Application Assistant"
     app_version: str = "1.0.0"
+    frontend_url: str = Field(default="http://localhost:3000", env="FRONTEND_URL")
     debug: bool = Field(default=False, env="DEBUG")
     
     # Server
@@ -34,6 +35,11 @@ class Settings(BaseSettings):
     openrouter_model: str = Field(default="meta-llama/llama-3-8b-instruct", env="OPENROUTER_MODEL")
     openrouter_base_url: str = Field(default="https://openrouter.ai/api/v1", env="OPENROUTER_BASE_URL")
     
+    # Cursor Configuration
+    cursor_api_key: Optional[str] = Field(default=None, env="CURSOR_API_KEY")
+    cursor_model: str = Field(default="gpt-4", env="CURSOR_MODEL")
+    cursor_base_url: str = Field(default="https://api.cursor.com/v1", env="CURSOR_BASE_URL")
+    
     # Local AI Configuration
     local_ai_base_url: Optional[str] = Field(default=None, env="LOCAL_AI_BASE_URL")
     local_ai_model: str = Field(default="llama2", env="LOCAL_AI_MODEL")
@@ -49,6 +55,16 @@ class Settings(BaseSettings):
     # Security
     secret_key: str = Field(default="your-secret-key-here", env="SECRET_KEY")
     cors_origins: List[str] = Field(default=["http://localhost:3000", "http://localhost:5173"], env="CORS_ORIGINS")
+    
+    # Rate Limiting
+    rate_limit_enabled: bool = Field(default=True, env="RATE_LIMIT_ENABLED")
+    rate_limit_auth_per_minute: int = Field(default=10, env="RATE_LIMIT_AUTH_PER_MINUTE")
+    rate_limit_api_per_minute: int = Field(default=60, env="RATE_LIMIT_API_PER_MINUTE")
+    
+    # Account Lockout
+    account_lockout_enabled: bool = Field(default=True, env="ACCOUNT_LOCKOUT_ENABLED")
+    max_failed_login_attempts: int = Field(default=5, env="MAX_FAILED_LOGIN_ATTEMPTS")
+    account_lockout_duration_minutes: int = Field(default=30, env="ACCOUNT_LOCKOUT_DURATION_MINUTES")
     
     # JWT Configuration
     jwt_secret_key: str = Field(default="your-secret-key-here", env="JWT_SECRET_KEY")
@@ -68,6 +84,12 @@ class Settings(BaseSettings):
     # Logging
     log_level: str = Field(default="INFO", env="LOG_LEVEL")
     log_file: str = Field(default="./logs/app.log", env="LOG_FILE")
+
+    # Caching
+    cache_enabled: bool = Field(default=True, env="CACHE_ENABLED")
+    redis_url: str = Field(default="redis://localhost:6379/0", env="REDIS_URL")
+    cache_backend: str = Field(default="dogpile.cache.redis", env="CACHE_BACKEND")
+    cache_expiration_time: int = Field(default=3600, env="CACHE_EXPIRATION_TIME") # 1 hour
     
     # Legacy fields for backward compatibility
     DEBUG: bool = Field(default=False, env="DEBUG")
@@ -87,6 +109,39 @@ class Settings(BaseSettings):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
         self._setup_ai_providers()
+    
+    async def load_from_database(self):
+        """Load AI provider configurations from database."""
+        try:
+            from .services.config_service import ConfigService
+            config_service = ConfigService()
+            db_configs = await config_service.get_all()
+            
+            # Override with database values if they exist
+            self.openai_api_key = db_configs.get("openai_api_key") or self.openai_api_key
+            self.openai_model = db_configs.get("openai_model") or self.openai_model
+            self.openai_base_url = db_configs.get("openai_base_url") or self.openai_base_url
+            
+            self.openrouter_api_key = db_configs.get("openrouter_api_key") or self.openrouter_api_key
+            self.openrouter_model = db_configs.get("openrouter_model") or self.openrouter_model
+            self.openrouter_base_url = db_configs.get("openrouter_base_url") or self.openrouter_base_url
+            
+            self.cursor_api_key = db_configs.get("cursor_api_key") or self.cursor_api_key
+            self.cursor_model = db_configs.get("cursor_model") or self.cursor_model
+            self.cursor_base_url = db_configs.get("cursor_base_url") or self.cursor_base_url
+            
+            self.gemini_api_key = db_configs.get("gemini_api_key") or self.gemini_api_key
+            self.gemini_model = db_configs.get("gemini_model") or self.gemini_model
+            
+            self.local_ai_base_url = db_configs.get("local_ai_base_url") or self.local_ai_base_url
+            self.local_ai_model = db_configs.get("local_ai_model") or self.local_ai_model
+            
+            # Rebuild providers with updated values
+            self._setup_ai_providers()
+        except Exception as e:
+            # If database is not available, use environment variables
+            import logging
+            logging.warning(f"Could not load configs from database: {e}. Using environment variables.")
     
     def _setup_ai_providers(self):
         """Setup AI providers configuration."""
@@ -136,6 +191,18 @@ class Settings(BaseSettings):
                 temperature=0.7,
                 max_tokens=1000,
                 timeout=30
+            ))
+        
+        # Cursor Provider
+        if self.cursor_api_key:
+            providers.append(AIProviderConfig(
+                provider_name="cursor",
+                api_key=self.cursor_api_key,
+                base_url=self.cursor_base_url,
+                model=self.cursor_model,
+                temperature=0.7,
+                max_tokens=2000,
+                timeout=60
             ))
         
         self.ai_providers = providers
