@@ -10,6 +10,7 @@ from ..models.application import JobApplication, ApplicationUpdateRequest, Appli
 from ..services.local_file_service import LocalFileService
 from ..database.repositories.application_repository import ApplicationRepository
 from loguru import logger
+from ..core.cache import cache_region
 
 
 class ApplicationService(ApplicationService):
@@ -94,6 +95,15 @@ class ApplicationService(ApplicationService):
             else:
                 self.applications[app_id] = application
             
+            try:
+                # Invalidate stats and list cache
+                cache_region.delete_multi([
+                    f"application_stats:{user_id}",
+                    f"application_list:{user_id}"
+                ])
+            except Exception as e:
+                self.logger.warning(f"Cache invalidation failed: {e}")
+
             self.logger.info(f"Created application: {application.job_title} at {application.company} (ID: {application.id})")
             return application
             
@@ -122,6 +132,14 @@ class ApplicationService(ApplicationService):
     async def get_all_applications(self, user_id: Optional[str] = None) -> List[JobApplication]:
         """Get all applications, optionally filtered by user."""
         try:
+            # Check cache
+            from dogpile.cache.api import NO_VALUE
+            cache_key = f"application_list:{user_id}"
+            cached_apps = cache_region.get(cache_key)
+            if cached_apps is not NO_VALUE:
+                self.logger.debug(f"Cache hit for {cache_key}")
+                return cached_apps
+
             if self.repository:
                 applications = await self.repository.get_all(user_id=user_id)
             else:
@@ -130,6 +148,10 @@ class ApplicationService(ApplicationService):
                 applications.sort(key=lambda app: app.created_at, reverse=True)
             
             self.logger.debug(f"Retrieved {len(applications)} applications")
+            
+            # Cache result
+            cache_region.set(cache_key, applications)
+            
             return applications
             
         except Exception as e:
@@ -192,8 +214,20 @@ class ApplicationService(ApplicationService):
             
             # Save to repository if available
             if self.repository:
-                application = await self.repository.update(application_id, updates)
+                updated_app = await self.repository.update(application_id, updates)
+                if updated_app:
+                    application = updated_app
             # For in-memory, application is already updated in place
+
+            try:
+                user_id = getattr(application, 'user_id', None)
+                # Invalidate stats and list cache
+                cache_region.delete_multi([
+                    f"application_stats:{user_id}",
+                    f"application_list:{user_id}"
+                ])
+            except Exception as e:
+                self.logger.warning(f"Cache invalidation failed: {e}")
             
             self.logger.info(f"Updated application: {application.job_title} (ID: {application_id})")
             return application
@@ -221,6 +255,16 @@ class ApplicationService(ApplicationService):
                     del self.follow_ups[application_id]
                 success = True
             
+            if success:
+                try:
+                    # Invalidate stats and list cache
+                    cache_region.delete_multi([
+                        f"application_stats:{user_id}",
+                        f"application_list:{user_id}"
+                    ])
+                except Exception as e:
+                    self.logger.warning(f"Cache invalidation failed: {e}")
+            
             self.logger.info(f"Deleted application: {application.job_title} (ID: {application_id})")
             return success
             
@@ -231,6 +275,14 @@ class ApplicationService(ApplicationService):
     async def get_application_stats(self, user_id: Optional[str] = None) -> Dict[str, Any]:
         """Get application statistics, optionally filtered by user."""
         try:
+            # Check cache
+            from dogpile.cache.api import NO_VALUE
+            cache_key = f"application_stats:{user_id}"
+            cached_stats = cache_region.get(cache_key)
+            if cached_stats is not NO_VALUE:
+                self.logger.debug(f"Cache hit for {cache_key}")
+                return cached_stats
+                
             if self.repository:
                 stats = await self.repository.get_statistics(user_id=user_id)
                 # Convert status enum keys to string values for consistency
@@ -240,6 +292,9 @@ class ApplicationService(ApplicationService):
                         status_key = status.value if hasattr(status, 'value') else str(status)
                         status_breakdown[status_key] = count
                     stats["status_breakdown"] = status_breakdown
+                    
+                # Cache result
+                cache_region.set(cache_key, stats)
                 return stats
             
             # Fallback to in-memory calculation
@@ -307,6 +362,7 @@ class ApplicationService(ApplicationService):
             }
             
             self.logger.debug("Generated application statistics")
+            cache_region.set(cache_key, stats)
             return stats
             
         except Exception as e:
@@ -470,40 +526,109 @@ class ApplicationService(ApplicationService):
             self.logger.error(f"Error getting timeline for application {application_id}: {e}", exc_info=True)
             return []
 
+    BULK_OPERATION_LIMIT = 100
+
     async def bulk_create_applications(self, applications_data: List[Dict[str, Any]], user_id: Optional[str] = None) -> List[JobApplication]:
         """Create multiple job applications."""
-        created_applications = []
+        if len(applications_data) > self.BULK_OPERATION_LIMIT:
+            raise ValueError(f"Bulk operation limit exceeded: max {self.BULK_OPERATION_LIMIT} items allowed")
+            
         try:
-            for app_data in applications_data:
-                application = await self.create_application(app_data, user_id=user_id)
-                created_applications.append(application)
-            return created_applications
+            if self.repository:
+                # Prepare Application objects
+                applications = []
+                for app_data in applications_data:
+                    app_id = str(uuid.uuid4())
+                    application = JobApplication(
+                        id=app_id,
+                        job_id=app_data.get("job_id", app_data.get("id", str(uuid.uuid4()))),
+                        job_title=app_data.get("job_title", app_data.get("title", "Unknown Position")),
+                        company=app_data.get("company", "Unknown Company"),
+                        location=app_data.get("location", "Unknown Location"),
+                        status=app_data.get("status", ApplicationStatus.DRAFT),
+                        applied_date=app_data.get("applied_date"),
+                        resume_path=app_data.get("resume_path"),
+                        notes=app_data.get("notes", ""),
+                    )
+                    if user_id:
+                        application.user_id = user_id
+                    applications.append(application)
+                
+                result = await self.repository.bulk_create(applications, user_id=user_id)
+                try:
+                    # Invalidate stats and list cache
+                    cache_region.delete_multi([
+                        f"application_stats:{user_id}",
+                        f"application_list:{user_id}"
+                    ])
+                except Exception as e:
+                    self.logger.warning(f"Cache invalidation failed: {e}")
+                return result
+
+            else:
+                # Fallback to loop
+                created_applications = []
+                for app_data in applications_data:
+                    application = await self.create_application(app_data, user_id=user_id)
+                    created_applications.append(application)
+                return created_applications
         except Exception as e:
             self.logger.error(f"Error in bulk application creation: {e}", exc_info=True)
             raise
 
     async def bulk_update_applications(self, application_ids: List[str], updates: ApplicationUpdateRequest, user_id: Optional[str] = None) -> List[JobApplication]:
         """Update multiple job applications."""
-        updated_applications = []
         try:
-            for app_id in application_ids:
-                application = await self.update_application(app_id, updates)
-                if application:
-                    updated_applications.append(application)
-            return updated_applications
+            if self.repository:
+                result = await self.repository.bulk_update(application_ids, updates, user_id=user_id)
+                try:
+                    # Invalidate stats and list cache
+                    cache_region.delete_multi([
+                        f"application_stats:{user_id}",
+                        f"application_list:{user_id}"
+                    ])
+                except Exception as e:
+                    self.logger.warning(f"Cache invalidation failed: {e}")
+                return result
+            else:
+                updated_applications = []
+                for app_id in application_ids:
+                    # Enforce user check in loop
+                    existing = await self.get_application(app_id)
+                    if existing and (not user_id or existing.user_id == user_id):
+                        application = await self.update_application(app_id, updates)
+                        if application:
+                            updated_applications.append(application)
+                return updated_applications
         except Exception as e:
             self.logger.error(f"Error in bulk application update: {e}", exc_info=True)
             raise
 
     async def bulk_delete_applications(self, application_ids: List[str], user_id: Optional[str] = None) -> bool:
         """Delete multiple job applications."""
-        success = True
         try:
-            for app_id in application_ids:
-                result = await self.delete_application(app_id, user_id=user_id)
-                if not result:
-                    success = False
-            return success
+            if self.repository:
+                result = await self.repository.bulk_delete(application_ids, user_id=user_id)
+                try:
+                    if result:
+                        # Invalidate stats and list cache
+                        cache_region.delete_multi([
+                            f"application_stats:{user_id}",
+                            f"application_list:{user_id}"
+                        ])
+                except Exception as e:
+                    self.logger.warning(f"Cache invalidation failed: {e}")
+                return result
+            else:
+                success = True
+                for app_id in application_ids:
+                    # Enforce user check
+                    existing = await self.get_application(app_id)
+                    if existing and (not user_id or existing.user_id == user_id):
+                        result = await self.delete_application(app_id, user_id=user_id)
+                        if not result:
+                            success = False
+                return success
         except Exception as e:
             self.logger.error(f"Error in bulk application deletion: {e}", exc_info=True)
             return False

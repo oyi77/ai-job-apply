@@ -1,7 +1,10 @@
 """AI service implementation using the new provider system."""
 
 import asyncio
+import hashlib
+import json
 from typing import Dict, Any, Optional, List
+from ...core.cache import cache_region
 from ...core.ai_service import AIService
 from ...services.ai_provider_manager import AIProviderManager
 from ...config import config

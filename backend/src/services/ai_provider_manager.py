@@ -5,6 +5,7 @@ from ...core.ai_provider import AIProvider, AIProviderConfig, AIResponse
 from .providers.openai_provider import OpenAIProvider
 from .providers.local_ai_provider import LocalAIProvider
 from .providers.openrouter_provider import OpenRouterProvider
+from .providers.cursor_provider import CursorProvider
 from loguru import logger
 
 class AIProviderManager:
@@ -42,6 +43,8 @@ class AIProviderManager:
                 provider = LocalAIProvider(config)
             elif config.provider_name == "openrouter":
                 provider = OpenRouterProvider(config)
+            elif config.provider_name == "cursor":
+                provider = CursorProvider(config)
             else:
                 logger.warning(f"Unknown provider type: {config.provider_name}")
                 return None

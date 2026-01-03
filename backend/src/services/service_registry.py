@@ -13,7 +13,10 @@ from ..core.cover_letter_service import CoverLetterService
 from ..core.job_application import JobApplicationService
 from ..core.auth_service import AuthService
 from ..core.monitoring_service import MonitoringService
+from ..core.auth_service import AuthService
+from ..core.monitoring_service import MonitoringService
 from ..core.export_service import ExportService
+from ..services.email_service import EmailService
 
 
 class ServiceProvider(ABC):
@@ -71,9 +74,27 @@ class ServiceRegistry:
     
     async def _initialize_core_services(self) -> None:
         """Initialize core infrastructure services."""
+        # Ensure database is initialized first (required by auth and monitoring services)
+        from ..database.config import database_config
+        if not database_config._initialized:
+            self._logger.info("Initializing database for services...")
+            await database_config.initialize()
+            await database_config.create_tables()
+            self._logger.info("Database initialized for services")
+        
         # Auth service (no dependencies, but needs database)
+        # Database is initialized
+        
+        # Email service (no dependencies)
+        from .email_service import EmailService
+        email_provider = EmailServiceProvider()
+        self.register_service('email_service', email_provider)
+        await email_provider.initialize()
+        self._instances['email_service'] = email_provider.get_service()
+
+        # Auth service (depends on email service)
         from .auth_service import JWTAuthService
-        auth_provider = JWTAuthServiceProvider()
+        auth_provider = JWTAuthServiceProvider(self._instances['email_service'])
         self.register_service('auth_service', auth_provider)
         await auth_provider.initialize()
         self._instances['auth_service'] = auth_provider.get_service()
@@ -85,19 +106,34 @@ class ServiceRegistry:
         await file_provider.initialize()
         self._instances['file_service'] = file_provider.get_service()
         
-        # AI service (no dependencies)
-        from .gemini_ai_service import GeminiAIService
-        ai_provider = GeminiAIProvider()
-        self.register_service('ai_service', ai_provider)
-        await ai_provider.initialize()
-        self._instances['ai_service'] = ai_provider.get_service()
+        # AI service (no dependencies) - Use unified service with multiple providers
+        try:
+            from .unified_ai_service import UnifiedAIService
+            ai_provider = UnifiedAIServiceProvider()
+            self.register_service('ai_service', ai_provider)
+            await ai_provider.initialize()
+            self._instances['ai_service'] = ai_provider.get_service()
+        except Exception as e:
+            self._logger.warning(f"Failed to initialize unified AI service, falling back to Gemini: {e}")
+            # Fallback to Gemini-only service
+            from .gemini_ai_service import GeminiAIService
+            ai_provider = GeminiAIProvider()
+            self.register_service('ai_service', ai_provider)
+            await ai_provider.initialize()
+            self._instances['ai_service'] = ai_provider.get_service()
         
         # Monitoring service (no dependencies, but needs database)
-        from .monitoring_service import DatabaseMonitoringService
-        monitoring_provider = MonitoringServiceProvider()
-        self.register_service('monitoring_service', monitoring_provider)
-        await monitoring_provider.initialize()
-        self._instances['monitoring_service'] = monitoring_provider.get_service()
+        # Make this optional - if it fails, app can still run
+        try:
+            from .monitoring_service import DatabaseMonitoringService
+            monitoring_provider = MonitoringServiceProvider()
+            self.register_service('monitoring_service', monitoring_provider)
+            await monitoring_provider.initialize()
+            self._instances['monitoring_service'] = monitoring_provider.get_service()
+        except ImportError as e:
+            self._logger.warning(f"Monitoring service not available: {e}. Continuing without monitoring.")
+        except Exception as e:
+            self._logger.warning(f"Failed to initialize monitoring service: {e}. Continuing without monitoring.")
     
     async def _initialize_business_services(self) -> None:
         """Initialize business logic services."""
@@ -198,6 +234,10 @@ class ServiceRegistry:
         """Get the export service instance."""
         return await self.get_service('export_service')
     
+    async def get_email_service(self) -> EmailService:
+        """Get the email service instance."""
+        return await self.get_service('email_service')
+    
     def get_monitoring_service_sync(self) -> MonitoringService:
         """Get the monitoring service instance synchronously (for middleware)."""
         if not self._initialized:
@@ -287,8 +327,24 @@ class LocalFileServiceProvider(ServiceProvider):
             await self._service.cleanup()
 
 
+class UnifiedAIServiceProvider(ServiceProvider):
+    """Provider for unified AI service with multiple providers."""
+    
+    def get_service(self) -> AIService:
+        return self._service
+    
+    async def initialize(self) -> None:
+        from .unified_ai_service import UnifiedAIService
+        self._service = UnifiedAIService()
+        await self._service.initialize()
+    
+    async def cleanup(self) -> None:
+        if hasattr(self._service, 'cleanup'):
+            await self._service.cleanup()
+
+
 class GeminiAIProvider(ServiceProvider):
-    """Provider for Gemini AI service."""
+    """Provider for Gemini AI service (fallback)."""
     
     def get_service(self) -> AIService:
         return self._service
@@ -428,12 +484,15 @@ class JobApplicationServiceProvider(ServiceProvider):
 class JWTAuthServiceProvider(ServiceProvider):
     """Provider for JWT authentication service."""
     
+    def __init__(self, email_service: EmailService):
+        self.email_service = email_service
+
     def get_service(self) -> AuthService:
         return self._service
     
     async def initialize(self) -> None:
         from .auth_service import JWTAuthService
-        self._service = JWTAuthService()
+        self._service = JWTAuthService(self.email_service)
         await self._service.initialize()
     
     async def cleanup(self) -> None:
@@ -518,3 +577,17 @@ class ExportServiceProvider(ServiceProvider):
 
 # Global service registry instance
 service_registry = ServiceRegistry()
+
+
+class EmailServiceProvider(ServiceProvider):
+    """Provider for email service."""
+    
+    def get_service(self) -> EmailService:
+        return self._service
+    
+    async def initialize(self) -> None:
+        from .email_service import EmailService
+        self._service = EmailService()
+    
+    async def cleanup(self) -> None:
+        pass

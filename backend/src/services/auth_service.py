@@ -12,6 +12,7 @@ from ..models.user import (
     User, UserRegister, UserLogin, TokenResponse, UserProfile, 
     UserProfileUpdate, PasswordChange, PasswordResetRequest, PasswordReset
 )
+from ..services.email_service import EmailService
 from ..database.repositories.user_repository import UserRepository
 from ..database.config import database_config
 from ..config import config
@@ -22,10 +23,11 @@ import uuid
 class JWTAuthService(AuthService):
     """JWT-based authentication service."""
     
-    def __init__(self):
+    def __init__(self, email_service: Optional[EmailService] = None):
         """Initialize JWT auth service."""
         self.logger = get_logger(__name__)
         self._repository_class = UserRepository
+        self.email_service = email_service
     
     async def initialize(self) -> None:
         """Initialize the service."""
@@ -38,7 +40,7 @@ class JWTAuthService(AuthService):
     @asynccontextmanager
     async def _get_session_repo(self):
         """Context manager for session and repository."""
-        async with await database_config.get_session() as session:
+        async with database_config.get_session() as session:
             yield session, self._repository_class(session)
     
     def _hash_password(self, password: str) -> str:
@@ -126,19 +128,45 @@ class JWTAuthService(AuthService):
     async def login_user(self, login: UserLogin) -> TokenResponse:
         """Authenticate a user and return tokens."""
         async with self._get_session_repo() as (session, repository):
+            # Normalize email (lowercase) for consistent lookup
+            email = login.email.lower() if login.email else ""
             # Get user by email
-            user = await repository.get_by_email(login.email)
+            user = await repository.get_by_email(email)
             if not user:
                 # Don't reveal if email exists
                 raise ValueError("Invalid email or password")
+            
+            # Check if account is locked
+            if config.account_lockout_enabled and user.account_locked_until:
+                if user.account_locked_until > datetime.now(timezone.utc):
+                    remaining_minutes = int((user.account_locked_until - datetime.now(timezone.utc)).total_seconds() / 60)
+                    raise ValueError(f"Account is locked. Please try again in {remaining_minutes} minutes.")
+                else:
+                    # Lockout expired, reset failed attempts
+                    await repository.reset_failed_login_attempts(user.id)
+                    user = await repository.get_by_id(user.id)  # Refresh user data
             
             # Check if user is active
             if not user.is_active:
                 raise ValueError("Account is disabled")
             
             # Verify password
-            if not self._verify_password(login.password, user.password_hash):
+            password_valid = self._verify_password(login.password, user.password_hash)
+            
+            if not password_valid:
+                # Increment failed login attempts
+                if config.account_lockout_enabled:
+                    failed_attempts = await repository.increment_failed_login_attempts(user.id)
+                    if failed_attempts >= config.max_failed_login_attempts:
+                        lockout_until = datetime.now(timezone.utc) + timedelta(minutes=config.account_lockout_duration_minutes)
+                        await repository.lock_account(user.id, lockout_until)
+                        self.logger.warning(f"Account locked due to {failed_attempts} failed login attempts: {user.email}")
+                        raise ValueError(f"Too many failed login attempts. Account locked for {config.account_lockout_duration_minutes} minutes.")
                 raise ValueError("Invalid email or password")
+            
+            # Successful login - reset failed attempts
+            if config.account_lockout_enabled and user.failed_login_attempts > 0:
+                await repository.reset_failed_login_attempts(user.id)
             
             # Create tokens
             access_token = self._create_access_token(user.id, user.email)
@@ -207,17 +235,53 @@ class JWTAuthService(AuthService):
                 self.logger.warning(f"JWT error during token refresh: {e}")
                 raise ValueError("Invalid or expired refresh token")
     
-    async def logout_user(self, refresh_token: str, user_id: str) -> bool:
-        """Logout a user by invalidating their refresh token."""
+    async def logout_user(self, refresh_token: str, user_id: Optional[str] = None) -> bool:
+        """Logout a user by invalidating their refresh token.
+        
+        Args:
+            refresh_token: Refresh token to invalidate
+            user_id: Optional user ID (if None, will try to extract from token)
+            
+        Returns:
+            True if token was invalidated, False otherwise
+        """
         async with self._get_session_repo() as (session, repository):
-            # Verify session belongs to user
+            # Try to get user_id from token if not provided
+            if user_id is None:
+                try:
+                    payload = jwt.decode(
+                        refresh_token,
+                        config.jwt_secret_key,
+                        algorithms=[config.jwt_algorithm]
+                    )
+                    if payload.get("type") == "refresh":
+                        user_id = payload.get("sub")
+                except JWTError:
+                    # Token is invalid/expired, that's ok - we'll still try to invalidate it
+                    user_id = None
+            
+            # Try to get session by refresh token
             session_obj = await repository.get_session(refresh_token)
-            if session_obj and session_obj.user_id == user_id:
+            if session_obj:
+                # If we have user_id, verify it matches
+                if user_id and session_obj.user_id != user_id:
+                    self.logger.warning(f"Refresh token user_id mismatch during logout")
+                    return False
+                
+                # Invalidate the session
                 await repository.invalidate_session(refresh_token)
-                self.logger.info(f"User logged out: {user_id}")
+                self.logger.info(f"User logged out: {session_obj.user_id or user_id or 'unknown'}")
+                return True
+            elif user_id:
+                # Token not in database but we have user_id - try to invalidate all user sessions
+                await repository.invalidate_all_user_sessions(user_id)
+                self.logger.info(f"Invalidated all sessions for user: {user_id}")
                 return True
         
-        return False
+        # Token not found and no user_id - token may already be invalid
+        # Return True anyway to allow frontend cleanup (even if token is invalid)
+        self.logger.debug("Logout called with invalid token, returning True for frontend cleanup")
+        return True
     
     async def get_user_profile(self, user_id: str) -> Optional[UserProfile]:
         """Get user profile by ID."""
@@ -320,9 +384,13 @@ class JWTAuthService(AuthService):
             await repository.update_password_reset_token(user.id, reset_token, expires_at)
             
             self.logger.info(f"Password reset token generated for user: {user.id}")
-            # In production, send email with reset link here
-            # For now, we'll just log it (in production, never log tokens)
-            self.logger.debug(f"Reset token for {user.email}: {reset_token[:20]}...")
+            
+            # Send email
+            if self.email_service:
+                await self.email_service.send_password_reset_email(user.email, reset_token, user.name)
+            else:
+                self.logger.warning("Email service not available, strictly logging token (dev mode only)")
+                self.logger.info(f"Reset token for {user.email}: {reset_token}")
             
             return True
     
@@ -395,6 +463,26 @@ class JWTAuthService(AuthService):
                 # Invalidate all sessions (force re-login)
                 await repository.invalidate_all_user_sessions(user_id)
                 self.logger.info(f"Password reset successful for user: {user_id}")
+            
+            return success
+    
+    async def delete_user(self, user_id: str, password: str) -> bool:
+        """Delete a user account and all associated data."""
+        async with self._get_session_repo() as (session, repository):
+            # Get user
+            user = await repository.get_by_id(user_id)
+            if not user:
+                raise ValueError("User not found")
+            
+            # Verify password
+            if not self._verify_password(password, user.password_hash):
+                raise ValueError("Password is incorrect")
+            
+            # Delete user (CASCADE will handle related records)
+            success = await repository.delete(user_id)
+            
+            if success:
+                self.logger.info(f"Account deleted for user: {user_id}")
             
             return success
 

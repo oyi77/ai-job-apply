@@ -34,12 +34,18 @@ class RepositoryFactory:
         return self._initialized and database_config._initialized
     
     async def create_repository(self, repository_class: type, *args, **kwargs) -> Optional[Any]:
-        """Create a repository instance with a database session."""
+        """Create a repository instance with a database session.
+        
+        WARNING: This method creates a session that must be managed by the caller.
+        Consider using get_session() as a context manager directly instead.
+        """
         if not self.is_available():
             return None
         
+        # Note: This creates a session that the caller must close
+        # For better resource management, use database_config.get_session() as context manager
         try:
-            session = await database_config.get_session()
+            session = database_config.get_session()
             return repository_class(session, *args, **kwargs)
         except Exception as e:
             self.logger.error(f"Error creating repository: {e}", exc_info=True)

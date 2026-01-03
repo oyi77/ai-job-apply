@@ -1,11 +1,14 @@
 """Unified job search service implementation for the AI Job Application Assistant."""
 
 import asyncio
+import hashlib
+import json
 from typing import List, Dict, Any, Optional
 from datetime import datetime, timezone
 from loguru import logger
 import re # Added for regex operations
 
+from ..core.cache import cache_region
 from ..core.job_search import JobSearchService
 from ..models.job import Job, JobSearchRequest, JobSearchResponse
 
@@ -80,6 +83,15 @@ class JobSearchService(JobSearchService):
         start_time = time.time()
         
         try:
+            # Generate cache key from search parameters
+            cache_key = self._generate_search_cache_key(request)
+            
+            # Try to get from cache first (15 min TTL for job search results)
+            cached_response = cache_region.get(cache_key)
+            if cached_response and not isinstance(cached_response, type(cache_region.dogpile_registry.get("NO_VALUE"))):
+                self.logger.info(f"Cache hit for job search: {request.keywords}")
+                return cached_response
+            
             await self.initialize()
             
             self.logger.info(
@@ -95,15 +107,23 @@ class JobSearchService(JobSearchService):
                         f"JobSpy search completed: {response.total_jobs} jobs found "
                         f"across {len(response.jobs)} platforms in {elapsed_time:.2f}s"
                     )
+                    # Cache successful response (15 min TTL)
+                    cache_region.set(cache_key, response, expiration_time=900)
                     return response
                 except Exception as e:
                     self.logger.warning(
                         f"JobSpy search failed, falling back to enhanced fallback: {e}"
                     )
                     # Fall through to fallback
-                    return await self._search_with_fallback(request, fallback_reason=str(e))
+                    response = await self._search_with_fallback(request, fallback_reason=str(e))
+                    # Cache fallback results with shorter TTL (5 min)
+                    cache_region.set(cache_key, response, expiration_time=300)
+                    return response
             else:
-                return await self._search_with_fallback(request)
+                response = await self._search_with_fallback(request)
+                # Cache fallback results (5 min TTL)
+                cache_region.set(cache_key, response, expiration_time=300)
+                return response
                 
         except Exception as e:
             elapsed_time = time.time() - start_time
@@ -111,7 +131,7 @@ class JobSearchService(JobSearchService):
                 f"Job search failed after {elapsed_time:.2f}s: {e}",
                 exc_info=True
             )
-            # Return empty response with error indication instead of raising
+            # Return empty response with error indication instead of raising (don't cache errors)
             return JobSearchResponse(
                 jobs={},
                 total_jobs=0,
@@ -126,6 +146,24 @@ class JobSearchService(JobSearchService):
                     "fallback_used": True
                 }
             )
+    
+    def _generate_search_cache_key(self, request: JobSearchRequest) -> str:
+        """Generate a unique cache key for a job search request."""
+        # Create a deterministic hash of search parameters
+        params = {
+            "keywords": request.keywords,
+            "location": request.location,
+            "distance": getattr(request, 'distance', None),
+            "job_type": getattr(request, 'job_type', None),
+            "is_remote": getattr(request, 'is_remote', None),
+            "results_wanted": getattr(request, 'results_wanted', None),
+            "hours_old": getattr(request, 'hours_old', None),
+            "experience_level": getattr(request, 'experience_level', None)
+        }
+        # Sort keys for consistency
+        params_str = json.dumps(params, sort_keys=True)
+        params_hash = hashlib.md5(params_str.encode()).hexdigest()
+        return f"job_search:{params_hash}"
     
     async def _search_with_jobspy(self, request: JobSearchRequest) -> JobSearchResponse:
         """Search using JobSpy library with retry logic."""
