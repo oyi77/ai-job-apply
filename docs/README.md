@@ -90,6 +90,7 @@ Welcome to the AI Job Application Assistant documentation. This directory contai
 **Development workflow and best practices**
 
 - Getting started guide
+- Authentication setup
 - Development workflow
 - Code style guidelines
 - Running tests
@@ -104,6 +105,26 @@ Welcome to the AI Job Application Assistant documentation. This directory contai
 - Best practices
 
 **Use this when**: You're setting up the development environment or adding new features.
+
+---
+
+### 🔒 [07-security-guide.md](./07-security-guide.md)
+**Security best practices and configuration**
+
+- Authentication & Authorization
+- Password Security
+- Token Management
+- Rate Limiting
+- CSRF Protection
+- Account Lockout
+- Input Validation
+- File Upload Security
+- API Security
+- Database Security
+- Production Security
+- Security Checklist
+
+**Use this when**: You need to understand security features or configure security settings.
 
 ---
 

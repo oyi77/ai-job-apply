@@ -29,10 +29,14 @@ pip install -r requirements.txt
 
 # Set up environment
 cp config.env.example .env
-# Edit .env with your Gemini API key
+# Edit .env with your configuration:
+# - GEMINI_API_KEY (for AI features)
+# - SECRET_KEY (for JWT tokens - use a strong random string)
+# - JWT_SECRET_KEY (for JWT signing - use a strong random string)
+# - DATABASE_URL (defaults to SQLite for development)
 
 # Initialize database
-python setup-database.py
+alembic upgrade head
 
 # Start backend
 python main.py
