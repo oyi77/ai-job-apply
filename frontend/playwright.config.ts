@@ -1,12 +1,14 @@
 import { defineConfig, devices } from '@playwright/test';
 
+import path from 'path';
+
 // Backend URL from environment or default
 const BACKEND_URL = process.env.BACKEND_URL || 'http://localhost:8000';
 const FRONTEND_URL = process.env.FRONTEND_URL || 'http://localhost:5173';
 
 export default defineConfig({
-  globalSetup: require.resolve('./tests/e2e/global-setup.ts'),
-  globalTeardown: require.resolve('./tests/e2e/global-teardown.ts'),
+  globalSetup: path.resolve('./tests/e2e/global-setup.ts'),
+  globalTeardown: path.resolve('./tests/e2e/global-teardown.ts'),
   testDir: './tests/e2e',
   fullyParallel: true,
   forbidOnly: !!process.env.CI,
@@ -36,20 +38,20 @@ export default defineConfig({
     ...(process.env.CI
       ? []
       : [
-          {
-            name: 'firefox',
-            use: { ...devices['Desktop Firefox'] },
-          },
-          {
-            name: 'webkit',
-            use: { ...devices['Desktop Safari'] },
-          },
-        ]),
+        {
+          name: 'firefox',
+          use: { ...devices['Desktop Firefox'] },
+        },
+        {
+          name: 'webkit',
+          use: { ...devices['Desktop Safari'] },
+        },
+      ]),
   ],
   webServer: [
     // Backend server
     {
-      command: 'cd ../backend && python3 -m uvicorn src.api.app:app --host 0.0.0.0 --port 8000',
+      command: 'cd ../backend && venv/bin/python3 -m uvicorn src.api.app:app --host 0.0.0.0 --port 8000',
       url: `${BACKEND_URL}/health`,
       reuseExistingServer: !process.env.CI,
       timeout: 120 * 1000,

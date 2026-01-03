@@ -1,5 +1,9 @@
 import React, { useState } from 'react';
-import { Modal, Button, Select, Form, FormField, Alert, Spinner } from './';
+import Modal from './ui/Modal';
+import Button from './ui/Button';
+import Select from './ui/Select';
+import Alert from './ui/Alert';
+import Spinner from './ui/Spinner';
 import { ArrowDownTrayIcon } from '@heroicons/react/24/outline';
 
 export interface ExportModalProps {
@@ -27,10 +31,11 @@ export const ExportModal: React.FC<ExportModalProps> = ({
   const [isExporting, setIsExporting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const handleExport = async () => {
+  const handleExport = async (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
     setIsExporting(true);
     setError(null);
-    
+
     try {
       const options = showDateRange ? { dateFrom, dateTo } : undefined;
       await onExport(format, options);
@@ -55,35 +60,38 @@ export const ExportModal: React.FC<ExportModalProps> = ({
           <Alert type="error" title="Export Error" message={error} />
         )}
 
-        <Form onSubmit={handleExport}>
-          <FormField label="Export Format">
+        <form onSubmit={handleExport} className="space-y-4">
+          <div className="space-y-1">
+            <label className="block text-sm font-medium text-gray-700">Export Format</label>
             <Select
               name="format"
               value={format}
               onChange={(value) => setFormat(value as 'pdf' | 'csv' | 'excel')}
               options={formatOptions}
             />
-          </FormField>
+          </div>
 
           {showDateRange && (
             <>
-              <FormField label="Date From">
+              <div className="space-y-1">
+                <label className="block text-sm font-medium text-gray-700">Date From</label>
                 <input
                   type="date"
                   value={dateFrom}
                   onChange={(e) => setDateFrom(e.target.value)}
                   className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                 />
-              </FormField>
+              </div>
 
-              <FormField label="Date To">
+              <div className="space-y-1">
+                <label className="block text-sm font-medium text-gray-700">Date To</label>
                 <input
                   type="date"
                   value={dateTo}
                   onChange={(e) => setDateTo(e.target.value)}
                   className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                 />
-              </FormField>
+              </div>
             </>
           )}
 
@@ -115,7 +123,7 @@ export const ExportModal: React.FC<ExportModalProps> = ({
               )}
             </Button>
           </div>
-        </Form>
+        </form>
       </div>
     </Modal>
   );

@@ -24,7 +24,7 @@ const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000
 // Create axios instance
 const apiClient: AxiosInstance = axios.create({
   baseURL: API_BASE_URL,
-  timeout: 10000,
+  timeout: 10000, // Default timeout for regular requests
   headers: {
     'Content-Type': 'application/json',
   },
@@ -273,6 +273,16 @@ export const authService = {
   getRefreshToken: (): string | null => {
     return localStorage.getItem(REFRESH_TOKEN_KEY);
   },
+
+  // Delete account
+  deleteAccount: async (password: string): Promise<void> => {
+    await apiClient.delete('/api/v1/auth/account', {
+      data: { password },
+    });
+    // Clear tokens after successful deletion
+    localStorage.removeItem(ACCESS_TOKEN_KEY);
+    localStorage.removeItem(REFRESH_TOKEN_KEY);
+  },
 };
 
 // Helper to handle API responses
@@ -429,6 +439,7 @@ export const resumeService = {
       headers: {
         'Content-Type': 'multipart/form-data',
       },
+      timeout: 60000, // 60 seconds for file uploads
     });
     return handleApiResponse(response);
   },
@@ -550,6 +561,17 @@ export const aiService = {
     const response = await apiClient.post('/api/v1/ai/career-insights', request);
     return handleApiResponse(response);
   },
+
+  // Prepare interview
+  prepareInterview: async (jobDescription: string, resumeContent: string, company: string, jobTitle: string): Promise<any> => {
+    const response = await apiClient.post('/api/v1/ai/interview-prep', {
+      job_description: jobDescription,
+      resume_content: resumeContent,
+      company_name: company,
+      job_title: jobTitle
+    });
+    return handleApiResponse(response);
+  },
 };
 
 // Job Search Services
@@ -624,6 +646,7 @@ export const fileService = {
       headers: {
         'Content-Type': 'multipart/form-data',
       },
+      timeout: 60000, // 60 seconds for file uploads
     });
     return handleApiResponse(response);
   },

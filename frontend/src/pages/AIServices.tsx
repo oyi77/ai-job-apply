@@ -40,8 +40,10 @@ const AIServices: React.FC = () => {
   const [isInterviewPrepOpen, setIsInterviewPrepOpen] = useState(false);
   const [isCareerInsightsOpen, setIsCareerInsightsOpen] = useState(false);
   const [skillsResult, setSkillsResult] = useState<{ skills: string[]; confidence: number } | null>(null);
-  const [interviewPrepResult, setInterviewPrepResult] = useState<string>('');
+  const [interviewPrepResult, setInterviewPrepResult] = useState<any>(null);
   const [careerInsightsResult, setCareerInsightsResult] = useState<any>(null);
+  const [selectedApplicationForInterview, setSelectedApplicationForInterview] = useState<JobApplication | null>(null);
+  const [isLoadingInterviewPrep, setIsLoadingInterviewPrep] = useState(false);
 
   const { resumes, applications } = useAppStore();
 
@@ -399,7 +401,7 @@ const AIServices: React.FC = () => {
                   const resume = resumes.find(r => r.id === value);
                   setSelectedResume(resume || null);
                 }}
-                options={resumes.map(r => ({ value: r.id, label: r.title || r.filename }))}
+                options={resumes.map(r => ({ value: r.id, label: r.name || r.title || r.filename || 'Unnamed Resume' }))}
                 placeholder="Choose a resume to optimize"
                 required
               />
@@ -458,7 +460,7 @@ const AIServices: React.FC = () => {
                   const resume = resumes.find(r => r.id === value);
                   setSelectedResume(resume || null);
                 }}
-                options={resumes.map(r => ({ value: r.id, label: r.title || r.filename }))}
+                options={resumes.map(r => ({ value: r.id, label: r.title || r.filename || 'Untitled Resume' }))}
                 placeholder="Choose a resume to base the cover letter on"
                 required
               />
@@ -529,7 +531,7 @@ const AIServices: React.FC = () => {
                   const resume = resumes.find(r => r.id === value);
                   setSelectedResume(resume || null);
                 }}
-                options={resumes.map(r => ({ value: r.id, label: r.title || r.filename }))}
+                options={resumes.map(r => ({ value: r.id, label: r.title || r.filename || 'Untitled Resume' }))}
                 placeholder="Choose a resume to analyze"
                 required
               />
@@ -641,7 +643,7 @@ const AIServices: React.FC = () => {
             }}
             options={[
               { value: '', label: 'Select a resume' },
-              ...resumes.map(r => ({ value: r.id, label: r.title || r.original_filename }))
+              ...resumes.map(r => ({ value: r.id, label: r.title || r.original_filename || 'Untitled Resume' }))
             ]}
           />
           {skillsResult && (
@@ -685,17 +687,177 @@ const AIServices: React.FC = () => {
                 label: `${app.job_title} at ${app.company}`
               }))
             ]}
-            onChange={(value) => {
+            onChange={async (value) => {
               const app = applications.find(a => a.id === value);
               if (app) {
-                // TODO: Implement interview prep API call when backend endpoint is available
-                setInterviewPrepResult('Interview preparation feature coming soon. This will provide AI-generated interview questions and preparation tips based on the job description.');
+                setSelectedApplicationForInterview(app);
+                setIsLoadingInterviewPrep(true);
+                setInterviewPrepResult(null);
+
+                try {
+                  // Get resume content if resume_id is available
+                  let resumeContent = '';
+                  if (app.resume_id) {
+                    try {
+                      const resume = await resumeService.getResume(app.resume_id);
+                      resumeContent = resume.content || '';
+                    } catch (error) {
+                      console.warn('Could not fetch resume content:', error);
+                      // Try to get from store
+                      const storeResume = resumes.find(r => r.id === app.resume_id);
+                      resumeContent = storeResume?.content || '';
+                    }
+                  } else {
+                    // Use default resume if no resume_id
+                    const defaultResume = resumes.find(r => r.is_default) || resumes[0];
+                    if (defaultResume) {
+                      try {
+                        const resume = await resumeService.getResume(defaultResume.id);
+                        resumeContent = resume.content || '';
+                      } catch (error) {
+                        resumeContent = defaultResume.content || '';
+                      }
+                    }
+                  }
+
+                  // Create job description from application data
+                  const jobDescription = app.notes ||
+                    `Position: ${app.job_title}\nCompany: ${app.company}\nLocation: ${app.location}`;
+
+                  // Call interview prep API
+                  const result = await aiService.prepareInterview(
+                    jobDescription,
+                    resumeContent,
+                    app.company,
+                    app.job_title
+                  );
+
+                  setInterviewPrepResult(result);
+                } catch (error: any) {
+                  console.error('Error preparing interview:', error);
+                  setInterviewPrepResult({
+                    error: error?.response?.data?.detail || error?.message || 'Failed to prepare interview. Please try again.'
+                  });
+                } finally {
+                  setIsLoadingInterviewPrep(false);
+                }
+              } else {
+                setSelectedApplicationForInterview(null);
+                setInterviewPrepResult(null);
               }
             }}
           />
-          {interviewPrepResult && (
-            <div className="mt-4">
-              <Alert type="info" message={interviewPrepResult} />
+          {isLoadingInterviewPrep && (
+            <div className="mt-4 flex items-center justify-center py-8">
+              <Spinner size="lg" />
+              <span className="ml-3 text-gray-600">Preparing interview questions...</span>
+            </div>
+          )}
+
+          {interviewPrepResult && !isLoadingInterviewPrep && (
+            <div className="mt-4 space-y-6">
+              {interviewPrepResult.error ? (
+                <Alert type="error" message={interviewPrepResult.error} />
+              ) : (
+                <>
+                  {/* Questions */}
+                  {interviewPrepResult.questions && interviewPrepResult.questions.length > 0 && (
+                    <div>
+                      <h4 className="text-lg font-semibold text-gray-900 mb-3">Interview Questions</h4>
+                      <div className="space-y-4">
+                        {interviewPrepResult.questions.map((q: any, index: number) => (
+                          <div key={index} className="border border-gray-200 rounded-lg p-4">
+                            <div className="flex items-start justify-between mb-2">
+                              <p className="font-medium text-gray-900">{q.question}</p>
+                              <Badge variant="secondary" size="sm">{q.type || 'general'}</Badge>
+                            </div>
+                            {q.suggested_answer && (
+                              <p className="text-sm text-gray-600 mt-2">{q.suggested_answer}</p>
+                            )}
+                            {q.tips && q.tips.length > 0 && (
+                              <div className="mt-2">
+                                <p className="text-xs font-medium text-gray-500 mb-1">Tips:</p>
+                                <ul className="list-disc list-inside text-xs text-gray-600">
+                                  {q.tips.map((tip: string, tipIndex: number) => (
+                                    <li key={tipIndex}>{tip}</li>
+                                  ))}
+                                </ul>
+                              </div>
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Technical Questions */}
+                  {interviewPrepResult.technical_questions && interviewPrepResult.technical_questions.length > 0 && (
+                    <div>
+                      <h4 className="text-lg font-semibold text-gray-900 mb-3">Technical Questions</h4>
+                      <div className="space-y-4">
+                        {interviewPrepResult.technical_questions.map((q: any, index: number) => (
+                          <div key={index} className="border border-gray-200 rounded-lg p-4">
+                            <div className="flex items-start justify-between mb-2">
+                              <p className="font-medium text-gray-900">{q.question}</p>
+                              <div className="flex gap-2">
+                                <Badge variant="primary" size="sm">{q.category || 'technical'}</Badge>
+                                <Badge variant="secondary" size="sm">{q.difficulty || 'medium'}</Badge>
+                              </div>
+                            </div>
+                            {q.suggested_approach && (
+                              <p className="text-sm text-gray-600 mt-2">{q.suggested_approach}</p>
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Preparation Tips */}
+                  {interviewPrepResult.preparation_tips && interviewPrepResult.preparation_tips.length > 0 && (
+                    <div>
+                      <h4 className="text-lg font-semibold text-gray-900 mb-3">Preparation Tips</h4>
+                      <ul className="list-disc list-inside space-y-2 text-gray-700">
+                        {interviewPrepResult.preparation_tips.map((tip: string, index: number) => (
+                          <li key={index}>{tip}</li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
+
+                  {/* Key Topics */}
+                  {interviewPrepResult.key_topics && interviewPrepResult.key_topics.length > 0 && (
+                    <div>
+                      <h4 className="text-lg font-semibold text-gray-900 mb-3">Key Topics to Review</h4>
+                      <div className="flex flex-wrap gap-2">
+                        {interviewPrepResult.key_topics.map((topic: string, index: number) => (
+                          <Badge key={index} variant="primary">{topic}</Badge>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Questions to Ask */}
+                  {interviewPrepResult.questions_to_ask && interviewPrepResult.questions_to_ask.length > 0 && (
+                    <div>
+                      <h4 className="text-lg font-semibold text-gray-900 mb-3">Questions to Ask the Interviewer</h4>
+                      <ul className="list-disc list-inside space-y-2 text-gray-700">
+                        {interviewPrepResult.questions_to_ask.map((question: string, index: number) => (
+                          <li key={index}>{question}</li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
+
+                  {/* Company Research */}
+                  {interviewPrepResult.company_research && (
+                    <div>
+                      <h4 className="text-lg font-semibold text-gray-900 mb-3">Company Research</h4>
+                      <p className="text-gray-700">{interviewPrepResult.company_research}</p>
+                    </div>
+                  )}
+                </>
+              )}
             </div>
           )}
         </div>

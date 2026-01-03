@@ -1,12 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { 
-  Card, 
-  CardHeader, 
-  CardBody, 
-  Button, 
-  Badge, 
-  Modal, 
+import {
+  Card,
+  CardHeader,
+  CardBody,
+  Button,
+  Badge,
+  Modal,
   Spinner,
   Alert,
   Select,
@@ -35,7 +35,7 @@ const Applications: React.FC = () => {
   const [statusFilter, setStatusFilter] = useState<ApplicationStatus | ''>('');
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [isExportModalOpen, setIsExportModalOpen] = useState(false);
-  
+
   const queryClient = useQueryClient();
   const { applications, setApplications, addApplication, updateApplication, deleteApplication } = useAppStore();
 
@@ -47,10 +47,25 @@ const Applications: React.FC = () => {
 
   // Update applications when data is fetched
   useEffect(() => {
-    if (fetchedApplications?.data) {
-      setApplications(fetchedApplications.data);
+    if (fetchedApplications) {
+      // Handle nested response structure: response.data.data contains the array
+      let apps: JobApplication[] = [];
+
+      const response = fetchedApplications as any;
+      if (Array.isArray(response.data)) {
+        // Direct array response
+        apps = response.data;
+      } else if (response.data?.data && Array.isArray(response.data.data)) {
+        // Nested structure: { data: { data: [...], pagination: {...} } }
+        apps = response.data.data;
+      } else if (response.data?.data && Array.isArray(response.data)) {
+        // Alternative nested structure
+        apps = response.data;
+      }
+
+      setApplications(apps);
     }
-  }, [fetchedApplications]);
+  }, [fetchedApplications, setApplications]);
 
   // Create application mutation
   const createMutation = useMutation({
@@ -125,12 +140,12 @@ const Applications: React.FC = () => {
     if (selectedIds.length === filteredApplications.length) {
       setSelectedIds([]);
     } else {
-      setSelectedIds(filteredApplications.map(app => app.id));
+      setSelectedIds(filteredApplications.map(app => app.id).filter((id): id is string => !!id));
     }
   };
 
   const handleToggleSelect = (id: string) => {
-    setSelectedIds(prev => 
+    setSelectedIds(prev =>
       prev.includes(id) ? prev.filter(i => i !== id) : [...prev, id]
     );
   };
@@ -155,7 +170,7 @@ const Applications: React.FC = () => {
         options?.dateFrom,
         options?.dateTo
       );
-      
+
       const extension = format === 'excel' ? 'xlsx' : format;
       const url = window.URL.createObjectURL(blob);
       const a = document.createElement('a');
@@ -201,7 +216,9 @@ const Applications: React.FC = () => {
     return colorMap[status] || 'default';
   };
 
-  const filteredApplications = applications.filter(app => 
+  // Ensure applications is always an array before filtering
+  const applicationsArray = Array.isArray(applications) ? applications : [];
+  const filteredApplications = applicationsArray.filter(app =>
     !statusFilter || app.status === statusFilter
   );
 
@@ -216,8 +233,8 @@ const Applications: React.FC = () => {
   if (error) {
     return (
       <div className="space-y-6">
-        <Alert 
-          type="error" 
+        <Alert
+          type="error"
           title="Error Loading Applications"
           message="Failed to load applications. Please try again later."
         />
@@ -235,8 +252,8 @@ const Applications: React.FC = () => {
             Manage your job applications and track their progress.
           </p>
         </div>
-        <Button 
-          variant="primary" 
+        <Button
+          variant="primary"
           onClick={() => setIsCreateModalOpen(true)}
           className="flex items-center"
         >
@@ -260,9 +277,9 @@ const Applications: React.FC = () => {
               />
             </div>
             <div className="flex items-center space-x-2">
-              <Button 
-                variant="secondary" 
-                size="sm" 
+              <Button
+                variant="secondary"
+                size="sm"
                 onClick={() => setIsExportModalOpen(true)}
                 className="flex items-center"
               >
@@ -271,7 +288,7 @@ const Applications: React.FC = () => {
               </Button>
             </div>
             <div className="text-sm text-gray-500">
-              {filteredApplications.length} of {applications.length} applications
+              {filteredApplications.length} of {applicationsArray.length} applications
             </div>
           </div>
         </CardBody>
@@ -299,26 +316,26 @@ const Applications: React.FC = () => {
             </div>
           </div>
           <div className="flex items-center space-x-2">
-            <Button 
-              variant="secondary" 
-              size="sm" 
+            <Button
+              variant="secondary"
+              size="sm"
               onClick={() => handleExport('csv')}
               className="text-primary-700"
             >
               Export Selected
             </Button>
-            <Button 
-              variant="danger" 
-              size="sm" 
+            <Button
+              variant="danger"
+              size="sm"
               onClick={handleBulkDelete}
               className="flex items-center"
             >
               <TrashIcon className="h-4 w-4 mr-1" />
               Delete Selected
             </Button>
-            <Button 
-              variant="ghost" 
-              size="sm" 
+            <Button
+              variant="ghost"
+              size="sm"
               onClick={() => setSelectedIds([])}
             >
               Cancel
@@ -360,19 +377,18 @@ const Applications: React.FC = () => {
             <div className="space-y-4">
               {filteredApplications.map((application) => (
                 <div
-                  key={application.id}
-                  className={`border rounded-lg p-4 transition-colors ${
-                    selectedIds.includes(application.id) 
-                      ? 'border-primary-300 bg-primary-50' 
+                  key={application.id || `app-${application.job_title}`}
+                  className={`border rounded-lg p-4 transition-colors ${application.id && selectedIds.includes(application.id)
+                      ? 'border-primary-300 bg-primary-50'
                       : 'border-gray-200 hover:bg-gray-50'
-                  }`}
+                    }`}
                 >
                   <div className="flex items-center space-x-4">
                     <input
                       type="checkbox"
                       className="h-4 w-4 rounded border-gray-300 text-primary-600 focus:ring-primary-500"
-                      checked={selectedIds.includes(application.id)}
-                      onChange={() => handleToggleSelect(application.id)}
+                      checked={application.id ? selectedIds.includes(application.id) : false}
+                      onChange={() => application.id && handleToggleSelect(application.id)}
                     />
                     <div className="flex-1">
                       <div className="flex items-center justify-between">
@@ -395,7 +411,7 @@ const Applications: React.FC = () => {
                             </p>
                           )}
                         </div>
-                        
+
                         <div className="flex items-center space-x-2">
                           <Button
                             variant="ghost"
@@ -408,15 +424,16 @@ const Applications: React.FC = () => {
                             <EyeIcon className="h-4 w-4" />
                           </Button>
                           <Select
-                            name={`status-${application.id}`}
+                            name={`status-${application.id || 'unknown'}`}
                             value={application.status}
-                            onChange={(value) => handleStatusChange(application.id, value as ApplicationStatus)}
+                            onChange={(value) => application.id && handleStatusChange(application.id, value as ApplicationStatus)}
                             options={statusOptions.slice(1)} // Remove "All Statuses" option
                           />
                           <Button
                             variant="ghost"
                             size="sm"
-                            onClick={() => handleDelete(application.id)}
+                            onClick={() => application.id && handleDelete(application.id)}
+                            disabled={!application.id}
                             className="text-danger-600 hover:text-danger-700"
                           >
                             <TrashIcon className="h-4 w-4" />
@@ -470,17 +487,17 @@ const Applications: React.FC = () => {
               placeholder="Additional notes about this application..."
             />
           </div>
-          
+
           <div className="flex justify-end space-x-3 mt-6">
-            <Button 
-              type="button" 
-              variant="secondary" 
+            <Button
+              type="button"
+              variant="secondary"
               onClick={() => setIsCreateModalOpen(false)}
             >
               Cancel
             </Button>
-            <Button 
-              type="submit" 
+            <Button
+              type="submit"
               variant="primary"
               loading={createMutation.isPending}
             >
@@ -505,7 +522,7 @@ const Applications: React.FC = () => {
               </h3>
               <p className="text-gray-600">{selectedApplication.company}</p>
             </div>
-            
+
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <label className="block text-sm font-medium text-gray-700">Status</label>
@@ -532,7 +549,7 @@ const Applications: React.FC = () => {
                 </div>
               )}
             </div>
-            
+
             {selectedApplication.notes && (
               <div>
                 <label className="block text-sm font-medium text-gray-700">Notes</label>

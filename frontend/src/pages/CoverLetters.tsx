@@ -18,7 +18,7 @@ import {
   Progress
 } from '../components';
 import { useAppStore } from '../stores/appStore';
-import { aiService, coverLetterService } from '../services/api';
+import { aiService, coverLetterService, resumeService } from '../services/api';
 import type { CoverLetter, Resume, JobApplication } from '../types';
 import {
   DocumentTextIcon,
@@ -47,13 +47,20 @@ const CoverLetters: React.FC = () => {
   const [generationProgress, setGenerationProgress] = useState(0);
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
 
-  const { coverLetters, resumes, applications } = useAppStore();
+  const { coverLetters, applications } = useAppStore();
   const itemsPerPage = 10;
 
   // Fetch cover letters
   const { data: coverLettersData, isLoading: coverLettersLoading, refetch: refetchCoverLetters } = useQuery({
     queryKey: ['cover-letters'],
     queryFn: () => coverLetterService.getCoverLetters(),
+    staleTime: 5 * 60 * 1000, // 5 minutes
+  });
+
+  // Fetch resumes for the cover letter generation modal
+  const { data: resumes = [], isLoading: resumesLoading } = useQuery({
+    queryKey: ['resumes'],
+    queryFn: () => resumeService.getResumes(),
     staleTime: 5 * 60 * 1000, // 5 minutes
   });
 
@@ -377,9 +384,6 @@ const CoverLetters: React.FC = () => {
               />
             </div>
           </div>
-        </CardBody>
-      </Card>
-
         </CardBody>
       </Card>
 
@@ -750,16 +754,17 @@ const CoverLetters: React.FC = () => {
               </label>
               <Select
                 name="resume_id"
-                value=""
+                value={selectedResume?.id || ""}
                 onChange={(value) => {
                   const resume = resumes.find(r => r.id === value);
                   setSelectedResume(resume || null);
                 }}
-                options={resumes.map(resume => ({
+                options={resumesLoading ? [] : resumes.map(resume => ({
                   value: resume.id,
-                  label: `${resume.title || resume.filename} (${resume.filename})`
+                  label: `${resume.name || resume.title || resume.original_filename || resume.filename || 'Unnamed Resume'}`
                 }))}
-                placeholder="Select a resume"
+                placeholder={resumesLoading ? "Loading resumes..." : resumes.length === 0 ? "No resumes available. Please upload a resume first." : "Select a resume"}
+                disabled={resumesLoading || resumes.length === 0}
               />
             </div>
             <div>
