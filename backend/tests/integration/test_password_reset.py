@@ -108,7 +108,7 @@ async def test_reset_password_success(client):
     assert request_response.status_code == 200
     
     # Get reset token from auth service (in production, this would come from email)
-    async with await database_config.get_session() as session:
+    async with database_config.get_session() as session:
         user_repo = UserRepository(session)
         user = await user_repo.get_by_email(email)
         assert user is not None
@@ -160,7 +160,7 @@ async def test_reset_password_expired_token(client):
     
     # Manually expire the token
     from datetime import datetime, timezone, timedelta
-    async with await database_config.get_session() as session:
+    async with database_config.get_session() as session:
         user_repo = UserRepository(session)
         user = await user_repo.get_by_email(email)
         # Set expiration to past
@@ -193,7 +193,7 @@ async def test_reset_password_weak_password(client):
     assert request_response.status_code == 200
     
     # Get reset token
-    async with await database_config.get_session() as session:
+    async with database_config.get_session() as session:
         user_repo = UserRepository(session)
         user = await user_repo.get_by_email(email)
         assert user is not None
