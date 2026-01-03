@@ -7,7 +7,62 @@ ENV/
 env.bak/
 venv.bak/
 
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+*.egg-info/
+dist/
+build/
+*.egg
+
+# TypeScript/JavaScript
+*.tsbuildinfo
+node_modules/
+.npm
+.pnpm-debug.log
+*.log
+
+# Databases
+*.db
+*.db-shm
+*.db-wal
+*.sqlite
+*.sqlite3
+
+# Logs
+*.log
+logs/
+backend/logs/
+frontend/logs/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+
+# Build artifacts
+*.pyc
+*.pyo
+coverage/
+.coverage
+htmlcov/
+.pytest_cache/
+.mypy_cache/
+
+# Temporary files
+*.tmp
+*.temp
+.cache/
+
 # Unused files
 .DS_*
 
-#scripts
+# Auto-generated config files
+frontend/vite.config.js
+frontend/vite.config.d.ts
