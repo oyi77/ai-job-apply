@@ -20,6 +20,7 @@ class Resume(BaseModel):
     is_default: bool = Field(default=False, description="Whether this is the default resume")
     created_at: datetime = Field(default_factory=datetime.utcnow)
     updated_at: datetime = Field(default_factory=datetime.utcnow)
+    user_id: Optional[str] = Field(None, description="ID of the user who owns this resume")
     
     model_config = {
         "json_encoders": {
@@ -63,13 +64,16 @@ class ResumeOptimizationRequest(BaseModel):
 
 
 class ResumeOptimizationResponse(BaseModel):
-    """Resume optimization response model."""
+    """Resume optimization response model with ATS scoring."""
     original_resume: Resume = Field(..., description="Original resume")
     optimized_content: str = Field(..., description="Optimized resume content")
     suggestions: List[str] = Field(..., description="Optimization suggestions")
     skill_gaps: List[str] = Field(default_factory=list, description="Identified skill gaps")
     improvements: List[str] = Field(default_factory=list, description="Specific improvements")
     confidence_score: float = Field(..., ge=0.0, le=1.0, description="Optimization confidence score")
+    ats_score: Optional[float] = Field(None, ge=0.0, le=1.0, description="ATS compatibility score (0-1)")
+    ats_checks: Optional[Dict[str, float]] = Field(None, description="Individual ATS check scores")
+    ats_recommendations: Optional[List[str]] = Field(None, description="ATS-specific recommendations")
     timestamp: datetime = Field(default_factory=datetime.utcnow)
     
     model_config = {

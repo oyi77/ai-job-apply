@@ -387,6 +387,8 @@ class DBUser(Base):
     password_reset_token: Mapped[Optional[str]] = mapped_column(String(255), nullable=True, index=True)
     password_reset_token_expires: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
     is_active: Mapped[bool] = mapped_column(Boolean, default=True)
+    failed_login_attempts: Mapped[int] = mapped_column(Integer, default=0)
+    account_locked_until: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=lambda: datetime.now(timezone.utc))
     updated_at: Mapped[datetime] = mapped_column(DateTime, default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc))
     
@@ -430,6 +432,8 @@ class DBUser(Base):
             password_reset_token=self.password_reset_token,
             password_reset_token_expires=self.password_reset_token_expires,
             is_active=self.is_active,
+            failed_login_attempts=self.failed_login_attempts or 0,
+            account_locked_until=self.account_locked_until,
             created_at=self.created_at,
             updated_at=self.updated_at,
         )
@@ -443,6 +447,8 @@ class DBUser(Base):
             password_hash=user.password_hash,
             name=user.name,
             is_active=user.is_active,
+            failed_login_attempts=user.failed_login_attempts or 0,
+            account_locked_until=user.account_locked_until,
             created_at=user.created_at,
             updated_at=user.updated_at,
         )
@@ -596,26 +602,29 @@ class DBAlertHistory(Base):
     alert_rule_id: Mapped[str] = mapped_column(String, ForeignKey("alert_rules.id", ondelete="CASCADE"), nullable=False, index=True)
     triggered_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, index=True)
     resolved_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
-    status: Mapped[str] = mapped_column(String(20), nullable=False, index=True)  # active, resolved
-    message: Mapped[str] = mapped_column(Text, nullable=False)
-    metric_value: Mapped[Optional[float]] = mapped_column(Float, nullable=True)
+
+
+class DBConfig(Base):
+    """Database model for application configuration (key-value store)."""
     
-    # Relationships
-    alert_rule: Mapped[DBAlertRule] = relationship("DBAlertRule")
+    __tablename__ = "configs"
     
-    # Indexes for performance
-    __table_args__ = (
-        Index("idx_alert_status_triggered", "status", "triggered_at"),
-    )
+    id: Mapped[str] = mapped_column(String, primary_key=True, default=lambda: str(uuid.uuid4()))
+    name: Mapped[str] = mapped_column(String(255), nullable=False, unique=True, index=True)
+    key: Mapped[str] = mapped_column(String(255), nullable=False, unique=True, index=True)
+    value: Mapped[str] = mapped_column(Text, nullable=False)
+    description: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=lambda: datetime.now(timezone.utc))
+    updated_at: Mapped[datetime] = mapped_column(DateTime, default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc))
     
     def to_dict(self) -> dict:
         """Convert to dictionary."""
         return {
             "id": self.id,
-            "alert_rule_id": self.alert_rule_id,
-            "triggered_at": self.triggered_at.isoformat(),
-            "resolved_at": self.resolved_at.isoformat() if self.resolved_at else None,
-            "status": self.status,
-            "message": self.message,
-            "metric_value": self.metric_value,
+            "name": self.name,
+            "key": self.key,
+            "value": self.value,
+            "description": self.description,
+            "created_at": self.created_at.isoformat() if self.created_at else None,
+            "updated_at": self.updated_at.isoformat() if self.updated_at else None,
         }

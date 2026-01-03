@@ -34,6 +34,7 @@ from src.database.models import (
     DBUser,
     DBUserSession
 )
+from src.models.password_history import PasswordHistory
 
 # this is the Alembic Config object, which provides
 # access to the values within the .ini file in use.

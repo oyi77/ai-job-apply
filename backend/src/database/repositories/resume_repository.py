@@ -242,7 +242,7 @@ class ResumeRepository:
             self.logger.error(f"Error deleting resume {resume_id}: {e}", exc_info=True)
             return False
     
-    async def search(self, query: str, limit: Optional[int] = None) -> List[Resume]:
+    async def search(self, query: str, limit: Optional[int] = None, user_id: Optional[str] = None) -> List[Resume]:
         """Search resumes by name, content, or skills."""
         try:
             search_term = f"%{query.lower()}%"
@@ -255,7 +255,13 @@ class ResumeRepository:
                     func.lower(DBResume.content).like(search_term),
                     func.lower(DBResume.skills).like(search_term)
                 )
-            ).order_by(DBResume.created_at.desc())
+            )
+            
+            # Filter by user_id if provided
+            if user_id:
+                stmt = stmt.where(DBResume.user_id == user_id)
+            
+            stmt = stmt.order_by(DBResume.created_at.desc())
             
             if limit:
                 stmt = stmt.limit(limit)
@@ -272,14 +278,20 @@ class ResumeRepository:
             self.logger.error(f"Error searching resumes with query '{query}': {e}", exc_info=True)
             return []
     
-    async def get_by_file_type(self, file_type: str, limit: Optional[int] = None) -> List[Resume]:
+    async def get_by_file_type(self, file_type: str, limit: Optional[int] = None, user_id: Optional[str] = None) -> List[Resume]:
         """Get resumes by file type."""
         try:
             stmt = select(DBResume).options(
                 selectinload(DBResume.applications)
             ).where(
                 func.lower(DBResume.file_type) == file_type.lower()
-            ).order_by(DBResume.created_at.desc())
+            )
+            
+            # Filter by user_id if provided
+            if user_id:
+                stmt = stmt.where(DBResume.user_id == user_id)
+            
+            stmt = stmt.order_by(DBResume.created_at.desc())
             
             if limit:
                 stmt = stmt.limit(limit)
@@ -296,11 +308,16 @@ class ResumeRepository:
             self.logger.error(f"Error getting resumes by file type {file_type}: {e}", exc_info=True)
             return []
     
-    async def get_statistics(self) -> Dict[str, Any]:
+    async def get_statistics(self, user_id: Optional[str] = None) -> Dict[str, Any]:
         """Get resume statistics."""
         try:
+            # Base filter for user_id
+            user_filter = DBResume.user_id == user_id if user_id else None
+            
             # Get total count
             total_stmt = select(func.count(DBResume.id))
+            if user_filter:
+                total_stmt = total_stmt.where(user_filter)
             total_result = await self.session.execute(total_stmt)
             total_resumes = total_result.scalar()
             
@@ -310,11 +327,16 @@ class ResumeRepository:
                 func.count(DBResume.id)
             ).group_by(DBResume.file_type)
             
+            if user_filter:
+                file_type_stmt = file_type_stmt.where(user_filter)
+            
             file_type_result = await self.session.execute(file_type_stmt)
             file_type_breakdown = dict(file_type_result.all())
             
             # Get default resume count
             default_stmt = select(func.count(DBResume.id)).where(DBResume.is_default == True)
+            if user_filter:
+                default_stmt = default_stmt.where(user_filter)
             default_result = await self.session.execute(default_stmt)
             default_count = default_result.scalar()
             
@@ -324,6 +346,8 @@ class ResumeRepository:
             recent_stmt = select(func.count(DBResume.id)).where(
                 DBResume.created_at >= recent_cutoff
             )
+            if user_filter:
+                recent_stmt = recent_stmt.where(user_filter)
             recent_result = await self.session.execute(recent_stmt)
             recent_resumes = recent_result.scalar()
             
@@ -331,6 +355,8 @@ class ResumeRepository:
             skills_stmt = select(func.count(DBResume.id)).where(
                 DBResume.skills.is_not(None)
             )
+            if user_filter:
+                skills_stmt = skills_stmt.where(user_filter)
             skills_result = await self.session.execute(skills_stmt)
             resumes_with_skills = skills_result.scalar()
             
@@ -355,13 +381,16 @@ class ResumeRepository:
                 "error": str(e)
             }
     
-    async def get_resumes_with_experience(self, min_years: int, max_years: Optional[int] = None) -> List[Resume]:
+    async def get_resumes_with_experience(self, min_years: int, max_years: Optional[int] = None, user_id: Optional[str] = None) -> List[Resume]:
         """Get resumes by experience level."""
         try:
             conditions = [DBResume.experience_years >= min_years]
             
             if max_years is not None:
                 conditions.append(DBResume.experience_years <= max_years)
+            
+            if user_id:
+                conditions.append(DBResume.user_id == user_id)
             
             stmt = select(DBResume).options(
                 selectinload(DBResume.applications)

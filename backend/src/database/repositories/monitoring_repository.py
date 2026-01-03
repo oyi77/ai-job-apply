@@ -1,7 +1,7 @@
 """Monitoring repository for database operations."""
 
 from typing import List, Optional, Dict, Any
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, update, delete, func, and_, or_, desc
 from sqlalchemy.orm import selectinload
@@ -297,18 +297,30 @@ class MonitoringRepository:
     async def create_alert_history(
         self,
         alert_rule_id: str,
-        message: str,
+        message: Optional[str] = None,
         metric_value: Optional[float] = None
     ) -> DBAlertHistory:
-        """Create a new alert history entry."""
+        """Create a new alert history entry.
+        
+        Note: DBAlertHistory model only stores alert_rule_id, triggered_at, and resolved_at.
+        The message and metric_value parameters are logged but not stored.
+        
+        Args:
+            alert_rule_id: ID of the alert rule that triggered
+            message: Optional message for logging (not stored in DB)
+            metric_value: Optional metric value for logging (not stored in DB)
+        """
         try:
             db_alert = DBAlertHistory(
                 alert_rule_id=alert_rule_id,
-                triggered_at=datetime.now(),
-                status="active",
-                message=message,
-                metric_value=metric_value
+                triggered_at=datetime.now(timezone.utc),
+                resolved_at=None  # Active alerts have resolved_at = None
             )
+            # Log message and metric_value for debugging (not stored in DB)
+            if message:
+                self.logger.debug(f"Creating alert history for rule {alert_rule_id}: {message}, metric_value={metric_value}")
+            else:
+                self.logger.debug(f"Creating alert history for rule {alert_rule_id}")
             self.session.add(db_alert)
             await self.session.commit()
             await self.session.refresh(db_alert)
@@ -326,7 +338,7 @@ class MonitoringRepository:
             stmt = select(DBAlertHistory).options(
                 selectinload(DBAlertHistory.alert_rule)
             ).where(
-                DBAlertHistory.status == "active"
+                DBAlertHistory.resolved_at.is_(None)  # Active = not resolved
             ).order_by(desc(DBAlertHistory.triggered_at))
             
             result = await self.session.execute(stmt)
@@ -346,8 +358,7 @@ class MonitoringRepository:
             if not db_alert:
                 return False
             
-            db_alert.status = "resolved"
-            db_alert.resolved_at = datetime.now()
+            db_alert.resolved_at = datetime.now(timezone.utc)  # Resolve by setting resolved_at
             
             await self.session.commit()
             
@@ -365,13 +376,14 @@ class MonitoringRepository:
     ) -> Optional[DBAlertHistory]:
         """Get the most recent alert for a rule within the cooldown period."""
         try:
-            cutoff_time = datetime.now() - timedelta(seconds=cooldown_seconds)
+            cutoff_time = datetime.now(timezone.utc) - timedelta(seconds=cooldown_seconds)
             
+            # An alert is "active" if resolved_at is None (not yet resolved)
             stmt = select(DBAlertHistory).where(
                 and_(
                     DBAlertHistory.alert_rule_id == alert_rule_id,
                     DBAlertHistory.triggered_at >= cutoff_time,
-                    DBAlertHistory.status == "active"
+                    DBAlertHistory.resolved_at.is_(None)  # Active = not resolved
                 )
             ).order_by(desc(DBAlertHistory.triggered_at)).limit(1)
             

@@ -118,6 +118,8 @@ class User(BaseModel):
     password_reset_token: Optional[str] = None
     password_reset_token_expires: Optional[datetime] = None
     is_active: bool = True
+    failed_login_attempts: int = 0
+    account_locked_until: Optional[datetime] = None
     created_at: datetime
     updated_at: datetime
     

@@ -72,6 +72,7 @@ class CoverLetter(BaseModel):
     generated_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
     updated_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    user_id: Optional[str] = Field(None, description="ID of the user who owns this cover letter")
     
     model_config = ConfigDict(
         populate_by_name=True

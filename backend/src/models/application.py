@@ -35,6 +35,7 @@ class JobApplication(BaseModel):
     interview_date: Optional[datetime] = Field(None, description="Interview date if scheduled")
     created_at: datetime = Field(default_factory=datetime.utcnow)
     updated_at: datetime = Field(default_factory=datetime.utcnow)
+    user_id: Optional[str] = Field(None, description="ID of the user who owns this application")
     
     model_config = {
         "use_enum_values": True,

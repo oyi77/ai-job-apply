@@ -15,4 +15,5 @@ __all__ = [
     "ResumeOptimizationRequest",
     "CoverLetter",
     "CoverLetterRequest",
+    "PasswordHistory",
 ]
