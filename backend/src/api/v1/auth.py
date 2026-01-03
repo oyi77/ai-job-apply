@@ -5,15 +5,15 @@ from typing import Optional
 from slowapi import Limiter
 from slowapi.util import get_remote_address
 from slowapi.errors import RateLimitExceeded
-from ...config import config
-from ...models.user import (
+from src.config import config
+from src.models.user import (
     UserRegister, UserLogin, TokenResponse, TokenRefresh,
     UserProfile, UserProfileUpdate, PasswordChange, PasswordResetRequest, PasswordReset
 )
 from pydantic import BaseModel
-from ...services.service_registry import service_registry
-from ...utils.logger import get_logger
-from ..dependencies import get_current_user
+from src.services.service_registry import service_registry
+from src.utils.logger import get_logger
+from src.api.dependencies import get_current_user
 
 logger = get_logger(__name__)
 

@@ -2,8 +2,8 @@
 
 import abc
 from typing import List, Optional, Dict, Any
-from ..utils.logger import get_logger
-from ..config import config
+from src.utils.logger import get_logger
+from src.config import config
 
 class EmailProvider(abc.ABC):
     """Abstract base class for email providers."""

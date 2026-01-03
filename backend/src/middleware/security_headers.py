@@ -6,8 +6,8 @@ from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.responses import Response
 from fastapi import Request
 from typing import Callable, Dict
-from ..utils.logger import get_logger
-from ..config import config
+from src.utils.logger import get_logger
+from src.config import config
 
 logger = get_logger(__name__)
 

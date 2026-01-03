@@ -2,8 +2,8 @@
 
 from abc import ABC, abstractmethod
 from typing import List, Dict, Any, Optional
-from ..models.resume import ResumeOptimizationRequest, ResumeOptimizationResponse
-from ..models.cover_letter import CoverLetterRequest, CoverLetter
+from src.models.resume import ResumeOptimizationRequest, ResumeOptimizationResponse
+from src.models.cover_letter import CoverLetterRequest, CoverLetter
 
 
 class AIService(ABC):

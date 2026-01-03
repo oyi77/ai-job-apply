@@ -7,13 +7,13 @@ from datetime import datetime
 from loguru import logger
 import io
 
-from ...core.dependencies import get_current_user
-from ...models.user import User
-from ...services.analytics_service import AnalyticsService
-from ...services.analytics_exporter import AnalyticsExporter
-from ...services.analytics_insights_service import AnalyticsInsightsService
-from ...services.ai_service import ModernAIService
-from ...services.service_registry import service_registry
+from src.api.dependencies import get_current_user
+from src.models.user import User
+from src.services.analytics_service import AnalyticsService
+from src.services.analytics_exporter import AnalyticsExporter
+from src.services.analytics_insights_service import AnalyticsInsightsService
+from src.services.ai_service import ModernAIService
+from src.services.service_registry import service_registry
 
 router = APIRouter(prefix="/analytics", tags=["analytics"])
 

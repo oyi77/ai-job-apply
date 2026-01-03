@@ -1,5 +1,5 @@
 from dogpile.cache import make_region
-from ..config import config
+from src.config import config
 
 # Configure the cache region
 backend = config.cache_backend

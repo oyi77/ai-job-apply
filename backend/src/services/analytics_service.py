@@ -17,8 +17,8 @@ from sqlalchemy import func, and_, or_
 from sqlalchemy.ext.asyncio import AsyncSession
 from loguru import logger
 
-from ..models.application import Application, ApplicationStatus
-from ..database.repositories.application_repository import ApplicationRepository
+from src.models.application import JobApplication, ApplicationStatus
+from src.database.repositories.application_repository import ApplicationRepository
 
 
 class AnalyticsService:
@@ -74,12 +74,12 @@ class AnalyticsService:
             # Calculate success metrics
             successful = (
                 status_counts.get(ApplicationStatus.OFFER_RECEIVED, 0) +
-                status_counts.get(ApplicationStatus.ACCEPTED, 0)
+                status_counts.get(ApplicationStatus.OFFER_ACCEPTED, 0)
             )
             
             interviews = (
                 status_counts.get(ApplicationStatus.INTERVIEW_SCHEDULED, 0) +
-                status_counts.get(ApplicationStatus.INTERVIEWING, 0) +
+                status_counts.get(ApplicationStatus.INTERVIEW_COMPLETED, 0) +
                 successful
             )
             
@@ -92,12 +92,13 @@ class AnalyticsService:
                 "interview_rate": round((interviews / total) * 100, 2),
                 "rejection_rate": round((rejected / total) * 100, 2),
                 "breakdown": {
-                    "applied": status_counts.get(ApplicationStatus.APPLIED, 0),
+                    "draft": status_counts.get(ApplicationStatus.DRAFT, 0),
+                    "submitted": status_counts.get(ApplicationStatus.SUBMITTED, 0),
                     "under_review": status_counts.get(ApplicationStatus.UNDER_REVIEW, 0),
                     "interview_scheduled": status_counts.get(ApplicationStatus.INTERVIEW_SCHEDULED, 0),
-                    "interviewing": status_counts.get(ApplicationStatus.INTERVIEWING, 0),
+                    "interview_completed": status_counts.get(ApplicationStatus.INTERVIEW_COMPLETED, 0),
                     "offer_received": status_counts.get(ApplicationStatus.OFFER_RECEIVED, 0),
-                    "accepted": status_counts.get(ApplicationStatus.ACCEPTED, 0),
+                    "offer_accepted": status_counts.get(ApplicationStatus.OFFER_ACCEPTED, 0),
                     "rejected": rejected,
                     "withdrawn": status_counts.get(ApplicationStatus.WITHDRAWN, 0)
                 }
@@ -135,16 +136,16 @@ class AnalyticsService:
             for app in applications:
                 if app.updated_at and app.created_at:
                     # Time to any response
-                    if app.status != ApplicationStatus.APPLIED:
+                    if app.status != ApplicationStatus.SUBMITTED:
                         days = (app.updated_at - app.created_at).days
                         response_times.append(days)
                     
                     # Time to interview
                     if app.status in [
                         ApplicationStatus.INTERVIEW_SCHEDULED,
-                        ApplicationStatus.INTERVIEWING,
+                        ApplicationStatus.INTERVIEW_COMPLETED,
                         ApplicationStatus.OFFER_RECEIVED,
-                        ApplicationStatus.ACCEPTED
+                        ApplicationStatus.OFFER_ACCEPTED
                     ]:
                         days = (app.updated_at - app.created_at).days
                         interview_times.append(days)
@@ -195,7 +196,7 @@ class AnalyticsService:
                 ]:
                     total_interviews += 1
                     
-                    if app.status in [ApplicationStatus.OFFER_RECEIVED, ApplicationStatus.ACCEPTED]:
+                    if app.status in [ApplicationStatus.OFFER_RECEIVED, ApplicationStatus.OFFER_ACCEPTED]:
                         offers_after_interview += 1
                     elif app.status == ApplicationStatus.REJECTED:
                         rejections_after_interview += 1
@@ -212,7 +213,7 @@ class AnalyticsService:
                 "interview_to_offer_rate": interview_to_offer_rate,
                 "pending_interviews": sum(
                     1 for app in applications
-                    if app.status in [ApplicationStatus.INTERVIEW_SCHEDULED, ApplicationStatus.INTERVIEWING]
+                    if app.status in [ApplicationStatus.INTERVIEW_SCHEDULED, ApplicationStatus.INTERVIEW_COMPLETED]
                 )
             }
             

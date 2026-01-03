@@ -9,14 +9,14 @@ import docx
 import io
 import json
 
-from ..core.cache import cache_region
-from ..core.resume_service import ResumeService
-from ..models.resume import Resume
-from ..services.local_file_service import LocalFileService
-from ..database.repositories.resume_repository import ResumeRepository
-from ..config import config
+from src.core.cache import cache_region
+from src.core.resume_service import ResumeService
+from src.models.resume import Resume
+from src.services.local_file_service import LocalFileService
+from src.database.repositories.resume_repository import ResumeRepository
+from src.config import config
 from loguru import logger
-from ..utils.text_processing import extract_skills, clean_text
+from src.utils.text_processing import extract_skills, clean_text
 
 
 class ResumeService(ResumeService):
@@ -92,7 +92,7 @@ class ResumeService(ResumeService):
             if content:
                 # Try AI extraction first (if AI service is available)
                 try:
-                    from ..services.service_registry import service_registry
+                    from src.services.service_registry import service_registry
                     ai_service = await service_registry.get_ai_service()
                     if await ai_service.is_available():
                         # Use AI to extract education and certifications more accurately
@@ -101,7 +101,7 @@ class ResumeService(ResumeService):
                         
                         # Try to get education via AI (non-blocking - fallback to regex if fails)
                         try:
-                            from ..core.ai_provider import AIResponse
+                            from src.core.ai_provider import AIResponse
                             # This is a simplified approach - in production, you'd want a dedicated extraction method
                             education = self._extract_education(content)  # Fallback to regex for now
                             certifications = self._extract_certifications(content)  # Fallback to regex for now

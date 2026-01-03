@@ -7,11 +7,11 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship
 from sqlalchemy.dialects.postgresql import UUID
 import uuid
 
-from .config import Base
-from ..models.application import ApplicationStatus
-from ..models.resume import Resume
-from ..models.cover_letter import CoverLetter
-from ..models.user import User as UserModel
+from src.database.config import Base
+from src.models.application import ApplicationStatus
+from src.models.resume import Resume
+from src.models.cover_letter import CoverLetter
+from src.models.user import User as UserModel
 
 
 class DBResume(Base):
@@ -195,7 +195,7 @@ class DBJobApplication(Base):
     
     def to_model(self) -> "JobApplication":
         """Convert database model to domain model."""
-        from ..models.application import JobApplication
+        from src.models.application import JobApplication
         
         return JobApplication(
             id=self.id,

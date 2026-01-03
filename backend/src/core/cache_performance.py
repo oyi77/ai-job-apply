@@ -7,7 +7,7 @@ This module provides utilities to monitor cache performance and generate reports
 import time
 from typing import Dict, Any, List
 from datetime import datetime, timezone
-from ..core.cache import cache_region
+from src.core.cache import cache_region
 from loguru import logger
 
 

@@ -2,7 +2,7 @@
 
 from abc import ABC, abstractmethod
 from typing import List, Optional, Dict, Any
-from ..models.application import JobApplication, ApplicationUpdateRequest, ApplicationStatus
+from src.models.application import JobApplication, ApplicationUpdateRequest, ApplicationStatus
 
 
 class ApplicationService(ABC):

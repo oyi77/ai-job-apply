@@ -5,9 +5,9 @@ from datetime import datetime, timezone
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, update, delete
 
-from ..models import DBUser, DBUserSession
-from ...models.user import User, UserProfileUpdate
-from ...utils.logger import get_logger
+from src.database.models import DBUser, DBUserSession
+from src.models.user import User, UserProfileUpdate
+from src.utils.logger import get_logger
 
 
 class UserRepository:

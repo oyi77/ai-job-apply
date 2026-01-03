@@ -2,8 +2,8 @@
 
 from typing import List, Optional, Dict, Any
 from datetime import datetime, timezone
-from ..database.repositories.config_repository import ConfigRepository
-from ..database.config import database_config
+from src.database.repositories.config_repository import ConfigRepository
+from src.database.config import database_config
 from loguru import logger
 
 

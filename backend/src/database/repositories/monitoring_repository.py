@@ -6,13 +6,13 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, update, delete, func, and_, or_, desc
 from sqlalchemy.orm import selectinload
 
-from ..models import (
+from src.database.models import (
     DBPerformanceMetric,
     DBErrorLog,
     DBAlertRule,
     DBAlertHistory
 )
-from ...utils.logger import get_logger
+from src.utils.logger import get_logger
 
 
 class MonitoringRepository:

@@ -6,9 +6,9 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, update, delete, func, and_, or_
 from sqlalchemy.orm import selectinload
 
-from ..models import DBCoverLetter, DBJobApplication
-from ...models.cover_letter import CoverLetter
-from ...utils.logger import get_logger
+from src.database.models import DBCoverLetter, DBJobApplication
+from src.models.cover_letter import CoverLetter
+from src.utils.logger import get_logger
 
 
 class CoverLetterRepository:

@@ -7,16 +7,16 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from contextlib import asynccontextmanager
 import bcrypt
 
-from ..core.auth_service import AuthService
-from ..models.user import (
+from src.core.auth_service import AuthService
+from src.models.user import (
     User, UserRegister, UserLogin, TokenResponse, UserProfile, 
     UserProfileUpdate, PasswordChange, PasswordResetRequest, PasswordReset
 )
-from ..services.email_service import EmailService
-from ..database.repositories.user_repository import UserRepository
-from ..database.config import database_config
-from ..config import config
-from ..utils.logger import get_logger
+from src.services.email_service import EmailService
+from src.database.repositories.user_repository import UserRepository
+from src.database.config import database_config
+from src.config import config
+from src.utils.logger import get_logger
 import uuid
 
 
@@ -431,7 +431,7 @@ class JWTAuthService(AuthService):
                 
             # Get user and verify token matches stored token
             # Need to access DBUser directly to get password_reset_token fields
-            from ..database.models import DBUser
+            from src.database.models import DBUser
             from sqlalchemy import select
             
             stmt = select(DBUser).where(DBUser.id == user_id)

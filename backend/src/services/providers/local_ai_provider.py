@@ -4,7 +4,7 @@ import asyncio
 import aiohttp
 import json
 from typing import Dict, Any, Optional
-from ...core.ai_provider import AIProvider, AIProviderConfig, AIResponse
+from src.core.ai_provider import AIProvider, AIProviderConfig, AIResponse
 from loguru import logger
 
 class LocalAIProvider(AIProvider):

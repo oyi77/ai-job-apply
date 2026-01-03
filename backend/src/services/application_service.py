@@ -5,12 +5,12 @@ from typing import List, Optional, Dict, Any
 from datetime import datetime, timedelta
 from collections import defaultdict
 
-from ..core.application_service import ApplicationService
-from ..models.application import JobApplication, ApplicationUpdateRequest, ApplicationStatus
-from ..services.local_file_service import LocalFileService
-from ..database.repositories.application_repository import ApplicationRepository
+from src.core.application_service import ApplicationService
+from src.models.application import JobApplication, ApplicationUpdateRequest, ApplicationStatus
+from src.services.local_file_service import LocalFileService
+from src.database.repositories.application_repository import ApplicationRepository
 from loguru import logger
-from ..core.cache import cache_region
+from src.core.cache import cache_region
 
 
 class ApplicationService(ApplicationService):

@@ -4,7 +4,7 @@ import os
 from typing import List, Optional
 from pydantic_settings import BaseSettings
 from pydantic import Field
-from .core.ai_provider import AIProviderConfig
+from src.core.ai_provider import AIProviderConfig
 
 class Settings(BaseSettings):
     """Application settings."""
@@ -113,7 +113,7 @@ class Settings(BaseSettings):
     async def load_from_database(self):
         """Load AI provider configurations from database."""
         try:
-            from .services.config_service import ConfigService
+            from src.services.config_service import ConfigService
             config_service = ConfigService()
             db_configs = await config_service.get_all()
             

@@ -4,12 +4,12 @@ import asyncio
 import hashlib
 import json
 from typing import Dict, Any, Optional, List
-from ...core.cache import cache_region
-from ...core.ai_service import AIService
-from ...services.ai_provider_manager import AIProviderManager
-from ...config import config
-from ...models.resume import ResumeOptimizationRequest, ResumeOptimizationResponse, Resume
-from ...models.cover_letter import CoverLetterRequest, CoverLetter
+from src.core.cache import cache_region
+from src.core.ai_service import AIService
+from src.services.ai_provider_manager import AIProviderManager
+from src.config import config
+from src.models.resume import ResumeOptimizationRequest, ResumeOptimizationResponse, Resume
+from src.models.cover_letter import CoverLetterRequest, CoverLetter
 from loguru import logger
 
 class ModernAIService(AIService):

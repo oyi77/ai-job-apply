@@ -6,11 +6,11 @@ from pathlib import Path
 import uuid
 import os
 
-from ...models.user import UserProfile
-from ...api.dependencies import get_current_user
-from ...utils.logger import get_logger
-from ...services.service_registry import service_registry
-from ...utils.validators import validate_file_type, validate_file_size
+from src.models.user import UserProfile
+from src.api.dependencies import get_current_user
+from src.utils.logger import get_logger
+from src.services.service_registry import service_registry
+from src.utils.validators import validate_file_type, validate_file_size
 
 logger = get_logger(__name__)
 
@@ -98,8 +98,8 @@ async def upload_file(
         
         # Store file metadata in database if file repository is available
         try:
-            from ...database.repositories.file_repository import FileRepository
-            from ...database.config import database_config
+            from src.database.repositories.file_repository import FileRepository
+            from src.database.config import database_config
             
             async with database_config.get_session() as session:
                 file_repo = FileRepository(session)
@@ -154,8 +154,8 @@ async def download_file(
     """
     try:
         # Get file metadata from database
-        from ...database.repositories.file_repository import FileRepository
-        from ...database.config import database_config
+        from src.database.repositories.file_repository import FileRepository
+        from src.database.config import database_config
         from fastapi.responses import FileResponse
         
         async with database_config.get_session() as session:
@@ -198,8 +198,8 @@ async def delete_file(
     """
     try:
         # Get file metadata from database
-        from ...database.repositories.file_repository import FileRepository
-        from ...database.config import database_config
+        from src.database.repositories.file_repository import FileRepository
+        from src.database.config import database_config
         
         async with database_config.get_session() as session:
             file_repo = FileRepository(session)

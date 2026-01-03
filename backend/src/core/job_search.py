@@ -2,7 +2,7 @@
 
 from abc import ABC, abstractmethod
 from typing import List, Dict, Any, Optional
-from ..models.job import JobSearchRequest, JobSearchResponse, Job
+from src.models.job import JobSearchRequest, JobSearchResponse, Job
 
 
 class JobSearchService(ABC):

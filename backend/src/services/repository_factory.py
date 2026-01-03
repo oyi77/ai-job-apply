@@ -2,7 +2,7 @@
 
 from typing import Optional, Callable, Any
 from sqlalchemy.ext.asyncio import AsyncSession
-from ..database.config import database_config
+from src.database.config import database_config
 from loguru import logger
 
 

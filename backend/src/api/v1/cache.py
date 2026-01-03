@@ -2,10 +2,10 @@
 
 from fastapi import APIRouter, Depends, HTTPException, status
 from typing import Dict, Any
-from ...core.cache import cache_region
-from ...config import config
-from ...core.dependencies import get_current_user
-from ...models.user import User
+from src.core.cache import cache_region
+from src.config import config
+from src.api.dependencies import get_current_user
+from src.models.user import User
 from loguru import logger
 
 router = APIRouter(prefix="/cache", tags=["cache"])

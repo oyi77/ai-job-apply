@@ -2,7 +2,7 @@
 
 from abc import ABC, abstractmethod
 from typing import Optional
-from ..models.user import User, UserRegister, UserLogin, TokenResponse, UserProfile, UserProfileUpdate, PasswordChange, PasswordResetRequest, PasswordReset
+from src.models.user import User, UserRegister, UserLogin, TokenResponse, UserProfile, UserProfileUpdate, PasswordChange, PasswordResetRequest, PasswordReset
 
 
 class AuthService(ABC):

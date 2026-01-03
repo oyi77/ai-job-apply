@@ -2,7 +2,7 @@ from sqlalchemy import Column, String, DateTime, ForeignKey
 from datetime import datetime
 import uuid
 
-from ..database.config import Base
+from src.database.config import Base
 
 class PasswordHistory(Base):
     __tablename__ = "password_history"

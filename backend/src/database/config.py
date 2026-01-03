@@ -7,8 +7,8 @@ from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine, async_sess
 from sqlalchemy.orm import DeclarativeBase
 from sqlalchemy.pool import NullPool, StaticPool
 from sqlalchemy import exc as sa_exc
-from ..config import config
-from ..utils.logger import get_logger
+from src.config import config
+from src.utils.logger import get_logger
 
 logger = get_logger(__name__)
 

@@ -8,11 +8,11 @@ from datetime import datetime, timezone
 from google import genai
 from google.genai import types
 
-from ..core.ai_service import AIService
-from ..models.resume import ResumeOptimizationRequest, ResumeOptimizationResponse, Resume
-from ..models.cover_letter import CoverLetterRequest, CoverLetter
-from ..models.career_insights import CareerInsightsRequest, CareerInsightsResponse
-from ..config import config
+from src.core.ai_service import AIService
+from src.models.resume import ResumeOptimizationRequest, ResumeOptimizationResponse, Resume
+from src.models.cover_letter import CoverLetterRequest, CoverLetter
+from src.models.career_insights import CareerInsightsRequest, CareerInsightsResponse
+from src.config import config
 from loguru import logger
 
 

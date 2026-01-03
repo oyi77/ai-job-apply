@@ -13,12 +13,12 @@ except ImportError:
     PSUTIL_AVAILABLE = False
     psutil = None
 
-from ..core.monitoring_service import MonitoringService
-from ..database.repositories.monitoring_repository import MonitoringRepository
-from ..database.config import get_database, database_config
-from ..database.models import DBPerformanceMetric
-from ..utils.logger import get_logger
-from ..config import config
+from src.core.monitoring_service import MonitoringService
+from src.database.repositories.monitoring_repository import MonitoringRepository
+from src.database.config import get_database, database_config
+from src.database.models import DBPerformanceMetric
+from src.utils.logger import get_logger
+from src.config import config
 
 
 class DatabaseMonitoringService(MonitoringService):

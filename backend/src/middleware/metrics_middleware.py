@@ -6,8 +6,8 @@ from fastapi import Request, Response
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.types import ASGIApp
 
-from ..services.monitoring_service import DatabaseMonitoringService
-from ..utils.logger import get_logger
+from src.services.monitoring_service import DatabaseMonitoringService
+from src.utils.logger import get_logger
 
 
 class MetricsMiddleware(BaseHTTPMiddleware):

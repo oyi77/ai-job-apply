@@ -8,10 +8,10 @@ import mimetypes
 import hashlib
 from datetime import datetime
 
-from ..core.file_service import FileService
-from ..config import config
+from src.core.file_service import FileService
+from src.config import config
 from loguru import logger
-from ..utils.file_helpers import (
+from src.utils.file_helpers import (
     get_file_extension, get_file_size, is_valid_file, 
     sanitize_filename, ensure_directory_exists
 )

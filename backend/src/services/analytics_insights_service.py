@@ -7,8 +7,8 @@ Generates intelligent insights and recommendations based on analytics data.
 from typing import Dict, Any, List
 from loguru import logger
 
-from ..services.analytics_service import AnalyticsService
-from ..services.ai_service import ModernAIService
+from src.services.analytics_service import AnalyticsService
+from src.services.ai_service import ModernAIService
 
 
 class AnalyticsInsightsService:

@@ -2,7 +2,7 @@
 
 from abc import ABC, abstractmethod
 from typing import List, Optional
-from ..models.resume import Resume
+from src.models.resume import Resume
 
 
 class ResumeService(ABC):

@@ -4,13 +4,13 @@ from typing import Dict, Any, Optional, List
 from datetime import datetime, timezone
 import json
 
-from ..core.ai_service import AIService
-from ..models.resume import ResumeOptimizationRequest, ResumeOptimizationResponse, Resume
-from ..models.cover_letter import CoverLetterRequest, CoverLetter
-from ..models.career_insights import CareerInsightsRequest, CareerInsightsResponse
-from ..config import config
-from .ai_provider_manager import AIProviderManager
-from .gemini_ai_service import GeminiAIService
+from src.core.ai_service import AIService
+from src.models.resume import ResumeOptimizationRequest, ResumeOptimizationResponse, Resume
+from src.models.cover_letter import CoverLetterRequest, CoverLetter
+from src.models.career_insights import CareerInsightsRequest, CareerInsightsResponse
+from src.config import config
+from src.services.ai_provider_manager import AIProviderManager
+from src.services.gemini_ai_service import GeminiAIService
 from loguru import logger
 
 

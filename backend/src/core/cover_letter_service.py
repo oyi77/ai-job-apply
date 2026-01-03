@@ -2,7 +2,7 @@
 
 from abc import ABC, abstractmethod
 from typing import List, Optional, Dict, Any
-from ..models.cover_letter import CoverLetter, CoverLetterCreate, CoverLetterUpdate
+from src.models.cover_letter import CoverLetter, CoverLetterCreate, CoverLetterUpdate
 
 
 class CoverLetterService(ABC):

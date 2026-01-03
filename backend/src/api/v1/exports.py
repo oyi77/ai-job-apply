@@ -7,10 +7,10 @@ from typing import List, Optional, Dict, Any
 from datetime import datetime
 from loguru import logger
 
-from ...models.user import UserProfile
-from ...services.service_registry import service_registry
-from ...utils.response_wrapper import success_response, error_response
-from ..dependencies import get_current_user
+from src.models.user import UserProfile
+from src.services.service_registry import service_registry
+from src.utils.response_wrapper import success_response, error_response
+from src.api.dependencies import get_current_user
 from pydantic import BaseModel, Field
 
 

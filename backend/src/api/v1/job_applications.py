@@ -3,14 +3,14 @@
 from fastapi import APIRouter, HTTPException, Depends, UploadFile, File, Form
 from typing import List, Dict, Any, Optional
 from datetime import datetime
-from ...models.job import Job, ApplicationInfo
-from ...models.resume import Resume
-from ...models.application import JobApplication
-from ...models.user import UserProfile
-from ...api.dependencies import get_current_user
-from ...utils.logger import get_logger
-from ...utils.response_wrapper import success_response, error_response
-from ...services.service_registry import service_registry
+from src.models.job import Job, ApplicationInfo
+from src.models.resume import Resume
+from src.models.application import JobApplication
+from src.models.user import UserProfile
+from src.api.dependencies import get_current_user
+from src.utils.logger import get_logger
+from src.utils.response_wrapper import success_response, error_response
+from src.services.service_registry import service_registry
 
 logger = get_logger(__name__)
 

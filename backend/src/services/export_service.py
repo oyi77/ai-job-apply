@@ -29,7 +29,7 @@ except ImportError:
     OPENPYXL_AVAILABLE = False
     logger.warning("openpyxl not available, Excel export will be limited")
 
-from ..core.export_service import ExportService
+from src.core.export_service import ExportService
 
 
 class MultiFormatExportService(ExportService):

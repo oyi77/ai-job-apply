@@ -3,9 +3,9 @@
 from typing import Optional
 from fastapi import Depends, HTTPException, status
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
-from ..services.service_registry import service_registry
-from ..models.user import UserProfile
-from ..utils.logger import get_logger
+from src.services.service_registry import service_registry
+from src.models.user import UserProfile
+from src.utils.logger import get_logger
 
 logger = get_logger(__name__)
 

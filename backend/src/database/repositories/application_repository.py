@@ -7,10 +7,10 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, update, delete, func, and_, or_
 from sqlalchemy.orm import selectinload
 
-from ..models import DBJobApplication, DBResume, DBCoverLetter
-from ...models.application import JobApplication, ApplicationUpdateRequest, ApplicationStatus
-from ...utils.logger import get_logger
-from ...core.cache import cache_region
+from src.database.models import DBJobApplication, DBResume, DBCoverLetter
+from src.models.application import JobApplication, ApplicationUpdateRequest, ApplicationStatus
+from src.utils.logger import get_logger
+from src.core.cache import cache_region
 import time
 
 

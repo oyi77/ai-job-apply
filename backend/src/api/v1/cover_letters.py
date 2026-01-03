@@ -2,12 +2,12 @@
 
 from fastapi import APIRouter, HTTPException, Depends
 from typing import List, Dict, Any
-from ...models.cover_letter import CoverLetter, CoverLetterCreate, CoverLetterUpdate, BulkDeleteRequest, CoverLetterRequest
-from ...models.user import UserProfile
-from ...api.dependencies import get_current_user
-from ...utils.logger import get_logger
-from ...services.service_registry import service_registry
-from ...utils.response_wrapper import success_response, error_response
+from src.models.cover_letter import CoverLetter, CoverLetterCreate, CoverLetterUpdate, BulkDeleteRequest, CoverLetterRequest
+from src.models.user import UserProfile
+from src.api.dependencies import get_current_user
+from src.utils.logger import get_logger
+from src.services.service_registry import service_registry
+from src.utils.response_wrapper import success_response, error_response
 
 logger = get_logger(__name__)
 

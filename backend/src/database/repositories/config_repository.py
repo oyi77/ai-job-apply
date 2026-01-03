@@ -5,7 +5,7 @@ from typing import List, Optional, Dict, Any
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, update, delete
 from sqlalchemy.orm import selectinload
-from ..models import DBConfig
+from src.database.models import DBConfig
 from loguru import logger
 
 

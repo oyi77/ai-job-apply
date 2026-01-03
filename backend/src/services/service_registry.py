@@ -4,19 +4,19 @@ from typing import Dict, Any
 from loguru import logger
 from abc import ABC, abstractmethod
 
-from ..core.ai_service import AIService
-from ..core.file_service import FileService
-from ..core.resume_service import ResumeService
-from ..core.application_service import ApplicationService
-from ..core.job_search import JobSearchService
-from ..core.cover_letter_service import CoverLetterService
-from ..core.job_application import JobApplicationService
-from ..core.auth_service import AuthService
-from ..core.monitoring_service import MonitoringService
-from ..core.auth_service import AuthService
-from ..core.monitoring_service import MonitoringService
-from ..core.export_service import ExportService
-from ..services.email_service import EmailService
+from src.core.ai_service import AIService
+from src.core.file_service import FileService
+from src.core.resume_service import ResumeService
+from src.core.application_service import ApplicationService
+from src.core.job_search import JobSearchService
+from src.core.cover_letter_service import CoverLetterService
+from src.core.job_application import JobApplicationService
+from src.core.auth_service import AuthService
+from src.core.monitoring_service import MonitoringService
+from src.core.auth_service import AuthService
+from src.core.monitoring_service import MonitoringService
+from src.core.export_service import ExportService
+from src.services.email_service import EmailService
 
 
 class ServiceProvider(ABC):
@@ -75,7 +75,7 @@ class ServiceRegistry:
     async def _initialize_core_services(self) -> None:
         """Initialize core infrastructure services."""
         # Ensure database is initialized first (required by auth and monitoring services)
-        from ..database.config import database_config
+        from src.database.config import database_config
         if not database_config._initialized:
             self._logger.info("Initializing database for services...")
             await database_config.initialize()
@@ -86,21 +86,21 @@ class ServiceRegistry:
         # Database is initialized
         
         # Email service (no dependencies)
-        from .email_service import EmailService
+        from src.services.email_service import EmailService
         email_provider = EmailServiceProvider()
         self.register_service('email_service', email_provider)
         await email_provider.initialize()
         self._instances['email_service'] = email_provider.get_service()
 
         # Auth service (depends on email service)
-        from .auth_service import JWTAuthService
+        from src.services.auth_service import JWTAuthService
         auth_provider = JWTAuthServiceProvider(self._instances['email_service'])
         self.register_service('auth_service', auth_provider)
         await auth_provider.initialize()
         self._instances['auth_service'] = auth_provider.get_service()
         
         # File service (no dependencies)
-        from .local_file_service import LocalFileService
+        from src.services.local_file_service import LocalFileService
         file_provider = LocalFileServiceProvider()
         self.register_service('file_service', file_provider)
         await file_provider.initialize()
@@ -108,7 +108,7 @@ class ServiceRegistry:
         
         # AI service (no dependencies) - Use unified service with multiple providers
         try:
-            from .unified_ai_service import UnifiedAIService
+            from src.services.unified_ai_service import UnifiedAIService
             ai_provider = UnifiedAIServiceProvider()
             self.register_service('ai_service', ai_provider)
             await ai_provider.initialize()
@@ -116,7 +116,7 @@ class ServiceRegistry:
         except Exception as e:
             self._logger.warning(f"Failed to initialize unified AI service, falling back to Gemini: {e}")
             # Fallback to Gemini-only service
-            from .gemini_ai_service import GeminiAIService
+            from src.services.gemini_ai_service import GeminiAIService
             ai_provider = GeminiAIProvider()
             self.register_service('ai_service', ai_provider)
             await ai_provider.initialize()
@@ -125,7 +125,7 @@ class ServiceRegistry:
         # Monitoring service (no dependencies, but needs database)
         # Make this optional - if it fails, app can still run
         try:
-            from .monitoring_service import DatabaseMonitoringService
+            from src.services.monitoring_service import DatabaseMonitoringService
             monitoring_provider = MonitoringServiceProvider()
             self.register_service('monitoring_service', monitoring_provider)
             await monitoring_provider.initialize()
@@ -138,39 +138,39 @@ class ServiceRegistry:
     async def _initialize_business_services(self) -> None:
         """Initialize business logic services."""
         # Initialize repository factory
-        from .repository_factory import repository_factory
+        from src.services.repository_factory import repository_factory
         await repository_factory.initialize()
         
         # Resume service (depends on file service)
-        from .resume_service import ResumeService
+        from src.services.resume_service import ResumeService
         resume_provider = ResumeServiceProvider(self._instances['file_service'])
         self.register_service('resume_service', resume_provider)
         await resume_provider.initialize()
         self._instances['resume_service'] = resume_provider.get_service()
         
         # Application service (depends on file service)
-        from .application_service import ApplicationService
+        from src.services.application_service import ApplicationService
         app_provider = ApplicationServiceProvider(self._instances['file_service'])
         self.register_service('application_service', app_provider)
         await app_provider.initialize()
         self._instances['application_service'] = app_provider.get_service()
         
         # Cover letter service (depends on AI service)
-        from .cover_letter_service import CoverLetterService
+        from src.services.cover_letter_service import CoverLetterService
         cover_provider = CoverLetterServiceProvider(self._instances['ai_service'])
         self.register_service('cover_letter_service', cover_provider)
         await cover_provider.initialize()
         self._instances['cover_letter_service'] = cover_provider.get_service()
         
         # Job search service (no dependencies)
-        from .job_search_service import JobSearchService
+        from src.services.job_search_service import JobSearchService
         job_provider = JobSearchServiceProvider()
         self.register_service('job_search_service', job_provider)
         await job_provider.initialize()
         self._instances['job_search_service'] = job_provider.get_service()
         
         # Job application service (no dependencies)
-        from .job_application_service import MultiPlatformJobApplicationService
+        from src.services.job_application_service import MultiPlatformJobApplicationService
         job_app_provider = JobApplicationServiceProvider()
         self.register_service('job_application_service', job_app_provider)
         await job_app_provider.initialize()
@@ -319,7 +319,7 @@ class LocalFileServiceProvider(ServiceProvider):
         return self._service
     
     async def initialize(self) -> None:
-        from .local_file_service import LocalFileService
+        from src.services.local_file_service import LocalFileService
         self._service = LocalFileService()
     
     async def cleanup(self) -> None:
@@ -334,7 +334,7 @@ class UnifiedAIServiceProvider(ServiceProvider):
         return self._service
     
     async def initialize(self) -> None:
-        from .unified_ai_service import UnifiedAIService
+        from src.services.unified_ai_service import UnifiedAIService
         self._service = UnifiedAIService()
         await self._service.initialize()
     
@@ -350,7 +350,7 @@ class GeminiAIProvider(ServiceProvider):
         return self._service
     
     async def initialize(self) -> None:
-        from .gemini_ai_service import GeminiAIService
+        from src.services.gemini_ai_service import GeminiAIService
         self._service = GeminiAIService()
     
     async def cleanup(self) -> None:
@@ -369,9 +369,9 @@ class ResumeServiceProvider(ServiceProvider):
         return self._service
     
     async def initialize(self) -> None:
-        from .resume_service import ResumeService
-        from .repository_factory import repository_factory
-        from ..database.repositories.resume_repository import ResumeRepository
+        from src.services.resume_service import ResumeService
+        from src.services.repository_factory import repository_factory
+        from src.database.repositories.resume_repository import ResumeRepository
         
         # Try to create repository if database is available
         repository = None
@@ -399,9 +399,9 @@ class ApplicationServiceProvider(ServiceProvider):
         return self._service
     
     async def initialize(self) -> None:
-        from .application_service import ApplicationService
-        from .repository_factory import repository_factory
-        from ..database.repositories.application_repository import ApplicationRepository
+        from src.services.application_service import ApplicationService
+        from src.services.repository_factory import repository_factory
+        from src.database.repositories.application_repository import ApplicationRepository
         
         # Try to create repository if database is available
         repository = None
@@ -429,9 +429,9 @@ class CoverLetterServiceProvider(ServiceProvider):
         return self._service
     
     async def initialize(self) -> None:
-        from .cover_letter_service import CoverLetterService
-        from .repository_factory import repository_factory
-        from ..database.repositories.cover_letter_repository import CoverLetterRepository
+        from src.services.cover_letter_service import CoverLetterService
+        from src.services.repository_factory import repository_factory
+        from src.database.repositories.cover_letter_repository import CoverLetterRepository
         
         # Try to create repository if database is available
         repository = None
@@ -455,7 +455,7 @@ class JobSearchServiceProvider(ServiceProvider):
         return self._service
     
     async def initialize(self) -> None:
-        from .job_search_service import JobSearchService
+        from src.services.job_search_service import JobSearchService
         self._service = JobSearchService()
         # Initialize the service to check JobSpy availability
         await self._service.initialize()
@@ -472,7 +472,7 @@ class JobApplicationServiceProvider(ServiceProvider):
         return self._service
     
     async def initialize(self) -> None:
-        from .job_application_service import MultiPlatformJobApplicationService
+        from src.services.job_application_service import MultiPlatformJobApplicationService
         self._service = MultiPlatformJobApplicationService()
         await self._service.initialize()
     
@@ -491,7 +491,7 @@ class JWTAuthServiceProvider(ServiceProvider):
         return self._service
     
     async def initialize(self) -> None:
-        from .auth_service import JWTAuthService
+        from src.services.auth_service import JWTAuthService
         self._service = JWTAuthService(self.email_service)
         await self._service.initialize()
     
@@ -510,7 +510,7 @@ class MonitoringServiceProvider(ServiceProvider):
         return self._service
     
     async def initialize(self) -> None:
-        from .monitoring_service import DatabaseMonitoringService
+        from src.services.monitoring_service import DatabaseMonitoringService
         self._service = DatabaseMonitoringService()
         # Initialize default alert rules
         await self._initialize_default_alert_rules()
@@ -567,7 +567,7 @@ class ExportServiceProvider(ServiceProvider):
         return self._service
     
     async def initialize(self) -> None:
-        from .export_service import MultiFormatExportService
+        from src.services.export_service import MultiFormatExportService
         self._service = MultiFormatExportService()
     
     async def cleanup(self) -> None:
@@ -586,7 +586,7 @@ class EmailServiceProvider(ServiceProvider):
         return self._service
     
     async def initialize(self) -> None:
-        from .email_service import EmailService
+        from src.services.email_service import EmailService
         self._service = EmailService()
     
     async def cleanup(self) -> None:

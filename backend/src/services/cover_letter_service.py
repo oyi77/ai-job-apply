@@ -4,10 +4,10 @@ import uuid
 from typing import List, Optional, Dict, Any
 from datetime import datetime, timezone
 
-from ..core.cover_letter_service import CoverLetterService
-from ..models.cover_letter import CoverLetter, CoverLetterCreate, CoverLetterUpdate
-from ..core.ai_service import AIService
-from ..database.repositories.cover_letter_repository import CoverLetterRepository
+from src.core.cover_letter_service import CoverLetterService
+from src.models.cover_letter import CoverLetter, CoverLetterCreate, CoverLetterUpdate
+from src.core.ai_service import AIService
+from src.database.repositories.cover_letter_repository import CoverLetterRepository
 from loguru import logger
 
 
@@ -194,7 +194,7 @@ class CoverLetterService(CoverLetterService):
             # Try AI generation first
             if await self.ai_service.is_available():
                 try:
-                    from ..models.cover_letter import CoverLetterRequest
+                    from src.models.cover_letter import CoverLetterRequest
                     
                     # Create AI request
                     ai_request = CoverLetterRequest(

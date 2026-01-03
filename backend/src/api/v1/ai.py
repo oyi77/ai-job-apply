@@ -3,14 +3,14 @@
 from fastapi import APIRouter, HTTPException, Depends
 from typing import Dict, Any, Optional
 from datetime import datetime
-from ...models.resume import Resume, ResumeOptimizationRequest, ResumeOptimizationResponse
-from ...models.cover_letter import CoverLetterRequest, CoverLetter
-from ...models.career_insights import CareerInsightsRequest, CareerInsightsResponse
+from src.models.resume import Resume, ResumeOptimizationRequest, ResumeOptimizationResponse
+from src.models.cover_letter import CoverLetterRequest, CoverLetter
+from src.models.career_insights import CareerInsightsRequest, CareerInsightsResponse
 from pydantic import BaseModel
-from ...models.user import UserProfile
-from ...api.dependencies import get_current_user
-from ...utils.logger import get_logger
-from ...services.service_registry import service_registry
+from src.models.user import UserProfile
+from src.api.dependencies import get_current_user
+from src.utils.logger import get_logger
+from src.services.service_registry import service_registry
 
 logger = get_logger(__name__)
 

@@ -2,7 +2,7 @@
 
 from fastapi import APIRouter, HTTPException, Depends, Response
 from typing import List, Dict, Any, Optional
-from ...models.application import (
+from src.models.application import (
     JobApplication, 
     ApplicationUpdateRequest, 
     ApplicationStatus,
@@ -11,10 +11,10 @@ from ...models.application import (
     BulkDeleteRequest,
     BulkExportRequest
 )
-from ...models.user import UserProfile
-from ...services.service_registry import service_registry
-from ...utils.response_wrapper import success_response, error_response, paginated_response
-from ..dependencies import get_current_user
+from src.models.user import UserProfile
+from src.services.service_registry import service_registry
+from src.utils.response_wrapper import success_response, error_response, paginated_response
+from src.api.dependencies import get_current_user
 from loguru import logger
 
 router = APIRouter()

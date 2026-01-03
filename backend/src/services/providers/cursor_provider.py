@@ -2,8 +2,8 @@
 
 from typing import Optional, Dict, Any
 from openai import AsyncOpenAI
-from .openai_provider import OpenAIProvider
-from ...core.ai_provider import AIProviderConfig, AIResponse
+from src.services.providers.openai_provider import OpenAIProvider
+from src.core.ai_provider import AIProviderConfig, AIResponse
 from loguru import logger
 
 class CursorProvider(OpenAIProvider):

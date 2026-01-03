@@ -2,12 +2,12 @@
 
 from fastapi import APIRouter, HTTPException, UploadFile, File, Depends
 from typing import List, Optional, Dict, Any
-from ...models.resume import Resume, ResumeOptimizationRequest, ResumeOptimizationResponse, BulkDeleteRequest
-from ...models.user import UserProfile
-from ...utils.logger import get_logger
-from ...utils.validators import validate_file_type, validate_file_size
-from ...services.service_registry import service_registry
-from ..dependencies import get_current_user
+from src.models.resume import Resume, ResumeOptimizationRequest, ResumeOptimizationResponse, BulkDeleteRequest
+from src.models.user import UserProfile
+from src.utils.logger import get_logger
+from src.utils.validators import validate_file_type, validate_file_size
+from src.services.service_registry import service_registry
+from src.api.dependencies import get_current_user
 
 logger = get_logger(__name__)
 

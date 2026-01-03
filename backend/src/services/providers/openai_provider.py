@@ -3,7 +3,7 @@
 import asyncio
 from typing import Dict, Any, Optional
 from openai import AsyncOpenAI
-from ...core.ai_provider import AIProvider, AIProviderConfig, AIResponse
+from src.core.ai_provider import AIProvider, AIProviderConfig, AIResponse
 from loguru import logger
 
 class OpenAIProvider(AIProvider):

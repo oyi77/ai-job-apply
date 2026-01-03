@@ -5,7 +5,7 @@ from typing import Optional, Union
 from sqlalchemy import event
 from sqlalchemy.engine import Engine
 from sqlalchemy.ext.asyncio import AsyncEngine
-from ..utils.logger import get_logger
+from src.utils.logger import get_logger
 
 logger = get_logger(__name__)
 

@@ -8,9 +8,9 @@ from datetime import datetime, timezone
 from loguru import logger
 import re # Added for regex operations
 
-from ..core.cache import cache_region
-from ..core.job_search import JobSearchService
-from ..models.job import Job, JobSearchRequest, JobSearchResponse
+from src.core.cache import cache_region
+from src.core.job_search import JobSearchService
+from src.models.job import Job, JobSearchRequest, JobSearchResponse
 
 
 class JobSearchService(JobSearchService):

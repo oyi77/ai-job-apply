@@ -1,11 +1,11 @@
 """AI Provider Manager for handling multiple AI providers."""
 
 from typing import Dict, List, Optional, Type
-from ...core.ai_provider import AIProvider, AIProviderConfig, AIResponse
-from .providers.openai_provider import OpenAIProvider
-from .providers.local_ai_provider import LocalAIProvider
-from .providers.openrouter_provider import OpenRouterProvider
-from .providers.cursor_provider import CursorProvider
+from src.core.ai_provider import AIProvider, AIProviderConfig, AIResponse
+from src.services.providers.openai_provider import OpenAIProvider
+from src.services.providers.local_ai_provider import LocalAIProvider
+from src.services.providers.openrouter_provider import OpenRouterProvider
+from src.services.providers.cursor_provider import CursorProvider
 from loguru import logger
 
 class AIProviderManager:

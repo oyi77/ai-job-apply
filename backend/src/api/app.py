@@ -257,7 +257,7 @@ async def initialize_services() -> None:
 async def metrics_aggregation_task(monitoring_service):
     """Background task for metrics aggregation."""
     import asyncio
-    from ..services.monitoring_service import DatabaseMonitoringService
+    from src.services.monitoring_service import DatabaseMonitoringService
     
     if not isinstance(monitoring_service, DatabaseMonitoringService):
         return
@@ -284,7 +284,7 @@ async def metrics_aggregation_task(monitoring_service):
 async def metrics_cleanup_task(monitoring_service):
     """Background task for metrics cleanup."""
     import asyncio
-    from ..services.monitoring_service import DatabaseMonitoringService
+    from src.services.monitoring_service import DatabaseMonitoringService
     
     if not isinstance(monitoring_service, DatabaseMonitoringService):
         return

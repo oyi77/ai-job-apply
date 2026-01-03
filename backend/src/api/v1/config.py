@@ -3,11 +3,11 @@
 from fastapi import APIRouter, HTTPException, Depends
 from typing import List, Dict, Any, Optional
 from pydantic import BaseModel, Field
-from ...api.dependencies import get_current_user
-from ...models.user import UserProfile
-from ...services.config_service import ConfigService
-from ...utils.response_wrapper import success_response
-from ...utils.logger import get_logger
+from src.api.dependencies import get_current_user
+from src.models.user import UserProfile
+from src.services.config_service import ConfigService
+from src.utils.response_wrapper import success_response
+from src.utils.logger import get_logger
 
 logger = get_logger(__name__)
 router = APIRouter()

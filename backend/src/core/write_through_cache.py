@@ -10,7 +10,7 @@ to both simultaneously.
 
 from functools import wraps
 from typing import Callable, Any, Optional
-from ..core.cache import cache_region
+from src.core.cache import cache_region
 from loguru import logger
 
 

@@ -12,8 +12,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, update, insert
 from loguru import logger
 
-from ..models.user import User, PasswordHistory
-from ..core.security import get_password_hash, verify_password
+from src.models.user import User, PasswordHistory
+from src.core.security import get_password_hash, verify_password
 
 
 class SecurityService:

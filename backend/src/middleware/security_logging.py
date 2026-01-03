@@ -5,7 +5,7 @@ Security logging middleware and utilities.
 import time
 from starlette.middleware.base import BaseHTTPMiddleware
 from fastapi import Request
-from ..utils.logger import get_logger
+from src.utils.logger import get_logger
 
 logger = get_logger("security_audit")
 
