@@ -2,7 +2,7 @@
 
 from fastapi import APIRouter, HTTPException, Depends
 from typing import List, Dict, Any
-from ...models.cover_letter import CoverLetter, CoverLetterCreate, CoverLetterUpdate, BulkDeleteRequest
+from ...models.cover_letter import CoverLetter, CoverLetterCreate, CoverLetterUpdate, BulkDeleteRequest, CoverLetterRequest
 from ...models.user import UserProfile
 from ...api.dependencies import get_current_user
 from ...utils.logger import get_logger
@@ -33,6 +33,7 @@ async def bulk_delete_cover_letters(
 
 
 @router.get("", response_model=List[CoverLetter])
+@router.get("/", response_model=List[CoverLetter])
 async def get_all_cover_letters(
     current_user: UserProfile = Depends(get_current_user)
 ) -> List[CoverLetter]:
@@ -46,8 +47,8 @@ async def get_all_cover_letters(
         # Get cover letter service from unified registry
         cover_letter_service = await service_registry.get_cover_letter_service()
         
-        # Get all cover letters
-        cover_letters = await cover_letter_service.get_all_cover_letters()
+        # Get all cover letters with user_id
+        cover_letters = await cover_letter_service.get_all_cover_letters(user_id=current_user.id)
         return cover_letters
         
     except Exception as e:
@@ -192,7 +193,7 @@ async def delete_cover_letter(
 
 @router.post("/generate", response_model=CoverLetter)
 async def generate_cover_letter_with_ai(
-    cover_letter_request: CoverLetterCreate,
+    cover_letter_request: CoverLetterRequest,
     current_user: UserProfile = Depends(get_current_user)
 ) -> CoverLetter:
     """
@@ -209,7 +210,14 @@ async def generate_cover_letter_with_ai(
         cover_letter_service = await service_registry.get_cover_letter_service()
         
         # Generate cover letter using AI
-        generated_cover_letter = await cover_letter_service.generate_cover_letter(cover_letter_request)
+        generated_cover_letter = await cover_letter_service.generate_cover_letter(
+            job_title=cover_letter_request.job_title,
+            company_name=cover_letter_request.company_name,
+            job_description=cover_letter_request.job_description,
+            resume_summary=cover_letter_request.resume_summary,
+            tone=cover_letter_request.tone,
+            user_id=current_user.id
+        )
         
         logger.info(f"AI-generated cover letter created for {generated_cover_letter.job_title} at {generated_cover_letter.company_name}")
         return generated_cover_letter

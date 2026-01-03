@@ -124,37 +124,6 @@ async def export_applications(
         raise HTTPException(status_code=500, detail=str(e))
 
 
-@router.get("", response_model=Dict[str, Any])
-async def get_all_applications(
-    status: Optional[ApplicationStatus] = None,
-    current_user: UserProfile = Depends(get_current_user)
-) -> Dict[str, Any]:
-    """
-    Get all applications with optional status filter.
-    
-    Args:
-        status: Optional status filter
-        
-    Returns:
-        Consistent API response with list of applications
-    """
-    try:
-        # Get application service from registry
-        application_service = await service_registry.get_application_service()
-        
-        # Use the application service with user_id
-        if status:
-            applications = await application_service.get_applications_by_status(status, user_id=current_user.id)
-        else:
-            applications = await application_service.get_all_applications(user_id=current_user.id)
-        
-        return success_response([app.dict() for app in applications], f"Retrieved {len(applications)} applications").dict()
-        
-    except Exception as e:
-        logger.error(f"Error getting applications: {e}", exc_info=True)
-        raise HTTPException(status_code=500, detail=f"Failed to get applications: {str(e)}")
-
-
 @router.get("/stats")
 async def get_application_stats(
     current_user: UserProfile = Depends(get_current_user)
@@ -189,6 +158,54 @@ async def get_application_stats_summary(
         Application statistics
     """
     return await get_application_stats()
+
+
+@router.get("", response_model=Dict[str, Any])
+@router.get("/", response_model=Dict[str, Any])
+async def get_all_applications(
+    status: Optional[ApplicationStatus] = None,
+    page: Optional[int] = 1,
+    limit: Optional[int] = 10,
+    current_user: UserProfile = Depends(get_current_user)
+) -> Dict[str, Any]:
+    """
+    Get all applications with optional status filter and pagination.
+    
+    Args:
+        status: Optional status filter
+        page: Page number (default: 1)
+        limit: Items per page (default: 10)
+        
+    Returns:
+        Consistent API response with list of applications
+    """
+    try:
+        # Get application service from registry
+        application_service = await service_registry.get_application_service()
+        
+        # Use the application service with user_id
+        if status:
+            applications = await application_service.get_applications_by_status(status, user_id=current_user.id)
+        else:
+            applications = await application_service.get_all_applications(user_id=current_user.id)
+        
+        # Apply pagination
+        total = len(applications)
+        start = (page - 1) * limit
+        end = start + limit
+        paginated_applications = applications[start:end]
+        
+        return paginated_response(
+            data=[app.dict() for app in paginated_applications],
+            total=total,
+            page=page,
+            limit=limit,
+            message=f"Retrieved {len(paginated_applications)} applications"
+        ).dict()
+        
+    except Exception as e:
+        logger.error(f"Error getting applications: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail=f"Failed to get applications: {str(e)}")
 
 
 @router.get("/{application_id}", response_model=Dict[str, Any])

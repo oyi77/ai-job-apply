@@ -1,9 +1,10 @@
 """Database query performance monitoring using SQLAlchemy event listeners."""
 
 import time
-from typing import Optional
+from typing import Optional, Union
 from sqlalchemy import event
 from sqlalchemy.engine import Engine
+from sqlalchemy.ext.asyncio import AsyncEngine
 from ..utils.logger import get_logger
 
 logger = get_logger(__name__)
@@ -19,7 +20,8 @@ def set_monitoring_service(monitoring_service):
 def before_cursor_execute(conn, cursor, statement, parameters, context, executemany):
     """Event listener executed before a query."""
     conn.info.setdefault('query_start_time', []).append(time.time())
-    logger.debug(f"Executing query: {statement}")
+    # Only log query start at DEBUG level to reduce noise
+    logger.debug(f"Executing query: {statement[:100]}")
 
 async def _record_query_metric(query_time: float, statement: str):
     """Record query metric asynchronously."""
@@ -63,7 +65,8 @@ async def _record_query_metric(query_time: float, statement: str):
 def after_cursor_execute(conn, cursor, statement, parameters, context, executemany):
     """Event listener executed after a query."""
     total_time = time.time() - conn.info['query_start_time'].pop(-1)
-    logger.info(f"Query executed in {total_time:.3f}s")
+    # Use DEBUG level for normal queries to reduce log noise
+    logger.debug(f"Query executed in {total_time:.3f}s: {statement[:100]}")
     
     if total_time > 0.1:  # 100ms threshold
         logger.warning(f"Slow query detected ({total_time:.3f}s): {statement}")
@@ -86,11 +89,22 @@ def after_cursor_execute(conn, cursor, statement, parameters, context, executema
         except Exception as e:
             logger.error(f"Error scheduling query metric: {e}", exc_info=True)
 
-def setup_query_performance_monitoring(engine: Engine, monitoring_service=None):
+def setup_query_performance_monitoring(engine: Union[Engine, AsyncEngine], monitoring_service=None):
     """Attach event listeners to the SQLAlchemy engine."""
     if monitoring_service:
         set_monitoring_service(monitoring_service)
     
-    event.listen(engine, "before_cursor_execute", before_cursor_execute)
-    event.listen(engine, "after_cursor_execute", after_cursor_execute)
-    logger.info("Query performance monitoring is active.")
+    # For async engines, we need to use sync_engine for event listeners
+    if isinstance(engine, AsyncEngine):
+        sync_engine = engine.sync_engine
+        logger.info("Using sync_engine for async engine event listeners")
+    else:
+        sync_engine = engine
+    
+    try:
+        event.listen(sync_engine, "before_cursor_execute", before_cursor_execute)
+        event.listen(sync_engine, "after_cursor_execute", after_cursor_execute)
+        logger.info("Query performance monitoring is active.")
+    except Exception as e:
+        logger.warning(f"Could not setup query performance monitoring: {e}")
+        # Don't raise - allow app to continue without monitoring

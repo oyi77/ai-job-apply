@@ -78,20 +78,21 @@ async def upload_resume(
         unique_filename = f"{uuid.uuid4()}{file_extension}"
         
         # Create uploads directory if it doesn't exist
-        uploads_dir = Path("backend/uploads")
+        from io import BytesIO
+        uploads_dir = Path("backend/uploads/resumes")
         uploads_dir.mkdir(parents=True, exist_ok=True)
         
-        # Save file to uploads directory
-        file_path = uploads_dir / unique_filename
+        # Convert bytes to BytesIO for file service
+        file_content_io = BytesIO(file_content)
         
-        # Write file using file service
-        success = await file_service.save_file(str(file_path), file_content)
-        if not success:
+        # Save file using file service
+        file_path = await file_service.save_file(file_content_io, unique_filename, str(uploads_dir))
+        if not file_path:
             raise HTTPException(status_code=500, detail="Failed to save uploaded file")
         
         # Upload resume using resume service
         resume_name = name or file.filename or "Unnamed Resume"
-        resume = await resume_service.upload_resume(str(file_path), resume_name, user_id=current_user.id)
+        resume = await resume_service.upload_resume(file_path, resume_name, user_id=current_user.id)
         
         logger.info(f"Resume uploaded successfully: {resume.name} (ID: {resume.id})")
         return create_api_response(resume.model_dump(), True, "Resume uploaded successfully")
