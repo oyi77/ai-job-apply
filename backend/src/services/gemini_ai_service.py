@@ -2,28 +2,17 @@
 
 import asyncio
 import json
-import warnings
 from typing import List, Dict, Any, Optional
 from datetime import datetime, timezone
 
-# Suppress deprecation warning for google.generativeai before import
-# TODO: Migrate to google.genai when stable version is available
-# The warning is emitted during import, so we need to filter it globally
-warnings.filterwarnings("ignore", category=FutureWarning)
+from google import genai
+from google.genai import types
 
-try:
-    import google.genai as genai
-except ImportError:
-    # Fallback to old package for backward compatibility
-    # Suppress the deprecation warning that will be emitted during import
-    with warnings.catch_warnings():
-        warnings.simplefilter("ignore", FutureWarning)
-        import google.generativeai as genai
-
-from ..core.ai_service import AIService
-from ..models.resume import ResumeOptimizationRequest, ResumeOptimizationResponse, Resume
-from ..models.cover_letter import CoverLetterRequest, CoverLetter
-from ..config import config
+from src.core.ai_service import AIService
+from src.models.resume import ResumeOptimizationRequest, ResumeOptimizationResponse, Resume
+from src.models.cover_letter import CoverLetterRequest, CoverLetter
+from src.models.career_insights import CareerInsightsRequest, CareerInsightsResponse
+from src.config import config
 from loguru import logger
 
 
@@ -33,7 +22,7 @@ class GeminiAIService(AIService):
     def __init__(self):
         """Initialize the Gemini AI service."""
         self.logger = logger.bind(module="GeminiAIService")
-        self.model = None
+        self.client = None
         
         # Use main configuration
         self.api_key = config.GEMINI_API_KEY
@@ -47,21 +36,14 @@ class GeminiAIService(AIService):
         """Initialize the Gemini client."""
         try:
             if self.api_key:
-                genai.configure(api_key=self.api_key)
-                self.model = genai.GenerativeModel(
-                    self.model_name,
-                    generation_config=genai.types.GenerationConfig(
-                        temperature=self.temperature,
-                        max_output_tokens=self.max_tokens,
-                    )
-                )
-                self.logger.info(f"Gemini AI service initialized: {self.model_name}")
+                self.client = genai.Client(api_key=self.api_key)
+                self.logger.info(f"Gemini AI service initialized with model: {self.model_name}")
             else:
                 self.logger.warning("Gemini API key not configured, running in mock mode")
-                self.model = None
+                self.client = None
         except Exception as e:
             self.logger.error(f"Failed to initialize Gemini AI service: {e}")
-            self.model = None
+            self.client = None
     
     async def optimize_resume(self, request: ResumeOptimizationRequest) -> ResumeOptimizationResponse:
         """Optimize resume for a specific job using Gemini AI."""
@@ -94,7 +76,10 @@ class GeminiAIService(AIService):
                     suggestions=optimization_data.get("suggestions", []),
                     skill_gaps=optimization_data.get("skill_gaps", []),
                     improvements=optimization_data.get("improvements", []),
-                    confidence_score=optimization_data.get("confidence_score", 0.8)
+                    confidence_score=optimization_data.get("confidence_score", 0.8),
+                    ats_score=optimization_data.get("ats_score"),
+                    ats_checks=optimization_data.get("ats_checks"),
+                    ats_recommendations=optimization_data.get("ats_recommendations")
                 )
             else:
                 return self._mock_resume_optimization(request)
@@ -232,62 +217,177 @@ class GeminiAIService(AIService):
         except Exception as e:
             self.logger.error(f"Error generating improvement suggestions: {e}", exc_info=True)
             return self._mock_improvement_suggestions()
+
+    async def generate_career_insights(self, request: CareerInsightsRequest) -> CareerInsightsResponse:
+        """Generate career insights using Gemini AI."""
+        try:
+            self.logger.info("Generating career insights using Gemini AI")
+
+            if not await self.is_available():
+                return self._mock_career_insights(request)
+
+            # Create the career insights prompt
+            prompt = self._build_career_insights_prompt(request)
+
+            # Generate response using Gemini
+            response = await self._generate_content(prompt)
+
+            if response:
+                return self._parse_career_insights_response(response)
+            else:
+                return self._mock_career_insights(request)
+
+        except Exception as e:
+            self.logger.error(f"Error generating career insights: {e}", exc_info=True)
+            return self._mock_career_insights(request)
+    
+    async def prepare_interview(self, job_description: str, resume_content: str, company_name: Optional[str] = None, job_title: Optional[str] = None) -> Dict[str, Any]:
+        """Prepare interview questions and tips based on job description and resume."""
+        try:
+            self.logger.info(f"Preparing interview questions for {job_title} at {company_name}")
+            
+            # Build prompt for interview preparation
+            prompt = self._build_interview_prep_prompt(job_description, resume_content, company_name, job_title)
+            
+            # Generate content using Gemini
+            content = await self._generate_content(prompt)
+            
+            if content:
+                return self._parse_interview_prep_response(content)
+            else:
+                return self._mock_interview_prep(job_title, company_name)
+                
+        except Exception as e:
+            self.logger.error(f"Error preparing interview: {e}", exc_info=True)
+            return self._mock_interview_prep(job_title, company_name)
+    
+    def _build_interview_prep_prompt(self, job_description: str, resume_content: str, company_name: Optional[str] = None, job_title: Optional[str] = None) -> str:
+        """Build prompt for interview preparation."""
+        return f"""
+You are an expert interview coach. Based on the job description and candidate's resume, generate comprehensive interview preparation materials.
+
+Job Title: {job_title or 'Not specified'}
+Company: {company_name or 'Not specified'}
+
+Job Description:
+{job_description}
+
+Candidate Resume:
+{resume_content[:2000]}  # Limit resume content to avoid token limits
+
+Please provide a JSON response with the following structure:
+{{
+    "questions": [
+        {{
+            "question": "Tell me about yourself",
+            "type": "behavioral",
+            "suggested_answer": "Based on your resume, here's how to answer...",
+            "tips": ["Focus on relevant experience", "Highlight achievements"]
+        }}
+    ],
+    "technical_questions": [
+        {{
+            "question": "Technical question based on job requirements",
+            "category": "programming",
+            "difficulty": "medium",
+            "suggested_approach": "How to approach this question"
+        }}
+    ],
+    "preparation_tips": [
+        "Research the company culture",
+        "Prepare STAR method examples",
+        "Review your resume thoroughly"
+    ],
+    "key_topics": ["Topic 1", "Topic 2"],
+    "strengths_to_highlight": ["Strength 1", "Strength 2"],
+    "weaknesses_to_address": ["Weakness 1", "Weakness 2"],
+    "company_research": "Key points about the company",
+    "questions_to_ask": [
+        "What does success look like in this role?",
+        "What are the team's biggest challenges?"
+    ]
+}}
+"""
+    
+    def _parse_interview_prep_response(self, response: str) -> Dict[str, Any]:
+        """Parse the interview preparation response from Gemini."""
+        try:
+            data = json.loads(response)
+            return {
+                "questions": data.get("questions", []),
+                "technical_questions": data.get("technical_questions", []),
+                "preparation_tips": data.get("preparation_tips", []),
+                "key_topics": data.get("key_topics", []),
+                "strengths_to_highlight": data.get("strengths_to_highlight", []),
+                "weaknesses_to_address": data.get("weaknesses_to_address", []),
+                "company_research": data.get("company_research", ""),
+                "questions_to_ask": data.get("questions_to_ask", [])
+            }
+        except json.JSONDecodeError:
+            self.logger.warning("Failed to parse Gemini interview prep response as JSON. Using fallback.")
+            return self._mock_interview_prep(None, None)
+    
+    def _mock_interview_prep(self, job_title: Optional[str] = None, company_name: Optional[str] = None) -> Dict[str, Any]:
+        """Mock interview preparation response."""
+        return {
+            "questions": [
+                {
+                    "question": "Tell me about yourself",
+                    "type": "behavioral",
+                    "suggested_answer": "Focus on your relevant experience and achievements that align with this role.",
+                    "tips": ["Be concise", "Highlight relevant experience", "Show enthusiasm"]
+                },
+                {
+                    "question": "Why do you want to work here?",
+                    "type": "motivational",
+                    "suggested_answer": f"Express genuine interest in {company_name or 'the company'} and the role.",
+                    "tips": ["Research the company", "Connect your values to theirs", "Be specific"]
+                }
+            ],
+            "technical_questions": [
+                {
+                    "question": "Describe your experience with relevant technologies",
+                    "category": "technical",
+                    "difficulty": "medium",
+                    "suggested_approach": "Provide specific examples from your resume"
+                }
+            ],
+            "preparation_tips": [
+                "Research the company thoroughly",
+                "Review the job description and align your experience",
+                "Prepare STAR method examples",
+                "Practice common interview questions",
+                "Prepare questions to ask the interviewer"
+            ],
+            "key_topics": ["Technical skills", "Problem-solving", "Team collaboration"],
+            "strengths_to_highlight": ["Relevant experience", "Problem-solving skills"],
+            "weaknesses_to_address": ["Areas for growth", "Learning opportunities"],
+            "company_research": f"Research {company_name or 'the company'} culture, values, and recent news.",
+            "questions_to_ask": [
+                "What does success look like in this role?",
+                "What are the team's biggest challenges?",
+                "How does the company support professional development?"
+            ]
+        }
     
     async def is_available(self) -> bool:
         """Check if the Gemini AI service is available."""
-        return self.model is not None and self.api_key is not None
+        return self.client is not None and self.api_key is not None
     
     async def _generate_content(self, prompt: str) -> Optional[str]:
         """Generate content using Gemini AI."""
         try:
-            if not self.model:
+            if not self.client:
                 return None
             
-            # For testing and consistency, we'll try to use generate_content_async if available
-            # but for now we'll stick to the synchronous version with run_in_executor 
-            # as it matches the current implementation structure
-            loop = asyncio.get_event_loop()
-            
-            # Check if we should use generate_content or generate_content_async (mocked in tests)
-            if hasattr(self.model, 'generate_content_async'):
-                # Handle both real coroutines and AsyncMock/MagicMock
-                if asyncio.iscoroutinefunction(self.model.generate_content_async) or isinstance(self.model.generate_content_async, (AsyncMock, MagicMock)):
-                    try:
-                        response = await self.model.generate_content_async(
-                            prompt,
-                            generation_config=genai.types.GenerationConfig(
-                                temperature=self.temperature,
-                                max_output_tokens=self.max_tokens,
-                            )
-                        )
-                    except TypeError:
-                        # Fallback if it's not actually awaitable
-                        response = self.model.generate_content(
-                            prompt,
-                            generation_config=genai.types.GenerationConfig(
-                                temperature=self.temperature,
-                                max_output_tokens=self.max_tokens,
-                            )
-                        )
-                else:
-                    response = self.model.generate_content(
-                        prompt,
-                        generation_config=genai.types.GenerationConfig(
-                            temperature=self.temperature,
-                            max_output_tokens=self.max_tokens,
-                        )
-                    )
-            else:
-                response = await loop.run_in_executor(
-                    None, 
-                    lambda: self.model.generate_content(
-                        prompt,
-                        generation_config=genai.types.GenerationConfig(
-                            temperature=self.temperature,
-                            max_output_tokens=self.max_tokens,
-                        )
-                    )
+            response = await self.client.aio.models.generate_content(
+                model=self.model_name,
+                contents=prompt,
+                config=types.GenerateContentConfig(
+                    temperature=self.temperature,
+                    max_output_tokens=self.max_tokens,
                 )
+            )
             
             return response.text if response and response.text else None
             
@@ -296,29 +396,77 @@ class GeminiAIService(AIService):
             return None
     
     def _build_resume_optimization_prompt(self, request: ResumeOptimizationRequest) -> str:
-        """Create a prompt for resume optimization."""
+        """Create a prompt for ATS-optimized resume optimization."""
         return f"""
-        You are an expert resume optimizer. Optimize the following resume for the target role and company.
+        You are an expert resume optimizer specializing in ATS (Applicant Tracking System) optimization. 
+        Optimize the following resume for the target role and company, ensuring maximum ATS compatibility.
         
         Target Role: {request.target_role}
         Company: {request.company_name or 'Not specified'}
         Job Description: {request.job_description}
+        Resume Content: {request.resume_content[:3000] if request.resume_content else 'Not provided'}
         
         Please provide a JSON response with the following structure:
         {{
-            "optimized_content": "The optimized resume content",
+            "optimized_content": "The ATS-optimized resume content",
             "suggestions": ["suggestion1", "suggestion2"],
             "skill_gaps": ["missing_skill1", "missing_skill2"],
             "improvements": ["improvement1", "improvement2"],
+            "ats_score": 0.85,
+            "ats_checks": {{
+                "keyword_match": 0.90,
+                "formatting": 0.85,
+                "section_structure": 0.80,
+                "contact_info": 0.95
+            }},
+            "ats_recommendations": [
+                "Use standard section headers (Work Experience, Education, Skills)",
+                "Include job description keywords naturally throughout",
+                "Use simple formatting without tables or graphics",
+                "Ensure all text is selectable (not in images)"
+            ],
             "confidence_score": 0.85
         }}
         
-        Focus on:
-        - Tailoring the resume to match the job requirements
-        - Highlighting relevant skills and experience
-        - Improving formatting and readability
-        - Adding quantifiable achievements
-        - Identifying skill gaps
+        ATS Optimization Requirements:
+        1. KEYWORD OPTIMIZATION:
+           - Extract key terms, skills, and qualifications from the job description
+           - Naturally integrate these keywords throughout the resume
+           - Match job title variations (e.g., "Software Engineer" vs "Developer")
+           - Include industry-specific terminology
+        
+        2. FORMATTING & STRUCTURE:
+           - Use standard section headers: "Work Experience", "Education", "Skills", "Summary"
+           - Avoid complex layouts, tables, graphics, or images
+           - Use simple, clean formatting with clear hierarchy
+           - Ensure all text is machine-readable (not scanned images)
+           - Use standard fonts (Arial, Calibri, Times New Roman)
+           - Maintain consistent date formats (MM/YYYY or Month YYYY)
+        
+        3. CONTENT OPTIMIZATION:
+           - Use bullet points for achievements and responsibilities
+           - Include quantifiable metrics and achievements
+           - Use action verbs (developed, implemented, managed, etc.)
+           - Match experience descriptions to job requirements
+           - Highlight relevant skills prominently
+        
+        4. CONTACT INFORMATION:
+           - Ensure contact info is clearly formatted at the top
+           - Include: Name, Phone, Email, LinkedIn (optional), Location (City, State)
+           - Use standard formats (no special characters that break parsing)
+        
+        5. SKILLS SECTION:
+           - List technical skills clearly
+           - Match skills to job description requirements
+           - Include proficiency levels if relevant
+           - Use standard skill names (avoid abbreviations unless common)
+        
+        Focus on making the resume:
+        - ATS-friendly (will parse correctly in applicant tracking systems)
+        - Keyword-optimized (matches job description requirements)
+        - Professionally formatted (clean, readable, standard structure)
+        - Achievement-focused (quantifiable results and impact)
+        - Role-specific (tailored to the target position)
         """
     
     def _build_cover_letter_prompt(self, request: CoverLetterRequest) -> str:
@@ -374,11 +522,55 @@ class GeminiAIService(AIService):
             "confidence": 0.82
         }}
         """
+
+    def _build_career_insights_prompt(self, request: CareerInsightsRequest) -> str:
+        """Create a prompt for career insights generation."""
+        # Summarize application history for context
+        history_summary = json.dumps(request.application_history, indent=2)
+
+        return f"""
+        You are an expert career counselor. Analyze the candidate's profile and provide strategic career advice.
+
+        Skills: {', '.join(request.skills)}
+        Experience Level: {request.experience_level or 'Not specified'}
+        Career Goals: {request.career_goals or 'Not specified'}
+        Application History: {history_summary}
+
+        Please provide a JSON response with the following structure:
+        {{
+            "market_analysis": "Detailed analysis of the current job market for this profile...",
+            "salary_insights": {{
+                "estimated_range": "$X - $Y",
+                "market_trend": "Growing/Stable/Declining",
+                "location_factor": "High/Medium/Low impact"
+            }},
+            "recommended_roles": ["Role 1", "Role 2", "Role 3"],
+            "skill_gaps": ["Skill 1", "Skill 2"],
+            "strategic_advice": ["Advice 1", "Advice 2", "Advice 3"],
+            "confidence_score": 0.85
+        }}
+
+        Focus on:
+        - Identifying patterns in application history
+        - Matching skills to high-demand roles
+        - Providing actionable steps for career growth
+        - Realistic salary expectations
+        """
     
     def _parse_resume_optimization_response(self, response: str) -> Dict[str, Any]:
         """Parse the resume optimization response from Gemini."""
         try:
-            return json.loads(response)
+            data = json.loads(response)
+            return {
+                "optimized_content": data.get("optimized_content", response[:500] + "..."),
+                "suggestions": data.get("suggestions", []),
+                "skill_gaps": data.get("skill_gaps", []),
+                "improvements": data.get("improvements", []),
+                "confidence_score": data.get("confidence_score", 0.75),
+                "ats_score": data.get("ats_score"),
+                "ats_checks": data.get("ats_checks"),
+                "ats_recommendations": data.get("ats_recommendations", [])
+            }
         except json.JSONDecodeError:
             # Fallback parsing if JSON is malformed
             return {
@@ -386,7 +578,19 @@ class GeminiAIService(AIService):
                 "suggestions": ["Add more specific achievements", "Improve formatting"],
                 "skill_gaps": ["Technical skills", "Certifications"],
                 "improvements": ["Enhanced content", "Better structure"],
-                "confidence_score": 0.75
+                "confidence_score": 0.75,
+                "ats_score": 0.70,
+                "ats_checks": {
+                    "keyword_match": 0.65,
+                    "formatting": 0.70,
+                    "section_structure": 0.75,
+                    "contact_info": 0.80
+                },
+                "ats_recommendations": [
+                    "Use standard section headers",
+                    "Include job description keywords",
+                    "Simplify formatting"
+                ]
             }
     
     def _parse_cover_letter_response(self, response: str) -> Dict[str, Any]:
@@ -419,6 +623,26 @@ class GeminiAIService(AIService):
                 "recommendations": ["Highlight relevant projects", "Add missing skills"],
                 "confidence": 0.7
             }
+
+    def _parse_career_insights_response(self, response: str) -> CareerInsightsResponse:
+        """Parse the career insights response from Gemini."""
+        try:
+            data = json.loads(response)
+            return CareerInsightsResponse(**data)
+        except (json.JSONDecodeError, ValueError):
+            # Fallback parsing
+            return CareerInsightsResponse(
+                market_analysis=response[:500] + "...",
+                salary_insights={
+                    "estimated_range": "Unknown",
+                    "market_trend": "Unknown",
+                    "location_factor": "Unknown"
+                },
+                recommended_roles=[],
+                skill_gaps=[],
+                strategic_advice=["Update resume", "Network more"],
+                confidence_score=0.5
+            )
     
     def _extract_skills_from_text(self, text: str) -> List[str]:
         """Extract skills from text response."""
@@ -536,3 +760,30 @@ Best regards,
             "Use consistent bullet point formatting",
             "Add industry-specific keywords"
         ]
+
+    def _mock_career_insights(self, request: CareerInsightsRequest) -> CareerInsightsResponse:
+        """Mock career insights response."""
+        return CareerInsightsResponse(
+            market_analysis="The current job market shows strong demand for professionals with your skill set. "
+                           "There is particularly high growth in tech-focused roles.",
+            salary_insights={
+                "estimated_range": "$80,000 - $120,000",
+                "market_trend": "Growing",
+                "location_factor": "High impact"
+            },
+            recommended_roles=[
+                "Senior Software Engineer",
+                "Full Stack Developer",
+                "Technical Lead"
+            ],
+            skill_gaps=[
+                "Cloud Architecture",
+                "System Design"
+            ],
+            strategic_advice=[
+                "Focus on highlighting your leadership experience",
+                "Consider obtaining cloud certifications",
+                "Network with professionals in your target industry"
+            ],
+            confidence_score=0.85
+        )

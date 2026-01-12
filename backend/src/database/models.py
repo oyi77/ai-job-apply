@@ -7,11 +7,11 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship
 from sqlalchemy.dialects.postgresql import UUID
 import uuid
 
-from .config import Base
-from ..models.application import ApplicationStatus
-from ..models.resume import Resume
-from ..models.cover_letter import CoverLetter
-from ..models.user import User as UserModel
+from src.database.config import Base
+from src.models.application import ApplicationStatus
+from src.models.resume import Resume
+from src.models.cover_letter import CoverLetter
+from src.models.user import User as UserModel
 
 
 class DBResume(Base):
@@ -195,7 +195,7 @@ class DBJobApplication(Base):
     
     def to_model(self) -> "JobApplication":
         """Convert database model to domain model."""
-        from ..models.application import JobApplication
+        from src.models.application import JobApplication
         
         return JobApplication(
             id=self.id,
@@ -246,10 +246,19 @@ class DBJobSearch(Base):
     search_date: Mapped[datetime] = mapped_column(DateTime, default=lambda: datetime.now(timezone.utc))
     created_at: Mapped[datetime] = mapped_column(DateTime, default=lambda: datetime.now(timezone.utc))
     
+    # Foreign keys
+    user_id: Mapped[Optional[str]] = mapped_column(String, ForeignKey("users.id", ondelete="CASCADE"), nullable=True)
+    
+    # Relationships
+    user: Mapped[Optional["DBUser"]] = relationship(
+        "DBUser", back_populates="job_searches", foreign_keys=[user_id]
+    )
+    
     # Indexes for performance
     __table_args__ = (
         Index("idx_job_search_date", "search_date"),
         Index("idx_job_search_location", "location"),
+        Index("idx_job_search_user_id", "user_id"),
     )
     
     def to_dict(self) -> dict:
@@ -280,8 +289,13 @@ class DBAIActivity(Base):
     error_message: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
     processing_time_ms: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
     confidence_score: Mapped[Optional[float]] = mapped_column(Float, nullable=True)
-    user_id: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
+    user_id: Mapped[Optional[str]] = mapped_column(String(255), ForeignKey("users.id", ondelete="CASCADE"), nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=lambda: datetime.now(timezone.utc))
+    
+    # Relationships
+    user: Mapped[Optional["DBUser"]] = relationship(
+        "DBUser", back_populates="ai_activities", foreign_keys=[user_id]
+    )
     
     # Indexes for performance
     __table_args__ = (
@@ -326,6 +340,14 @@ class DBFileMetadata(Base):
     access_count: Mapped[int] = mapped_column(Integer, default=0)
     is_active: Mapped[bool] = mapped_column(Boolean, default=True)
     
+    # Foreign keys
+    user_id: Mapped[Optional[str]] = mapped_column(String, ForeignKey("users.id", ondelete="CASCADE"), nullable=True)
+    
+    # Relationships
+    user: Mapped[Optional["DBUser"]] = relationship(
+        "DBUser", back_populates="file_metadata", foreign_keys=[user_id]
+    )
+    
     # Indexes for performance
     __table_args__ = (
         Index("idx_file_metadata_path", "file_path"),
@@ -333,6 +355,7 @@ class DBFileMetadata(Base):
         Index("idx_file_metadata_uploaded_at", "uploaded_at"),
         Index("idx_file_metadata_is_active", "is_active"),
         Index("idx_file_metadata_md5", "md5_hash"),
+        Index("idx_file_metadata_user_id", "user_id"),
     )
     
     def to_dict(self) -> dict:
@@ -364,6 +387,8 @@ class DBUser(Base):
     password_reset_token: Mapped[Optional[str]] = mapped_column(String(255), nullable=True, index=True)
     password_reset_token_expires: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
     is_active: Mapped[bool] = mapped_column(Boolean, default=True)
+    failed_login_attempts: Mapped[int] = mapped_column(Integer, default=0)
+    account_locked_until: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=lambda: datetime.now(timezone.utc))
     updated_at: Mapped[datetime] = mapped_column(DateTime, default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc))
     
@@ -379,6 +404,15 @@ class DBUser(Base):
     )
     sessions: Mapped[List["DBUserSession"]] = relationship(
         "DBUserSession", back_populates="user", cascade="all, delete-orphan"
+    )
+    job_searches: Mapped[List["DBJobSearch"]] = relationship(
+        "DBJobSearch", back_populates="user", cascade="all, delete-orphan"
+    )
+    ai_activities: Mapped[List["DBAIActivity"]] = relationship(
+        "DBAIActivity", back_populates="user", cascade="all, delete-orphan"
+    )
+    file_metadata: Mapped[List["DBFileMetadata"]] = relationship(
+        "DBFileMetadata", back_populates="user", cascade="all, delete-orphan"
     )
     
     # Indexes for performance
@@ -398,6 +432,8 @@ class DBUser(Base):
             password_reset_token=self.password_reset_token,
             password_reset_token_expires=self.password_reset_token_expires,
             is_active=self.is_active,
+            failed_login_attempts=self.failed_login_attempts or 0,
+            account_locked_until=self.account_locked_until,
             created_at=self.created_at,
             updated_at=self.updated_at,
         )
@@ -411,6 +447,8 @@ class DBUser(Base):
             password_hash=user.password_hash,
             name=user.name,
             is_active=user.is_active,
+            failed_login_attempts=user.failed_login_attempts or 0,
+            account_locked_until=user.account_locked_until,
             created_at=user.created_at,
             updated_at=user.updated_at,
         )
@@ -449,4 +487,144 @@ class DBUserSession(Base):
             "created_at": self.created_at.isoformat(),
             "last_used_at": self.last_used_at.isoformat(),
             "is_active": self.is_active,
+        }
+
+
+class DBPerformanceMetric(Base):
+    """Database model for performance metrics."""
+    
+    __tablename__ = "performance_metrics"
+    
+    id: Mapped[str] = mapped_column(String, primary_key=True, default=lambda: str(uuid.uuid4()))
+    metric_name: Mapped[str] = mapped_column(String(100), nullable=False, index=True)
+    metric_value: Mapped[float] = mapped_column(Float, nullable=False)
+    tags: Mapped[Optional[str]] = mapped_column(Text, nullable=True)  # JSON string
+    timestamp: Mapped[datetime] = mapped_column(DateTime, nullable=False, index=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=lambda: datetime.now(timezone.utc))
+    
+    # Indexes for performance
+    __table_args__ = (
+        Index("idx_metric_name_timestamp", "metric_name", "timestamp"),
+        Index("idx_metric_timestamp", "timestamp"),
+    )
+    
+    def to_dict(self) -> dict:
+        """Convert to dictionary."""
+        import json
+        
+        return {
+            "id": self.id,
+            "metric_name": self.metric_name,
+            "metric_value": self.metric_value,
+            "tags": json.loads(self.tags) if self.tags else {},
+            "timestamp": self.timestamp.isoformat(),
+            "created_at": self.created_at.isoformat(),
+        }
+
+
+class DBErrorLog(Base):
+    """Database model for error logs."""
+    
+    __tablename__ = "error_logs"
+    
+    id: Mapped[str] = mapped_column(String, primary_key=True, default=lambda: str(uuid.uuid4()))
+    error_type: Mapped[str] = mapped_column(String(100), nullable=False, index=True)
+    error_message: Mapped[str] = mapped_column(Text, nullable=False)
+    stack_trace: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    request_path: Mapped[Optional[str]] = mapped_column(String(500), nullable=True, index=True)
+    http_method: Mapped[Optional[str]] = mapped_column(String(10), nullable=True)
+    user_id: Mapped[Optional[str]] = mapped_column(String, nullable=True, index=True)
+    severity: Mapped[str] = mapped_column(String(20), nullable=False, index=True)  # error, warning, critical
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=lambda: datetime.now(timezone.utc), index=True)
+    
+    # Indexes for performance
+    __table_args__ = (
+        Index("idx_error_type_severity", "error_type", "severity"),
+        Index("idx_error_created_at", "created_at"),
+    )
+    
+    def to_dict(self) -> dict:
+        """Convert to dictionary."""
+        return {
+            "id": self.id,
+            "error_type": self.error_type,
+            "error_message": self.error_message,
+            "stack_trace": self.stack_trace,
+            "request_path": self.request_path,
+            "http_method": self.http_method,
+            "user_id": self.user_id,
+            "severity": self.severity,
+            "created_at": self.created_at.isoformat(),
+        }
+
+
+class DBAlertRule(Base):
+    """Database model for alert rules."""
+    
+    __tablename__ = "alert_rules"
+    
+    id: Mapped[str] = mapped_column(String, primary_key=True, default=lambda: str(uuid.uuid4()))
+    rule_name: Mapped[str] = mapped_column(String(255), nullable=False, unique=True)
+    metric_name: Mapped[str] = mapped_column(String(100), nullable=False, index=True)
+    threshold: Mapped[float] = mapped_column(Float, nullable=False)
+    condition: Mapped[str] = mapped_column(String(20), nullable=False)  # gt, gte, lt, lte, eq
+    enabled: Mapped[bool] = mapped_column(Boolean, default=True, index=True)
+    cooldown_seconds: Mapped[int] = mapped_column(Integer, default=300)  # 5 minutes default
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=lambda: datetime.now(timezone.utc))
+    updated_at: Mapped[datetime] = mapped_column(DateTime, default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc))
+    
+    # Indexes for performance
+    __table_args__ = (
+        Index("idx_alert_rule_metric_enabled", "metric_name", "enabled"),
+    )
+    
+    def to_dict(self) -> dict:
+        """Convert to dictionary."""
+        return {
+            "id": self.id,
+            "rule_name": self.rule_name,
+            "metric_name": self.metric_name,
+            "threshold": self.threshold,
+            "condition": self.condition,
+            "enabled": self.enabled,
+            "cooldown_seconds": self.cooldown_seconds,
+            "created_at": self.created_at.isoformat(),
+            "updated_at": self.updated_at.isoformat(),
+        }
+
+
+class DBAlertHistory(Base):
+    """Database model for alert history."""
+    
+    __tablename__ = "alert_history"
+    
+    id: Mapped[str] = mapped_column(String, primary_key=True, default=lambda: str(uuid.uuid4()))
+    alert_rule_id: Mapped[str] = mapped_column(String, ForeignKey("alert_rules.id", ondelete="CASCADE"), nullable=False, index=True)
+    triggered_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, index=True)
+    resolved_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
+
+
+class DBConfig(Base):
+    """Database model for application configuration (key-value store)."""
+    
+    __tablename__ = "configs"
+    
+    id: Mapped[str] = mapped_column(String, primary_key=True, default=lambda: str(uuid.uuid4()))
+    name: Mapped[str] = mapped_column(String(255), nullable=False, unique=True, index=True)
+    key: Mapped[str] = mapped_column(String(255), nullable=False, unique=True, index=True)
+    value: Mapped[str] = mapped_column(Text, nullable=False)
+    description: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=lambda: datetime.now(timezone.utc))
+    updated_at: Mapped[datetime] = mapped_column(DateTime, default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc))
+    
+    def to_dict(self) -> dict:
+        """Convert to dictionary."""
+        return {
+            "id": self.id,
+            "name": self.name,
+            "key": self.key,
+            "value": self.value,
+            "description": self.description,
+            "created_at": self.created_at.isoformat() if self.created_at else None,
+            "updated_at": self.updated_at.isoformat() if self.updated_at else None,
         }

@@ -3,9 +3,9 @@
 from datetime import datetime
 from fastapi import APIRouter, HTTPException, Depends
 from typing import List, Dict, Any
-from ...models.job import JobSearchRequest, JobSearchResponse, Job
-from ...utils.logger import get_logger
-from ...services.service_registry import service_registry
+from src.models.job import JobSearchRequest, JobSearchResponse, Job
+from src.utils.logger import get_logger
+from src.services.service_registry import service_registry
 
 logger = get_logger(__name__)
 

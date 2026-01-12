@@ -1,0 +1,51 @@
+{
+  "settings": {
+    "title": "Configuración",
+    "description": "Administra tus preferencias de cuenta y configuración de la aplicación.",
+    "profile": {
+      "title": "Perfil",
+      "description": "Actualiza tu información personal y detalles de contacto.",
+      "button": "Editar Perfil"
+    },
+    "notifications": {
+      "title": "Notificaciones",
+      "description": "Configura cómo y cuándo recibir notificaciones.",
+      "button": "Configurar"
+    },
+    "privacy": {
+      "title": "Privacidad y Seguridad",
+      "description": "Administra tu configuración de privacidad y preferencias de seguridad.",
+      "button": "Administrar"
+    },
+    "theme": {
+      "title": "Tema y Apariencia",
+      "description": "Personaliza la apariencia de tu aplicación.",
+      "current": "Actual:",
+      "button": "Personalizar"
+    },
+    "language": {
+      "title": "Idioma y Región",
+      "description": "Configura tu idioma preferido y configuración regional.",
+      "current": "Actual:",
+      "button": "Cambiar Idioma"
+    },
+    "data": {
+      "title": "Gestión de Datos",
+      "description": "Exporta tus datos o administra la información de tu cuenta.",
+      "buttonExport": "Exportar Datos",
+      "buttonDelete": "Eliminar Cuenta"
+    },
+    "ai": {
+      "title": "Inteligencia Artificial",
+      "description": "Configura tus proveedores de IA y preferencias de modelo para la optimización de currículums.",
+      "activeProvider": "Proveedor Activo:",
+      "button": "Configurar IA"
+    },
+    "successMessage": "¡Configuración actualizada correctamente!"
+  },
+  "common": {
+    "cancel": "Cancelar",
+    "save": "Guardar",
+    "close": "Cerrar"
+  }
+}

@@ -69,6 +69,14 @@ export default defineConfig({
     port: 5173,
     // Add host configuration for better development experience
     host: true,
+    // Proxy API requests to backend
+    proxy: {
+      '/api': {
+        target: 'http://localhost:8000',
+        changeOrigin: true,
+        secure: false,
+      },
+    },
   },
   
   // Resolve aliases for better imports
@@ -96,6 +104,9 @@ export default defineConfig({
       '@heroicons/react',
       'axios',
       'react-hook-form',
+      'i18next',
+      'react-i18next',
+      'i18next-browser-languagedetector',
     ],
   },
   

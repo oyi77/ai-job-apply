@@ -1,10 +1,10 @@
 """Core interfaces and abstractions for the AI Job Application Assistant."""
 
-from .job_search import JobSearchService
-from .ai_service import AIService
-from .resume_service import ResumeService
-from .application_service import ApplicationService
-from .file_service import FileService
+from src.core.job_search import JobSearchService
+from src.core.ai_service import AIService
+from src.core.resume_service import ResumeService
+from src.core.application_service import ApplicationService
+from src.core.file_service import FileService
 
 __all__ = [
     "JobSearchService",

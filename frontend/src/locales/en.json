@@ -1,0 +1,51 @@
+{
+  "settings": {
+    "title": "Settings",
+    "description": "Manage your account preferences and application settings.",
+    "profile": {
+      "title": "Profile",
+      "description": "Update your personal information and contact details.",
+      "button": "Edit Profile"
+    },
+    "notifications": {
+      "title": "Notifications",
+      "description": "Configure how and when you receive notifications.",
+      "button": "Configure"
+    },
+    "privacy": {
+      "title": "Privacy & Security",
+      "description": "Manage your privacy settings and security preferences.",
+      "button": "Manage"
+    },
+    "theme": {
+      "title": "Theme & Appearance",
+      "description": "Customize the look and feel of your application.",
+      "current": "Current:",
+      "button": "Customize"
+    },
+    "language": {
+      "title": "Language & Region",
+      "description": "Set your preferred language and regional settings.",
+      "current": "Current:",
+      "button": "Change Language"
+    },
+    "data": {
+      "title": "Data Management",
+      "description": "Export your data or manage your account information.",
+      "buttonExport": "Export Data",
+      "buttonDelete": "Delete Account"
+    },
+    "ai": {
+      "title": "AI Intelligence",
+      "description": "Configure your AI providers and model preferences for resume optimization.",
+      "activeProvider": "Active Provider:",
+      "button": "Configure AI"
+    },
+    "successMessage": "Settings updated successfully!"
+  },
+  "common": {
+    "cancel": "Cancel",
+    "save": "Save",
+    "close": "Close"
+  }
+}

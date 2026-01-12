@@ -5,13 +5,15 @@ from typing import Optional
 from slowapi import Limiter
 from slowapi.util import get_remote_address
 from slowapi.errors import RateLimitExceeded
-from ...models.user import (
+from src.config import config
+from src.models.user import (
     UserRegister, UserLogin, TokenResponse, TokenRefresh,
     UserProfile, UserProfileUpdate, PasswordChange, PasswordResetRequest, PasswordReset
 )
-from ...services.service_registry import service_registry
-from ...utils.logger import get_logger
-from ..dependencies import get_current_user
+from pydantic import BaseModel
+from src.services.service_registry import service_registry
+from src.utils.logger import get_logger
+from src.api.dependencies import get_current_user
 
 logger = get_logger(__name__)
 
@@ -22,13 +24,14 @@ def get_limiter(request: Request) -> Limiter:
     """Get rate limiter from app state."""
     return request.app.state.limiter
 
+# Create rate limiter instance for this router (shares storage with app's limiter)
+limiter = Limiter(key_func=get_remote_address)
 
 @router.post("/register", response_model=TokenResponse, status_code=status.HTTP_201_CREATED)
+@limiter.limit(f"{config.rate_limit_auth_per_minute}/minute" if config.rate_limit_enabled else "1000/minute")
 async def register(request: Request, registration: UserRegister):
     """
     Register a new user (rate limited: 5 per minute per IP).
-    
-    Note: Rate limiting is temporarily disabled. For production, implement at middleware level.
     
     Args:
         request: FastAPI request object (for rate limiting)
@@ -60,6 +63,7 @@ async def register(request: Request, registration: UserRegister):
 
 
 @router.post("/login", response_model=TokenResponse)
+@limiter.limit(f"{config.rate_limit_auth_per_minute}/minute" if config.rate_limit_enabled else "1000/minute")
 async def login(request: Request, login_data: UserLogin):
     """
     Authenticate a user and return tokens (rate limited: 10 per minute per IP).
@@ -71,9 +75,6 @@ async def login(request: Request, login_data: UserLogin):
     Returns:
         Token response with access and refresh tokens
     """
-    # Note: Rate limiting is temporarily disabled due to slowapi integration complexity
-    # For production, implement rate limiting at middleware level or use a different library
-    
     try:
         auth_service = await service_registry.get_auth_service()
         response = await auth_service.login_user(login_data)
@@ -128,39 +129,51 @@ async def refresh_token(refresh: TokenRefresh):
 
 
 @router.post("/logout", status_code=status.HTTP_200_OK)
-async def logout(
-    refresh: TokenRefresh,
-    current_user: UserProfile = Depends(get_current_user)
-):
+async def logout(refresh: TokenRefresh):
     """
     Logout a user by invalidating their refresh token.
     
+    This endpoint does NOT require authentication to allow logout even with expired tokens.
+    This prevents users from being stuck in a stale state where they can't logout.
+    
     Args:
         refresh: Refresh token to invalidate
-        current_user: Current authenticated user
         
     Returns:
-        Success message
+        Success message (always succeeds to allow frontend cleanup even if token is invalid)
     """
     try:
         auth_service = await service_registry.get_auth_service()
-        success = await auth_service.logout_user(refresh.refresh_token, current_user.id)
+        # Try to get user_id from refresh token if possible (optional)
+        user_id = None
+        try:
+            user_id = await auth_service.verify_refresh_token(refresh.refresh_token)
+        except Exception:
+            # If refresh token is invalid/expired, that's ok - we'll still try to invalidate it
+            pass
         
-        if success:
-            logger.info(f"User logged out: {current_user.id}")
+        # Attempt to invalidate the refresh token
+        # This will succeed even if the token is already invalid (idempotent operation)
+        success = await auth_service.logout_user(refresh.refresh_token, user_id)
+        
+        if success or user_id is None:
+            # Successfully logged out, or token was already invalid (allow logout anyway)
+            if user_id:
+                logger.info(f"User logged out: {user_id}")
+            else:
+                logger.debug("Logout called with invalid/expired token (allowing cleanup)")
             return {"message": "Logged out successfully"}
         else:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Invalid refresh token"
-            )
+            # Even if logout_user returns False, we still return success
+            # This prevents users from being stuck if there's any issue invalidating the token
+            logger.warning("Logout called but token invalidation returned False (allowing anyway)")
+            return {"message": "Logged out successfully"}
             
     except Exception as e:
         logger.error(f"Error during logout: {e}", exc_info=True)
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Logout failed"
-        )
+        # Even on error, return success to allow frontend to clear tokens
+        # This prevents users from being stuck with stale tokens
+        return {"message": "Logged out successfully"}
 
 
 @router.get("/me", response_model=UserProfile)
@@ -354,4 +367,54 @@ async def reset_password(reset: PasswordReset):
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Password reset failed"
+        )
+
+
+class AccountDeletionRequest(BaseModel):
+    """Request model for account deletion."""
+    password: str
+
+
+@router.delete("/account", status_code=status.HTTP_200_OK)
+async def delete_account(
+    request: AccountDeletionRequest,
+    current_user: UserProfile = Depends(get_current_user)
+):
+    """
+    Delete user account and all associated data.
+    
+    This is a destructive operation that cannot be undone.
+    All user data (applications, resumes, cover letters) will be permanently deleted.
+    
+    Args:
+        request: Account deletion request with password confirmation
+        current_user: Current authenticated user
+        
+    Returns:
+        Success message
+    """
+    try:
+        auth_service = await service_registry.get_auth_service()
+        success = await auth_service.delete_user(current_user.id, request.password)
+        
+        if success:
+            logger.info(f"Account deleted: {current_user.id}")
+            return {"message": "Account deleted successfully"}
+        else:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Account deletion failed"
+            )
+            
+    except ValueError as e:
+        logger.warning(f"Account deletion failed: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=str(e)
+        )
+    except Exception as e:
+        logger.error(f"Error deleting account: {e}", exc_info=True)
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Account deletion failed"
         )

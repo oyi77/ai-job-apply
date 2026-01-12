@@ -2,7 +2,7 @@
 
 from abc import ABC, abstractmethod
 from typing import List, Optional, Dict, Any
-from ..models.application import JobApplication, ApplicationUpdateRequest, ApplicationStatus
+from src.models.application import JobApplication, ApplicationUpdateRequest, ApplicationStatus
 
 
 class ApplicationService(ABC):
@@ -51,4 +51,24 @@ class ApplicationService(ABC):
     @abstractmethod
     async def get_upcoming_follow_ups(self) -> List[JobApplication]:
         """Get applications with upcoming follow-ups."""
+        pass
+
+    @abstractmethod
+    async def bulk_create_applications(self, applications_data: List[Dict[str, Any]], user_id: Optional[str] = None) -> List[JobApplication]:
+        """Create multiple job applications."""
+        pass
+
+    @abstractmethod
+    async def bulk_update_applications(self, application_ids: List[str], updates: ApplicationUpdateRequest, user_id: Optional[str] = None) -> List[JobApplication]:
+        """Update multiple job applications."""
+        pass
+
+    @abstractmethod
+    async def bulk_delete_applications(self, application_ids: List[str], user_id: Optional[str] = None) -> bool:
+        """Delete multiple job applications."""
+        pass
+
+    @abstractmethod
+    async def export_applications(self, application_ids: Optional[List[str]] = None, format: str = "csv", user_id: Optional[str] = None) -> bytes:
+        """Export applications in the specified format."""
         pass

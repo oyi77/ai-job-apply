@@ -1,13 +1,13 @@
 """Database package for the AI Job Application Assistant."""
 
-from .config import (
+from src.database.config import (
     Base, 
     database_config, 
     get_db_session, 
     init_database, 
     close_database
 )
-from .models import (
+from src.database.models import (
     DBResume,
     DBCoverLetter,
     DBJobApplication,

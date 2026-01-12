@@ -2,12 +2,12 @@
 
 from fastapi import APIRouter, HTTPException, UploadFile, File, Depends
 from typing import List, Optional, Dict, Any
-from ...models.resume import Resume, ResumeOptimizationRequest, ResumeOptimizationResponse
-from ...models.user import UserProfile
-from ...utils.logger import get_logger
-from ...utils.validators import validate_file_type, validate_file_size
-from ...services.service_registry import service_registry
-from ..dependencies import get_current_user
+from src.models.resume import Resume, ResumeOptimizationRequest, ResumeOptimizationResponse, BulkDeleteRequest
+from src.models.user import UserProfile
+from src.utils.logger import get_logger
+from src.utils.validators import validate_file_type, validate_file_size
+from src.services.service_registry import service_registry
+from src.api.dependencies import get_current_user
 
 logger = get_logger(__name__)
 
@@ -78,20 +78,21 @@ async def upload_resume(
         unique_filename = f"{uuid.uuid4()}{file_extension}"
         
         # Create uploads directory if it doesn't exist
-        uploads_dir = Path("backend/uploads")
+        from io import BytesIO
+        uploads_dir = Path("backend/uploads/resumes")
         uploads_dir.mkdir(parents=True, exist_ok=True)
         
-        # Save file to uploads directory
-        file_path = uploads_dir / unique_filename
+        # Convert bytes to BytesIO for file service
+        file_content_io = BytesIO(file_content)
         
-        # Write file using file service
-        success = await file_service.save_file(str(file_path), file_content)
-        if not success:
+        # Save file using file service
+        file_path = await file_service.save_file(file_content_io, unique_filename, str(uploads_dir))
+        if not file_path:
             raise HTTPException(status_code=500, detail="Failed to save uploaded file")
         
         # Upload resume using resume service
         resume_name = name or file.filename or "Unnamed Resume"
-        resume = await resume_service.upload_resume(str(file_path), resume_name, user_id=current_user.id)
+        resume = await resume_service.upload_resume(file_path, resume_name, user_id=current_user.id)
         
         logger.info(f"Resume uploaded successfully: {resume.name} (ID: {resume.id})")
         return create_api_response(resume.model_dump(), True, "Resume uploaded successfully")
@@ -101,6 +102,24 @@ async def upload_resume(
     except Exception as e:
         logger.error(f"Error uploading resume: {e}", exc_info=True)
         raise HTTPException(status_code=500, detail=f"Resume upload failed: {str(e)}")
+
+
+@router.delete("/bulk", response_model=Dict[str, Any])
+async def bulk_delete_resumes(
+    request: BulkDeleteRequest,
+    current_user: UserProfile = Depends(get_current_user)
+) -> Dict[str, Any]:
+    """Bulk delete resumes."""
+    try:
+        resume_service = await service_registry.get_resume_service()
+        success = await resume_service.bulk_delete_resumes(request.ids, user_id=current_user.id)
+        if success:
+            return create_api_response(None, message=f"Successfully deleted {len(request.ids)} resumes")
+        else:
+            return create_api_response(None, success=False, message="Some resumes could not be deleted")
+    except Exception as e:
+        logger.error(f"Error in bulk deletion: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail=str(e))
 
 
 @router.get("", response_model=Dict[str, Any])

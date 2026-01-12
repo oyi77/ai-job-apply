@@ -72,6 +72,7 @@ class CoverLetter(BaseModel):
     generated_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
     updated_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    user_id: Optional[str] = Field(None, description="ID of the user who owns this cover letter")
     
     model_config = ConfigDict(
         populate_by_name=True
@@ -81,3 +82,8 @@ class CoverLetter(BaseModel):
     def reading_time_minutes(self) -> float:
         """Estimate reading time in minutes (average 200 words per minute)."""
         return round(self.word_count / 200, 1)
+
+
+class BulkDeleteRequest(BaseModel):
+    """Bulk deletion request model."""
+    ids: List[str] = Field(..., description="List of IDs to delete")

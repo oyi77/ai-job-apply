@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import {
   Card,
   CardHeader,
@@ -28,10 +29,12 @@ import {
 } from '@heroicons/react/24/outline';
 
 const Settings: React.FC = () => {
+  const { t, i18n } = useTranslation();
   const [isProfileModalOpen, setIsProfileModalOpen] = useState(false);
   const [isNotificationsModalOpen, setIsNotificationsModalOpen] = useState(false);
   const [isPrivacyModalOpen, setIsPrivacyModalOpen] = useState(false);
   const [isThemeModalOpen, setIsThemeModalOpen] = useState(false);
+  const [isLanguageModalOpen, setIsLanguageModalOpen] = useState(false);
   const [isExportModalOpen, setIsExportModalOpen] = useState(false);
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const [isAIModalOpen, setIsAIModalOpen] = useState(false);
@@ -39,19 +42,36 @@ const Settings: React.FC = () => {
   const [isExporting, setIsExporting] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   const [deleteConfirmation, setDeleteConfirmation] = useState('');
+  const [deletePassword, setDeletePassword] = useState('');
 
   const { user, setUser, theme, setTheme, setAuthenticated, aiSettings, updateAISettings } = useAppStore();
 
+  const handleLanguageChange = (language: string) => {
+    i18n.changeLanguage(language);
+    setIsLanguageModalOpen(false);
+  };
+
   const handleProfileUpdate = async (data: any) => {
     try {
+      // Prepare data for API (combine first and last name for backend 'name' field)
+      const apiData = {
+        ...data,
+        name: `${data.first_name} ${data.last_name}`.trim(),
+      };
+
+      // Update user profile via API
+      const updatedProfile = await authService.updateProfile(apiData);
+
       // Update local user state
-      // TODO: Add API endpoint for profile update when backend auth is implemented
-      setUser({ ...user, ...data });
+      // We merge: existing user state + form data (to keep fields backend might ignore) + API response
+      setUser({ ...user, ...data, ...updatedProfile });
+
       setIsProfileModalOpen(false);
       setShowSuccessMessage(true);
       setTimeout(() => setShowSuccessMessage(false), 3000);
     } catch (error) {
       console.error('Error updating profile:', error);
+      alert('Failed to update profile. Please try again.');
     }
   };
 
@@ -110,6 +130,11 @@ const Settings: React.FC = () => {
       return;
     }
 
+    if (!deletePassword) {
+      alert('Please enter your password to confirm account deletion');
+      return;
+    }
+
     setIsDeleting(true);
     try {
       // Call API endpoint for account deletion
@@ -122,11 +147,15 @@ const Settings: React.FC = () => {
       localStorage.removeItem('refresh_token');
       localStorage.removeItem('token');
       setIsDeleteModalOpen(false);
+      setDeleteConfirmation('');
+      setDeletePassword('');
+      
       // Redirect to login
       window.location.href = '/login';
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error deleting account:', error);
-      alert('Failed to delete account. Please try again.');
+      const errorMessage = error?.response?.data?.detail || error?.message || 'Failed to delete account. Please try again.';
+      alert(errorMessage);
     } finally {
       setIsDeleting(false);
     }
@@ -142,15 +171,15 @@ const Settings: React.FC = () => {
     <div className="space-y-6">
       {/* Header */}
       <div>
-        <h1 className="text-3xl font-bold text-gray-900">Settings</h1>
+        <h1 className="text-3xl font-bold text-gray-900">{t('settings.title')}</h1>
         <p className="mt-2 text-gray-600">
-          Manage your account preferences and application settings.
+          {t('settings.description')}
         </p>
       </div>
 
       {/* Success Message */}
       {showSuccessMessage && (
-        <Alert type="success" message="Settings updated successfully!" />
+        <Alert type="success" message={t('settings.successMessage')} />
       )}
 
       {/* Settings Grid */}
@@ -160,19 +189,19 @@ const Settings: React.FC = () => {
           <CardHeader>
             <div className="flex items-center space-x-2">
               <UserCircleIcon className="h-6 w-6 text-primary-600" />
-              <h3 className="text-lg font-medium text-gray-900">Profile</h3>
+              <h3 className="text-lg font-medium text-gray-900">{t('settings.profile.title')}</h3>
             </div>
           </CardHeader>
           <CardBody>
             <p className="text-gray-600 mb-4">
-              Update your personal information and contact details.
+              {t('settings.profile.description')}
             </p>
             <Button
               variant="primary"
               onClick={() => setIsProfileModalOpen(true)}
               className="w-full"
             >
-              Edit Profile
+              {t('settings.profile.button')}
             </Button>
           </CardBody>
         </Card>
@@ -182,19 +211,19 @@ const Settings: React.FC = () => {
           <CardHeader>
             <div className="flex items-center space-x-2">
               <BellIcon className="h-6 w-6 text-success-600" />
-              <h3 className="text-lg font-medium text-gray-900">Notifications</h3>
+              <h3 className="text-lg font-medium text-gray-900">{t('settings.notifications.title')}</h3>
             </div>
           </CardHeader>
           <CardBody>
             <p className="text-gray-600 mb-4">
-              Configure how and when you receive notifications.
+              {t('settings.notifications.description')}
             </p>
             <Button
               variant="success"
               onClick={() => setIsNotificationsModalOpen(true)}
               className="w-full"
             >
-              Configure
+              {t('settings.notifications.button')}
             </Button>
           </CardBody>
         </Card>
@@ -204,19 +233,19 @@ const Settings: React.FC = () => {
           <CardHeader>
             <div className="flex items-center space-x-2">
               <ShieldCheckIcon className="h-6 w-6 text-warning-600" />
-              <h3 className="text-lg font-medium text-gray-900">Privacy & Security</h3>
+              <h3 className="text-lg font-medium text-gray-900">{t('settings.privacy.title')}</h3>
             </div>
           </CardHeader>
           <CardBody>
             <p className="text-gray-600 mb-4">
-              Manage your privacy settings and security preferences.
+              {t('settings.privacy.description')}
             </p>
             <Button
               variant="warning"
               onClick={() => setIsPrivacyModalOpen(true)}
               className="w-full"
             >
-              Manage
+              {t('settings.privacy.button')}
             </Button>
           </CardBody>
         </Card>
@@ -226,15 +255,15 @@ const Settings: React.FC = () => {
           <CardHeader>
             <div className="flex items-center space-x-2">
               <PaintBrushIcon className="h-6 w-6 text-info-600" />
-              <h3 className="text-lg font-medium text-gray-900">Theme & Appearance</h3>
+              <h3 className="text-lg font-medium text-gray-900">{t('settings.theme.title')}</h3>
             </div>
           </CardHeader>
           <CardBody>
             <p className="text-gray-600 mb-4">
-              Customize the look and feel of your application.
+              {t('settings.theme.description')}
             </p>
             <div className="flex items-center space-x-2 mb-3">
-              <span className="text-sm text-gray-600">Current:</span>
+              <span className="text-sm text-gray-600">{t('settings.theme.current')}</span>
               <Badge variant="secondary" size="sm">
                 {theme.charAt(0).toUpperCase() + theme.slice(1)}
               </Badge>
@@ -244,7 +273,7 @@ const Settings: React.FC = () => {
               onClick={() => setIsThemeModalOpen(true)}
               className="w-full"
             >
-              Customize
+              {t('settings.theme.button')}
             </Button>
           </CardBody>
         </Card>
@@ -254,24 +283,25 @@ const Settings: React.FC = () => {
           <CardHeader>
             <div className="flex items-center space-x-2">
               <GlobeAltIcon className="h-6 w-6 text-primary-600" />
-              <h3 className="text-lg font-medium text-gray-900">Language & Region</h3>
+              <h3 className="text-lg font-medium text-gray-900">{t('settings.language.title')}</h3>
             </div>
           </CardHeader>
           <CardBody>
             <p className="text-gray-600 mb-4">
-              Set your preferred language and regional settings.
+              {t('settings.language.description')}
             </p>
             <div className="flex items-center space-x-2 mb-3">
-              <span className="text-sm text-gray-600">Current:</span>
-              <Badge variant="secondary" size="sm">English</Badge>
+              <span className="text-sm text-gray-600">{t('settings.language.current')}</span>
+              <Badge variant="secondary" size="sm">
+                {i18n.resolvedLanguage?.startsWith('es') ? 'Español' : 'English'}
+              </Badge>
             </div>
             <Button
               variant="secondary"
-              onClick={() => { }} // TODO: Implement language selection
+              onClick={() => setIsLanguageModalOpen(true)}
               className="w-full"
-              disabled
             >
-              Change Language
+              {t('settings.language.button')}
             </Button>
           </CardBody>
         </Card>
@@ -281,12 +311,12 @@ const Settings: React.FC = () => {
           <CardHeader>
             <div className="flex items-center space-x-2">
               <DocumentArrowDownIcon className="h-6 w-6 text-success-600" />
-              <h3 className="text-lg font-medium text-gray-900">Data Management</h3>
+              <h3 className="text-lg font-medium text-gray-900">{t('settings.data.title')}</h3>
             </div>
           </CardHeader>
           <CardBody>
             <p className="text-gray-600 mb-4">
-              Export your data or manage your account information.
+              {t('settings.data.description')}
             </p>
             <div className="space-y-2">
               <Button
@@ -294,7 +324,7 @@ const Settings: React.FC = () => {
                 onClick={() => setIsExportModalOpen(true)}
                 className="w-full"
               >
-                Export Data
+                {t('settings.data.buttonExport')}
               </Button>
               <Button
                 variant="danger"
@@ -302,7 +332,7 @@ const Settings: React.FC = () => {
                 className="w-full"
               >
                 <TrashIcon className="h-4 w-4 mr-2" />
-                Delete Account
+                {t('settings.data.buttonDelete')}
               </Button>
             </div>
           </CardBody>
@@ -313,17 +343,21 @@ const Settings: React.FC = () => {
           <CardHeader>
             <div className="flex items-center space-x-2">
               <SparklesIcon className="h-6 w-6 text-primary-600" />
-              <h3 className="text-lg font-medium text-gray-900">AI Intelligence</h3>
+              <h3 className="text-lg font-medium text-gray-900">{t('settings.ai.title')}</h3>
             </div>
           </CardHeader>
           <CardBody>
             <p className="text-gray-600 mb-4">
-              Configure your AI providers and model preferences for resume optimization.
+              {t('settings.ai.description')}
             </p>
             <div className="flex items-center space-x-2 mb-3">
-              <span className="text-sm text-gray-600">Active Provider:</span>
+              <span className="text-sm text-gray-600">{t('settings.ai.activeProvider')}</span>
               <Badge variant="primary" size="sm">
-                {aiSettings.provider_preference === 'openai' ? 'OpenAI' : aiSettings.provider_preference === 'openrouter' ? 'OpenRouter' : 'Local AI'}
+                {aiSettings.provider_preference === 'openai' ? 'OpenAI' 
+                  : aiSettings.provider_preference === 'openrouter' ? 'OpenRouter'
+                  : aiSettings.provider_preference === 'gemini' ? 'Gemini'
+                  : aiSettings.provider_preference === 'cursor' ? 'Cursor'
+                  : 'Local AI'}
               </Badge>
             </div>
             <Button
@@ -331,7 +365,7 @@ const Settings: React.FC = () => {
               onClick={() => setIsAIModalOpen(true)}
               className="w-full"
             >
-              Configure AI
+              {t('settings.ai.button')}
             </Button>
           </CardBody>
         </Card>
@@ -572,7 +606,59 @@ const Settings: React.FC = () => {
               variant="secondary"
               onClick={() => setIsThemeModalOpen(false)}
             >
-              Close
+              {t('common.close')}
+            </Button>
+          </div>
+        </div>
+      </Modal>
+
+      {/* Language Modal */}
+      <Modal
+        isOpen={isLanguageModalOpen}
+        onClose={() => setIsLanguageModalOpen(false)}
+        title={t('settings.language.title')}
+        size="md"
+      >
+        <div className="space-y-6">
+          <div className="space-y-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Choose Language
+              </label>
+              <div className="space-y-3">
+                {[
+                  { value: 'en', label: 'English' },
+                  { value: 'es', label: 'Español' },
+                ].map((option) => (
+                  <div
+                    key={option.value}
+                    className={`flex items-center p-3 border rounded-lg cursor-pointer transition-colors ${i18n.language === option.value
+                      ? 'border-primary-500 bg-primary-50'
+                      : 'border-gray-200 hover:border-gray-300'
+                      }`}
+                    onClick={() => handleLanguageChange(option.value)}
+                  >
+                    <input
+                      type="radio"
+                      name="language"
+                      value={option.value}
+                      checked={i18n.language === option.value}
+                      onChange={() => handleLanguageChange(option.value)}
+                      className="mr-3"
+                    />
+                    <span className="font-medium text-gray-900">{option.label}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+
+          <div className="flex justify-end space-x-3 pt-4 border-t border-gray-200">
+            <Button
+              variant="secondary"
+              onClick={() => setIsLanguageModalOpen(false)}
+            >
+              {t('common.close')}
             </Button>
           </div>
         </div>
@@ -637,10 +723,12 @@ const Settings: React.FC = () => {
               <label className="block text-sm font-medium text-gray-700 mb-3">
                 Preferred AI Provider
               </label>
-              <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-3 lg:grid-cols-5">
                 {[
                   { id: 'openai', name: 'OpenAI', description: 'GPT-4o, GPT-4' },
                   { id: 'openrouter', name: 'OpenRouter', description: 'Claude, Llama, etc.' },
+                  { id: 'gemini', name: 'Gemini', description: 'Gemini 1.5 Flash' },
+                  { id: 'cursor', name: 'Cursor', description: 'Cursor AI' },
                   { id: 'local_ai', name: 'Local AI', description: 'Ollama, Localhost' }
                 ].map((provider) => (
                   <div
@@ -708,6 +796,53 @@ const Settings: React.FC = () => {
                   placeholder="https://openrouter.ai/api/v1"
                   value={aiSettings.openrouter_base_url || ''}
                   onChange={(val: string) => updateAISettings({ openrouter_base_url: val })}
+                />
+              </div>
+            )}
+
+            {aiSettings.provider_preference === 'gemini' && (
+              <div className="space-y-4 pt-4 border-t border-gray-100">
+                <Input
+                  label="Gemini API Key"
+                  name="gemini_api_key"
+                  type="password"
+                  placeholder="AIza..."
+                  value={aiSettings.gemini_api_key || ''}
+                  onChange={(val: string) => updateAISettings({ gemini_api_key: val })}
+                />
+                <Input
+                  label="Model Selection"
+                  name="gemini_model"
+                  placeholder="gemini-1.5-flash"
+                  value={aiSettings.gemini_model || ''}
+                  onChange={(val: string) => updateAISettings({ gemini_model: val })}
+                />
+              </div>
+            )}
+
+            {aiSettings.provider_preference === 'cursor' && (
+              <div className="space-y-4 pt-4 border-t border-gray-100">
+                <Input
+                  label="Cursor API Key"
+                  name="cursor_api_key"
+                  type="password"
+                  placeholder="key_..."
+                  value={aiSettings.cursor_api_key || ''}
+                  onChange={(val: string) => updateAISettings({ cursor_api_key: val })}
+                />
+                <Input
+                  label="Model Selection"
+                  name="cursor_model"
+                  placeholder="gpt-4o"
+                  value={aiSettings.cursor_model || ''}
+                  onChange={(val: string) => updateAISettings({ cursor_model: val })}
+                />
+                <Input
+                  label="Custom Base URL (Optional)"
+                  name="cursor_base_url"
+                  placeholder="https://api.cursor.sh/openai/v1"
+                  value={aiSettings.cursor_base_url || ''}
+                  onChange={(val: string) => updateAISettings({ cursor_base_url: val })}
                 />
               </div>
             )}
@@ -792,6 +927,19 @@ const Settings: React.FC = () => {
                 className="w-full"
               />
             </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Enter your password to confirm:
+              </label>
+              <Input
+                name="deletePassword"
+                type="password"
+                value={deletePassword}
+                onChange={(val: string) => setDeletePassword(val)}
+                placeholder="Enter your password"
+                className="w-full"
+              />
+            </div>
           </div>
 
           <div className="flex justify-end space-x-3">
@@ -800,6 +948,7 @@ const Settings: React.FC = () => {
               onClick={() => {
                 setIsDeleteModalOpen(false);
                 setDeleteConfirmation('');
+                setDeletePassword('');
               }}
               disabled={isDeleting}
             >
@@ -808,7 +957,7 @@ const Settings: React.FC = () => {
             <Button
               variant="danger"
               onClick={handleDeleteAccount}
-              disabled={isDeleting || deleteConfirmation !== 'DELETE'}
+              disabled={isDeleting || deleteConfirmation !== 'DELETE' || !deletePassword}
             >
               {isDeleting ? (
                 <>

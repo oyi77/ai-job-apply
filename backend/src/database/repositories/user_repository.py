@@ -3,12 +3,11 @@
 from typing import Optional
 from datetime import datetime, timezone
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, update
-from sqlalchemy.orm import selectinload
+from sqlalchemy import select, update, delete
 
-from ..models import DBUser, DBUserSession
-from ...models.user import User, UserProfileUpdate
-from ...utils.logger import get_logger
+from src.database.models import DBUser, DBUserSession
+from src.models.user import User, UserProfileUpdate
+from src.utils.logger import get_logger
 
 
 class UserRepository:
@@ -223,6 +222,100 @@ class UserRepository:
             await self.session.rollback()
             self.logger.error(f"Error clearing password reset token: {e}", exc_info=True)
             return False
+    
+    async def increment_failed_login_attempts(self, user_id: str) -> int:
+        """Increment failed login attempts for a user."""
+        try:
+            # Get current failed attempts
+            user = await self.get_by_id(user_id)
+            if not user:
+                return 0
+            
+            new_attempts = (user.failed_login_attempts or 0) + 1
+            stmt = (
+                update(DBUser)
+                .where(DBUser.id == user_id)
+                .values(
+                    failed_login_attempts=new_attempts,
+                    updated_at=datetime.now(timezone.utc)
+                )
+            )
+            await self.session.execute(stmt)
+            await self.session.commit()
+            
+            return new_attempts
+            
+        except Exception as e:
+            await self.session.rollback()
+            self.logger.error(f"Error incrementing failed login attempts: {e}", exc_info=True)
+            return 0
+    
+    async def reset_failed_login_attempts(self, user_id: str) -> bool:
+        """Reset failed login attempts for a user."""
+        try:
+            stmt = (
+                update(DBUser)
+                .where(DBUser.id == user_id)
+                .values(
+                    failed_login_attempts=0,
+                    account_locked_until=None,
+                    updated_at=datetime.now(timezone.utc)
+                )
+            )
+            await self.session.execute(stmt)
+            await self.session.commit()
+            
+            return True
+            
+        except Exception as e:
+            await self.session.rollback()
+            self.logger.error(f"Error resetting failed login attempts: {e}", exc_info=True)
+            return False
+    
+    async def lock_account(self, user_id: str, locked_until: datetime) -> bool:
+        """Lock user account until specified time."""
+        try:
+            stmt = (
+                update(DBUser)
+                .where(DBUser.id == user_id)
+                .values(
+                    account_locked_until=locked_until,
+                    updated_at=datetime.now(timezone.utc)
+                )
+            )
+            await self.session.execute(stmt)
+            await self.session.commit()
+            
+            self.logger.info(f"Account locked until {locked_until} for user {user_id}")
+            return True
+            
+        except Exception as e:
+            await self.session.rollback()
+            self.logger.error(f"Error locking account: {e}", exc_info=True)
+            return False
+    
+    async def delete(self, user_id: str) -> bool:
+        """Delete a user and all associated data (CASCADE will handle related records)."""
+        try:
+            # First invalidate all sessions
+            await self.invalidate_all_user_sessions(user_id)
+            
+            # Delete user (CASCADE will delete all related records)
+            stmt = delete(DBUser).where(DBUser.id == user_id)
+            result = await self.session.execute(stmt)
+            await self.session.commit()
+            
+            if result.rowcount > 0:
+                self.logger.info(f"Deleted user {user_id} and all associated data")
+                return True
+            else:
+                self.logger.warning(f"User {user_id} not found for deletion")
+                return False
+            
+        except Exception as e:
+            await self.session.rollback()
+            self.logger.error(f"Error deleting user {user_id}: {e}", exc_info=True)
+            raise
 
     async def delete(self, user_id: str) -> bool:
         """Delete a user."""

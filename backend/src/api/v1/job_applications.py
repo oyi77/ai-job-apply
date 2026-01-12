@@ -2,14 +2,15 @@
 
 from fastapi import APIRouter, HTTPException, Depends, UploadFile, File, Form
 from typing import List, Dict, Any, Optional
-from ...models.job import Job, ApplicationInfo
-from ...models.resume import Resume
-from ...models.application import JobApplication
-from ...models.user import UserProfile
-from ...api.dependencies import get_current_user
-from ...utils.logger import get_logger
-from ...utils.response_wrapper import success_response, error_response
-from ...services.service_registry import service_registry
+from datetime import datetime
+from src.models.job import Job, ApplicationInfo
+from src.models.resume import Resume
+from src.models.application import JobApplication
+from src.models.user import UserProfile
+from src.api.dependencies import get_current_user
+from src.utils.logger import get_logger
+from src.utils.response_wrapper import success_response, error_response
+from src.services.service_registry import service_registry
 
 logger = get_logger(__name__)
 
@@ -72,21 +73,20 @@ async def apply_to_job(
         )
         
         if result.get("success"):
-            # Create application record
-            application = JobApplication(
-                job_id=job_id,
-                job_title=job.title,
-                company=job.company,
-                status="applied",
-                resume_id=resume_id,
-                cover_letter=cover_letter,
-                application_method=result.get("method", "unknown"),
-                external_id=result.get("application_id"),
-                notes=f"Applied via {result.get('method', 'unknown')} method"
-            )
+            # Prepare application data
+            application_data = {
+                "job_id": job_id,
+                "job_title": job.title,
+                "company": job.company,
+                "status": "applied",
+                "resume_path": None,  # Resume ID tracked in notes/relations
+                "cover_letter_path": None, # Cover letter content in notes/relations
+                "applied_date": datetime.utcnow(),
+                "notes": f"Applied via {result.get('method', 'unknown')} method. Resume ID: {resume_id}, Cover Letter Length: {len(cover_letter)}"
+            }
             
-            # Save application
-            await application_service.create_application(application)
+            # Save application with user association
+            await application_service.create_application(application_data, user_id=current_user.id)
             
             logger.info(f"Successfully applied to job: {job.title} at {job.company}")
             return {

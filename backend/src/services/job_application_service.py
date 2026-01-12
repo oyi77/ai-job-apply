@@ -7,10 +7,10 @@ from datetime import datetime
 from urllib.parse import urljoin, urlparse
 from loguru import logger
 
-from ..core.job_application import JobApplicationService
-from ..models.job import Job, ApplicationInfo, ApplicationForm, JobApplicationMethod
-from ..models.resume import Resume
-from ..utils.logger import get_logger
+from src.core.job_application import JobApplicationService
+from src.models.job import Job, ApplicationInfo, ApplicationForm, JobApplicationMethod
+from src.models.resume import Resume
+from src.utils.logger import get_logger
 
 
 class MultiPlatformJobApplicationService(JobApplicationService):

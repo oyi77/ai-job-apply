@@ -2,7 +2,7 @@
 
 from abc import ABC, abstractmethod
 from typing import Optional
-from ..models.user import User, UserRegister, UserLogin, TokenResponse, UserProfile, UserProfileUpdate, PasswordChange, PasswordResetRequest, PasswordReset
+from src.models.user import User, UserRegister, UserLogin, TokenResponse, UserProfile, UserProfileUpdate, PasswordChange, PasswordResetRequest, PasswordReset
 
 
 class AuthService(ABC):
@@ -159,6 +159,23 @@ class AuthService(ABC):
             
         Raises:
             ValueError: If token is invalid or expired
+        """
+        pass
+    
+    @abstractmethod
+    async def delete_user(self, user_id: str, password: str) -> bool:
+        """
+        Delete a user account and all associated data.
+        
+        Args:
+            user_id: User ID to delete
+            password: User password for confirmation
+            
+        Returns:
+            True if account deleted successfully
+            
+        Raises:
+            ValueError: If password is incorrect or user not found
         """
         pass
 

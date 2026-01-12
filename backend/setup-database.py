@@ -41,13 +41,10 @@ async def setup_database():
         logger.info(f"Database file: {os.environ.get('DB_PATH', 'ai_job_assistant.db')}")
         
         # Test connection
-        session = await db_config.get_session()
-        try:
+        async with db_config.get_session() as session:
             from sqlalchemy import text
             result = await session.execute(text("SELECT 1"))
             logger.info("Database connection test: SUCCESS")
-        finally:
-            await session.close()
         
         # Close database engine to release connections
         await db_config.close()

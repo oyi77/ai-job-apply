@@ -4,10 +4,10 @@ import uuid
 from typing import List, Optional, Dict, Any
 from datetime import datetime, timezone
 
-from ..core.cover_letter_service import CoverLetterService
-from ..models.cover_letter import CoverLetter, CoverLetterCreate, CoverLetterUpdate
-from ..core.ai_service import AIService
-from ..database.repositories.cover_letter_repository import CoverLetterRepository
+from src.core.cover_letter_service import CoverLetterService
+from src.models.cover_letter import CoverLetter, CoverLetterCreate, CoverLetterUpdate
+from src.core.ai_service import AIService
+from src.database.repositories.cover_letter_repository import CoverLetterRepository
 from loguru import logger
 
 
@@ -164,7 +164,20 @@ class CoverLetterService(CoverLetterService):
         except Exception as e:
             self.logger.error(f"Error deleting cover letter {cover_letter_id}: {e}", exc_info=True)
             return False
-    
+
+    async def bulk_delete_cover_letters(self, cover_letter_ids: List[str], user_id: Optional[str] = None) -> bool:
+        """Delete multiple cover letters."""
+        success = True
+        try:
+            for cl_id in cover_letter_ids:
+                result = await self.delete_cover_letter(cl_id, user_id=user_id)
+                if not result:
+                    success = False
+            return success
+        except Exception as e:
+            self.logger.error(f"Error in bulk cover letter deletion: {e}", exc_info=True)
+            return False
+
     async def generate_cover_letter(
         self, 
         job_title: str, 
@@ -181,7 +194,7 @@ class CoverLetterService(CoverLetterService):
             # Try AI generation first
             if await self.ai_service.is_available():
                 try:
-                    from ..models.cover_letter import CoverLetterRequest
+                    from src.models.cover_letter import CoverLetterRequest
                     
                     # Create AI request
                     ai_request = CoverLetterRequest(

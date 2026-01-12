@@ -431,6 +431,47 @@ class TestAIEndpoints:
         assert "company_name" in data
         assert data["job_title"] == "Senior Developer"
         assert data["company_name"] == "Innovation Labs"
+    
+    @pytest.mark.asyncio
+    async def test_prepare_interview(self, client, mock_service_registry):
+        """Test interview preparation endpoint."""
+        interview_prep_request = {
+            "job_description": "We are looking for a senior software engineer with 5+ years of experience in Python and React.",
+            "resume_content": "Software engineer with 6 years of experience in Python, React, and cloud technologies.",
+            "company_name": "Tech Corp",
+            "job_title": "Senior Software Engineer"
+        }
+        
+        mock_interview_prep = {
+            "questions": [
+                {
+                    "question": "Tell me about your experience with Python.",
+                    "answer": "I have 6 years of experience working with Python...",
+                    "category": "technical"
+                }
+            ],
+            "tips": [
+                "Research the company culture",
+                "Prepare examples of your work",
+                "Practice common interview questions"
+            ],
+            "company_research": {
+                "about": "Tech Corp is a leading technology company...",
+                "values": ["Innovation", "Collaboration", "Excellence"]
+            }
+        }
+        mock_service_registry.ai_service.prepare_interview.return_value = mock_interview_prep
+        
+        response = await client.post("/api/v1/ai/interview-prep", json=interview_prep_request)
+        
+        assert response.status_code == 200
+        data = response.json()
+        assert "questions" in data
+        assert "tips" in data
+        assert isinstance(data["questions"], list)
+        assert isinstance(data["tips"], list)
+        if "company_research" in data:
+            assert isinstance(data["company_research"], dict)
 
 
 class TestJobSearchEndpoints:

@@ -6,8 +6,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, update, delete, func, and_, or_
 from pathlib import Path
 
-from ..models import DBFileMetadata
-from ...utils.logger import get_logger
+from src.database.models import DBFileMetadata
+from src.utils.logger import get_logger
 
 
 class FileRepository:

@@ -11,6 +11,8 @@ import type {
   AIOptimizationResponse,
   CoverLetterRequest,
   CoverLetterResponse,
+  CareerInsightsRequest,
+  CareerInsightsResponse,
   ApplicationStats,
   SearchFilters,
   SortOptions
@@ -22,7 +24,7 @@ const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000
 // Create axios instance
 const apiClient: AxiosInstance = axios.create({
   baseURL: API_BASE_URL,
-  timeout: 10000,
+  timeout: 10000, // Default timeout for regular requests
   headers: {
     'Content-Type': 'application/json',
   },
@@ -276,6 +278,16 @@ export const authService = {
   getRefreshToken: (): string | null => {
     return localStorage.getItem(REFRESH_TOKEN_KEY);
   },
+
+  // Delete account
+  deleteAccount: async (password: string): Promise<void> => {
+    await apiClient.delete('/api/v1/auth/account', {
+      data: { password },
+    });
+    // Clear tokens after successful deletion
+    localStorage.removeItem(ACCESS_TOKEN_KEY);
+    localStorage.removeItem(REFRESH_TOKEN_KEY);
+  },
 };
 
 // Helper to handle API responses
@@ -335,6 +347,75 @@ export const applicationService = {
     const response = await apiClient.get('/api/v1/applications/stats');
     return handleApiResponse(response);
   },
+
+  // Bulk update applications
+  bulkUpdate: async (ids: string[], updates: Partial<JobApplication>): Promise<JobApplication[]> => {
+    const response = await apiClient.put('/api/v1/applications/bulk', { ids, updates });
+    return handleApiResponse(response);
+  },
+
+  // Bulk delete applications
+  bulkDelete: async (ids: string[]): Promise<boolean> => {
+    const response = await apiClient.delete('/api/v1/applications/bulk', { data: { ids } });
+    return handleApiResponse(response);
+  },
+
+  // Export applications
+  exportApplications: async (ids?: string[], format = 'csv'): Promise<Blob> => {
+    const response = await apiClient.post('/api/v1/applications/export', { ids, format }, {
+      responseType: 'blob'
+    });
+    return response.data;
+  },
+};
+
+// Export Services
+export const exportService = {
+  // Export applications
+  exportApplications: async (ids?: string[], format: 'pdf' | 'csv' | 'excel' = 'csv', dateFrom?: string, dateTo?: string): Promise<Blob> => {
+    const response = await apiClient.post('/api/v1/exports/applications', {
+      format,
+      application_ids: ids,
+      date_from: dateFrom,
+      date_to: dateTo,
+    }, {
+      responseType: 'blob',
+    });
+    return response.data;
+  },
+
+  // Export resumes
+  exportResumes: async (format: 'pdf' | 'csv' | 'excel' = 'csv'): Promise<Blob> => {
+    const response = await apiClient.post(`/api/v1/exports/resumes?format=${format}`, {}, {
+      responseType: 'blob',
+    });
+    return response.data;
+  },
+
+  // Export cover letters
+  exportCoverLetters: async (format: 'pdf' | 'csv' | 'excel' = 'pdf'): Promise<Blob> => {
+    const response = await apiClient.post(`/api/v1/exports/cover-letters?format=${format}`, {}, {
+      responseType: 'blob',
+    });
+    return response.data;
+  },
+
+  // Export analytics
+  exportAnalytics: async (format: 'pdf' | 'csv' | 'excel' = 'pdf', includeCharts = true): Promise<Blob> => {
+    const response = await apiClient.post('/api/v1/exports/analytics', {
+      format,
+      include_charts: includeCharts,
+    }, {
+      responseType: 'blob',
+    });
+    return response.data;
+  },
+
+  // Get supported formats
+  getSupportedFormats: async (): Promise<string[]> => {
+    const response = await apiClient.get('/api/v1/exports/formats');
+    return response.data.data?.formats || ['csv', 'excel', 'pdf'];
+  },
 };
 
 // Resume Services
@@ -363,6 +444,7 @@ export const resumeService = {
       headers: {
         'Content-Type': 'multipart/form-data',
       },
+      timeout: 60000, // 60 seconds for file uploads
     });
     return handleApiResponse(response);
   },
@@ -382,6 +464,12 @@ export const resumeService = {
   // Set default resume
   setDefaultResume: async (id: string): Promise<Resume> => {
     const response = await apiClient.patch(`/api/v1/resumes/${id}/default`);
+    return handleApiResponse(response);
+  },
+
+  // Bulk delete resumes
+  bulkDelete: async (ids: string[]): Promise<boolean> => {
+    const response = await apiClient.delete('/api/v1/resumes/bulk', { data: { ids } });
     return handleApiResponse(response);
   },
 };
@@ -430,6 +518,12 @@ export const coverLetterService = {
     const response = await apiClient.delete(`/api/v1/cover-letters/${id}`);
     return handleApiResponse(response);
   },
+
+  // Bulk delete cover letters
+  bulkDelete: async (ids: string[]): Promise<boolean> => {
+    const response = await apiClient.delete('/api/v1/cover-letters/bulk', { data: { ids } });
+    return handleApiResponse(response);
+  },
 };
 
 // AI Services
@@ -464,6 +558,23 @@ export const aiService = {
   // Extract skills
   extractSkills: async (text: string): Promise<{ skills: string[]; confidence: number }> => {
     const response = await apiClient.post('/api/v1/ai/extract-skills', { text });
+    return handleApiResponse(response);
+  },
+
+  // Generate career insights
+  generateCareerInsights: async (request: CareerInsightsRequest): Promise<CareerInsightsResponse> => {
+    const response = await apiClient.post('/api/v1/ai/career-insights', request);
+    return handleApiResponse(response);
+  },
+
+  // Prepare interview
+  prepareInterview: async (jobDescription: string, resumeContent: string, company: string, jobTitle: string): Promise<any> => {
+    const response = await apiClient.post('/api/v1/ai/interview-prep', {
+      job_description: jobDescription,
+      resume_content: resumeContent,
+      company_name: company,
+      job_title: jobTitle
+    });
     return handleApiResponse(response);
   },
 };
@@ -540,6 +651,7 @@ export const fileService = {
       headers: {
         'Content-Type': 'multipart/form-data',
       },
+      timeout: 60000, // 60 seconds for file uploads
     });
     return handleApiResponse(response);
   },
@@ -569,4 +681,5 @@ export default {
   aiService,
   jobSearchService,
   fileService,
+  exportService,
 };

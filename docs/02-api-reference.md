@@ -1,557 +1,451 @@
-# API Reference Documentation
+# API Reference
 
-**Base URL**: `http://localhost:8000` (development)  
-**API Version**: v1  
-**Documentation**: `/docs` (Swagger UI when DEBUG=true)
+This document provides a detailed reference for the AI Job Application Assistant API.
+
+**Base URL**: `/api`
+
+**API Version**: v1
 
 ## Authentication
 
-Currently, the API does not require authentication. Future versions will implement JWT-based authentication.
+The API uses JSON Web Tokens (JWT) for authentication. To access protected endpoints, you must include an `Authorization` header with a valid JWT.
 
-## Response Format
+**Example:**
 
-### Success Response
+```
+Authorization: Bearer <your_jwt>
+```
+
+### Authentication Flow
+
+1. **Register**: Create a new user account via `POST /api/v1/auth/register`
+2. **Login**: Authenticate and receive access + refresh tokens via `POST /api/v1/auth/login`
+3. **Access Protected Endpoints**: Include `Authorization: Bearer <access_token>` header
+4. **Refresh Token**: When access token expires, use `POST /api/v1/auth/refresh` with refresh token
+5. **Logout**: Invalidate refresh token via `POST /api/v1/auth/logout`
+
+### Token Details
+
+- **Access Token**: Expires in 15 minutes (configurable)
+- **Refresh Token**: Expires in 7 days (configurable)
+- **Token Storage**: Store tokens securely (localStorage recommended for web apps)
+- **Token Refresh**: Automatically refresh access token before expiration
+
+### Security Features
+
+- **Rate Limiting**: Auth endpoints limited to 10 requests/minute per IP
+- **Account Lockout**: Account locked after 5 failed login attempts for 30 minutes
+- **CSRF Protection**: CSRF tokens required for state-changing operations
+- **Password Requirements**: Minimum 8 characters with complexity requirements
+- **Password Hashing**: Passwords hashed with bcrypt (cost factor 12)
+
+## API Versioning
+
+The API version is specified in the URL. For example, to access version 1 of the API, you would use the following URL:
+
+```
+/api/v1
+```
+
+## Error Responses
+
+The API uses standard HTTP status codes to indicate the success or failure of a request. In addition, the response body will contain a JSON object with more information about the error.
+
+**Example:**
+
 ```json
 {
-  "success": true,
-  "data": { ... },
-  "message": "Operation successful"
+  "detail": "Invalid credentials"
 }
 ```
 
-### Error Response
-```json
-{
-  "success": false,
-  "error": "Error message",
-  "details": { ... }
-}
-```
+### Common Error Codes
+
+| Status Code | Description |
+| --- | --- |
+| `400 Bad Request` | The request was malformed or contained invalid data. |
+| `401 Unauthorized` | The request did not include a valid JWT. |
+| `403 Forbidden` | The client does not have permission to access the requested resource. |
+| `404 Not Found` | The requested resource could not be found. |
+| `500 Internal Server Error` | An unexpected error occurred on the server. |
 
 ## Endpoints
 
-### Health & Status
+### Auth
 
-#### GET /health
-Health check endpoint.
+#### `POST /api/v1/auth/register`
 
-**Response**:
+Register a new user account.
+
+**Rate Limit**: 10 requests per minute per IP
+
+**Request Body:**
+
 ```json
 {
-  "status": "healthy",
-  "version": "1.0.0",
-  "environment": "development"
+  "email": "user@example.com",
+  "password": "SecurePassword123!",
+  "name": "John Doe"
 }
 ```
 
-#### GET /api/v1/ai/health
-AI service health check.
+**Password Requirements:**
+- Minimum 8 characters
+- At least one uppercase letter
+- At least one lowercase letter
+- At least one digit
+- At least one special character
 
-**Response**:
+**Response (201 Created):**
+
 ```json
 {
-  "status": "healthy",
-  "available": true,
-  "model": "gemini-1.5-flash"
+  "access_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
+  "refresh_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
+  "token_type": "bearer",
+  "expires_in": 900
 }
 ```
+
+**Error Responses:**
+- `400 Bad Request`: Email already exists or validation failed
+- `422 Unprocessable Entity`: Invalid request format
+- `429 Too Many Requests`: Rate limit exceeded
+
+#### `POST /api/v1/auth/login`
+
+Authenticate a user and receive JWT tokens.
+
+**Rate Limit**: 10 requests per minute per IP
+
+**Request Body:**
+
+```json
+{
+  "email": "user@example.com",
+  "password": "SecurePassword123!"
+}
+```
+
+**Response (200 OK):**
+
+```json
+{
+  "access_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
+  "refresh_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
+  "token_type": "bearer",
+  "expires_in": 900
+}
+```
+
+**Error Responses:**
+- `400 Bad Request`: Invalid email or password (does not reveal if email exists)
+- `400 Bad Request`: Account is locked (after 5 failed attempts)
+- `400 Bad Request`: Account is disabled
+- `422 Unprocessable Entity`: Invalid request format
+- `429 Too Many Requests`: Rate limit exceeded
+
+**Account Lockout:**
+- Account locked after 5 failed login attempts
+- Lockout duration: 30 minutes (configurable)
+- Lockout automatically expires after duration
+
+#### `POST /api/v1/auth/refresh`
+
+Refresh an expired access token using a refresh token.
+
+**Authentication**: Not required (uses refresh token)
+
+**Request Body:**
+
+```json
+{
+  "refresh_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+}
+```
+
+**Response (200 OK):**
+
+```json
+{
+  "access_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
+  "refresh_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
+  "token_type": "bearer",
+  "expires_in": 900
+}
+```
+
+**Note**: Refresh token is rotated (new refresh token issued)
+
+**Error Responses:**
+- `401 Unauthorized`: Invalid or expired refresh token
+- `422 Unprocessable Entity`: Invalid request format
+
+#### `POST /api/v1/auth/logout`
+
+Logout a user by invalidating their refresh token.
+
+**Authentication**: Not required (allows logout with expired tokens)
+
+**Request Body:**
+
+```json
+{
+  "refresh_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+}
+```
+
+**Response (200 OK):**
+
+```json
+{
+  "message": "Logged out successfully"
+}
+```
+
+**Note**: Always returns 200 to allow frontend cleanup, even if token is invalid
 
 ---
 
-### Applications
+#### `GET /api/v1/auth/me`
 
-#### GET /api/v1/applications
-List all job applications.
+Get the profile of the currently authenticated user.
 
-**Query Parameters**:
-- `status` (string, optional): Filter by status
-- `company` (string, optional): Filter by company
-- `page` (int, optional): Page number (default: 1)
-- `limit` (int, optional): Items per page (default: 10)
+**Authentication**: Required (Bearer token)
 
-**Response**:
+**Response (200 OK):**
+
 ```json
 {
-  "success": true,
-  "data": [
-    {
-      "id": "app_123",
-      "job_id": "job_456",
-      "job_title": "Software Engineer",
-      "company": "Tech Corp",
-      "status": "under_review",
-      "applied_date": "2025-01-15T10:00:00Z",
-      "created_at": "2025-01-15T09:00:00Z",
-      "updated_at": "2025-01-15T10:00:00Z"
-    }
-  ],
-  "total": 10,
-  "page": 1,
-  "limit": 10
+  "id": "user-uuid",
+  "email": "user@example.com",
+  "name": "John Doe",
+  "is_active": true,
+  "created_at": "2025-01-01T00:00:00Z",
+  "updated_at": "2025-01-01T00:00:00Z"
 }
 ```
 
-#### GET /api/v1/applications/{id}
-Get a specific application.
-
-**Response**:
-```json
-{
-  "success": true,
-  "data": {
-    "id": "app_123",
-    "job_id": "job_456",
-    "job_title": "Software Engineer",
-    "company": "Tech Corp",
-    "status": "under_review",
-    "resume_path": "/resumes/resume_123.pdf",
-    "cover_letter_path": "/cover-letters/letter_123.txt",
-    "notes": "Applied through company website",
-    "applied_date": "2025-01-15T10:00:00Z",
-    "follow_up_date": "2025-01-22T10:00:00Z",
-    "interview_date": null,
-    "created_at": "2025-01-15T09:00:00Z",
-    "updated_at": "2025-01-15T10:00:00Z"
-  }
-}
-```
-
-#### POST /api/v1/applications
-Create a new application.
-
-**Request Body**:
-```json
-{
-  "job_id": "job_456",
-  "job_title": "Software Engineer",
-  "company": "Tech Corp",
-  "status": "draft",
-  "notes": "Initial application"
-}
-```
-
-**Response**: Application object (same as GET)
-
-#### PUT /api/v1/applications/{id}
-Update an application.
-
-**Request Body**:
-```json
-{
-  "status": "submitted",
-  "notes": "Updated notes",
-  "applied_date": "2025-01-15T10:00:00Z"
-}
-```
-
-**Response**: Updated application object
-
-#### DELETE /api/v1/applications/{id}
-Delete an application.
-
-**Response**:
-```json
-{
-  "success": true,
-  "message": "Application deleted successfully"
-}
-```
-
-#### GET /api/v1/applications/stats
-Get application statistics.
-
-**Response**:
-```json
-{
-  "success": true,
-  "data": {
-    "total": 10,
-    "by_status": {
-      "draft": 2,
-      "submitted": 3,
-      "under_review": 2,
-      "interview_scheduled": 1,
-      "offer_received": 1,
-      "rejected": 1
-    },
-    "success_rate": 0.1,
-    "average_response_time": 5.5
-  }
-}
-```
+**Error Responses:**
+- `401 Unauthorized`: Invalid or missing token
 
 ---
 
-### Resumes
+#### `PUT /api/v1/auth/me`
 
-#### GET /api/v1/resumes
-List all resumes.
+Update the profile of the currently authenticated user.
 
-**Response**:
+**Authentication**: Required (Bearer token)
+
+**Request Body:**
+
 ```json
 {
-  "success": true,
-  "data": [
-    {
-      "id": "resume_123",
-      "name": "John Doe Resume",
-      "file_path": "/resumes/resume_123.pdf",
-      "file_type": "pdf",
-      "is_default": true,
-      "skills": ["Python", "React", "TypeScript"],
-      "experience_years": 5,
-      "created_at": "2025-01-10T10:00:00Z",
-      "updated_at": "2025-01-10T10:00:00Z"
-    }
-  ]
+  "name": "Updated Name",
+  "email": "newemail@example.com"
 }
 ```
 
-#### GET /api/v1/resumes/{id}
-Get a specific resume.
+**Response (200 OK):**
 
-**Response**: Resume object (same structure as list)
-
-#### POST /api/v1/resumes/upload
-Upload a new resume.
-
-**Request**: `multipart/form-data`
-- `file` (file, required): Resume file (PDF, DOCX, or TXT)
-- `metadata` (string, optional): JSON metadata
-
-**Response**: Created resume object
-
-#### PUT /api/v1/resumes/{id}
-Update resume metadata.
-
-**Request Body**:
 ```json
 {
-  "name": "Updated Resume Name",
-  "skills": ["Python", "React", "TypeScript", "Node.js"]
+  "id": "user-uuid",
+  "email": "newemail@example.com",
+  "name": "Updated Name",
+  "is_active": true,
+  "created_at": "2025-01-01T00:00:00Z",
+  "updated_at": "2025-01-01T12:00:00Z"
 }
 ```
 
-**Response**: Updated resume object
-
-#### DELETE /api/v1/resumes/{id}
-Delete a resume.
-
-**Response**:
-```json
-{
-  "success": true,
-  "message": "Resume deleted successfully"
-}
-```
-
-#### PATCH /api/v1/resumes/{id}/default
-Set resume as default.
-
-**Response**: Updated resume object with `is_default: true`
+**Error Responses:**
+- `400 Bad Request`: Email already in use
+- `401 Unauthorized`: Invalid or missing token
+- `422 Unprocessable Entity`: Invalid request format
 
 ---
 
-### Cover Letters
+#### `POST /api/v1/auth/change-password`
 
-#### GET /api/v1/cover-letters
-List all cover letters.
+Change the password for the currently authenticated user.
 
-**Response**:
+**Authentication**: Required (Bearer token)
+
+**Request Body:**
+
 ```json
 {
-  "success": true,
-  "data": [
-    {
-      "id": "letter_123",
-      "job_title": "Software Engineer",
-      "company_name": "Tech Corp",
-      "content": "Dear Hiring Manager...",
-      "tone": "professional",
-      "word_count": 350,
-      "created_at": "2025-01-15T10:00:00Z",
-      "updated_at": "2025-01-15T10:00:00Z"
-    }
-  ]
+  "current_password": "OldPassword123!",
+  "new_password": "NewPassword456!"
 }
 ```
 
-#### GET /api/v1/cover-letters/{id}
-Get a specific cover letter.
+**Response (200 OK):**
 
-**Response**: Cover letter object
-
-#### POST /api/v1/cover-letters
-Create a new cover letter.
-
-**Request Body**:
 ```json
 {
-  "job_title": "Software Engineer",
-  "company_name": "Tech Corp",
-  "content": "Dear Hiring Manager...",
-  "tone": "professional",
-  "word_count": 350
+  "message": "Password changed successfully"
 }
 ```
 
-**Response**: Created cover letter object
-
-#### PUT /api/v1/cover-letters/{id}
-Update a cover letter.
-
-**Request Body**:
-```json
-{
-  "content": "Updated content...",
-  "word_count": 400
-}
-```
-
-**Response**: Updated cover letter object
-
-#### DELETE /api/v1/cover-letters/{id}
-Delete a cover letter.
-
-**Response**:
-```json
-{
-  "success": true,
-  "message": "Cover letter deleted successfully"
-}
-```
+**Error Responses:**
+- `400 Bad Request`: Current password is incorrect
+- `400 Bad Request`: New password doesn't meet requirements
+- `401 Unauthorized`: Invalid or missing token
+- `422 Unprocessable Entity`: Invalid request format
 
 ---
 
-### AI Services
+#### `POST /api/v1/auth/request-password-reset`
 
-#### POST /api/v1/ai/optimize-resume
-Optimize resume for a specific job.
+Request a password reset email.
 
-**Request Body**:
+**Rate Limit**: 3 requests per hour per email
+
+**Request Body:**
+
 ```json
 {
-  "resume_id": "resume_123",
-  "job_description": "We are looking for a Python developer...",
-  "target_role": "Senior Python Developer",
-  "company_name": "Tech Corp"
+  "email": "user@example.com"
 }
 ```
 
-**Response**:
+**Response (200 OK):**
+
 ```json
 {
-  "success": true,
-  "data": {
-    "optimized_content": "Optimized resume content...",
-    "suggestions": [
-      "Add more Python-specific projects",
-      "Highlight leadership experience",
-      "Include relevant certifications"
-    ],
-    "confidence_score": 0.85,
-    "improvements": {
-      "skills_match": 0.9,
-      "experience_match": 0.8,
-      "overall_match": 0.85
-    }
-  }
+  "message": "If the email exists, a password reset link has been sent"
 }
 ```
 
-#### POST /api/v1/ai/generate-cover-letter
-Generate a cover letter using AI.
+**Note**: Always returns success message (does not reveal if email exists)
 
-**Request Body**:
+**Error Responses:**
+- `422 Unprocessable Entity`: Invalid request format
+- `429 Too Many Requests`: Rate limit exceeded
+
+---
+
+#### `POST /api/v1/auth/reset-password`
+
+Reset password using a reset token.
+
+**Request Body:**
+
 ```json
 {
-  "job_title": "Software Engineer",
-  "company_name": "Tech Corp",
-  "job_description": "We are looking for...",
-  "resume_summary": "Experienced Python developer...",
-  "tone": "professional"
+  "token": "reset-token-from-email",
+  "new_password": "NewPassword456!"
 }
 ```
 
-**Response**:
+**Response (200 OK):**
+
 ```json
 {
-  "success": true,
-  "data": {
-    "content": "Dear Hiring Manager...",
-    "word_count": 350,
-    "tone": "professional",
-    "generated_at": "2025-01-15T10:00:00Z"
-  }
+  "message": "Password reset successfully"
 }
 ```
 
-#### POST /api/v1/ai/analyze-match
-Analyze job-resume compatibility.
+**Error Responses:**
+- `400 Bad Request`: Invalid or expired reset token
+- `400 Bad Request`: New password doesn't meet requirements
+- `422 Unprocessable Entity`: Invalid request format
 
-**Request Body**:
+---
+
+#### `DELETE /api/v1/auth/account/{user_id}`
+
+Delete user account (requires password confirmation).
+
+**Authentication**: Required (Bearer token)
+
+**Request Body:**
+
 ```json
 {
-  "resume_id": "resume_123",
-  "job_description": "We are looking for..."
+  "password": "CurrentPassword123!"
 }
 ```
 
-**Response**:
+**Response (200 OK):**
+
 ```json
 {
-  "success": true,
-  "data": {
-    "match_score": 0.85,
-    "suggestions": [
-      "Add more relevant experience",
-      "Highlight specific skills"
-    ],
-    "strengths": [
-      "Strong Python experience",
-      "Relevant certifications"
-    ],
-    "weaknesses": [
-      "Limited leadership experience",
-      "Missing specific technology"
+  "message": "Account deleted successfully"
+}
+```
+
+**Error Responses:**
+- `400 Bad Request`: Incorrect password
+- `403 Forbidden`: Can only delete your own account
+- `401 Unauthorized`: Invalid or missing token
+
+### Jobs
+
+#### `POST /api/v1/jobs/search`
+
+Search for jobs on various job boards.
+
+**Request Body:**
+
+```json
+{
+  "keywords": ["Software Engineer"],
+  "location": "San Francisco, CA"
+}
+```
+
+**Response:**
+
+```json
+{
+  "jobs": {
+    "linkedin": [
+      {
+        "title": "Software Engineer",
+        "company": "Google",
+        "location": "San Francisco, CA",
+        "url": "..."
+      }
     ]
   }
 }
 ```
 
-#### POST /api/v1/ai/extract-skills
-Extract skills from text.
+### Resumes
 
-**Request Body**:
+#### `POST /api/v1/resumes/upload`
+
+Upload a resume.
+
+**Request:**
+
+The request must be a `multipart/form-data` request with a `file` field containing the resume file.
+
+**Response:**
+
 ```json
 {
-  "text": "Experienced Python developer with React and TypeScript..."
+  "id": "...",
+  "name": "My Resume.pdf",
+  "path": "..."
 }
 ```
 
-**Response**:
+#### `GET /api/v1/resumes`
+
+Get a list of all resumes for the currently authenticated user.
+
+**Response:**
+
 ```json
-{
-  "success": true,
-  "data": {
-    "skills": ["Python", "React", "TypeScript"],
-    "confidence": 0.9
+[
+  {
+    "id": "...",
+    "name": "My Resume.pdf",
+    "path": "..."
   }
-}
+]
 ```
-
----
-
-### Job Search
-
-#### POST /api/v1/jobs/search
-Search for jobs across multiple platforms.
-
-**Request Body**:
-```json
-{
-  "keywords": ["Python", "developer"],
-  "location": "Remote",
-  "experience_level": "mid",
-  "job_type": "full-time",
-  "is_remote": true,
-  "results_wanted": 20,
-  "sort_by": "relevance",
-  "sort_order": "desc"
-}
-```
-
-**Response**:
-```json
-{
-  "success": true,
-  "data": {
-    "total_jobs": 50,
-    "jobs": {
-      "linkedin": [
-        {
-          "id": "job_123",
-          "title": "Python Developer",
-          "company": "Tech Corp",
-          "location": "Remote",
-          "url": "https://linkedin.com/jobs/123",
-          "description": "Job description...",
-          "posted_date": "2025-01-15T10:00:00Z"
-        }
-      ],
-      "indeed": [ ... ],
-      "glassdoor": [ ... ]
-    }
-  }
-}
-```
-
-#### GET /api/v1/jobs/{id}
-Get job details.
-
-**Query Parameters**:
-- `platform` (string, optional): Job platform
-
-**Response**: Job object with full details
-
-#### GET /api/v1/jobs/sources
-Get available job search sources.
-
-**Response**:
-```json
-{
-  "success": true,
-  "data": [
-    {
-      "name": "LinkedIn",
-      "available": true
-    },
-    {
-      "name": "Indeed",
-      "available": true
-    }
-  ]
-}
-```
-
----
-
-## Error Codes
-
-### HTTP Status Codes
-- `200 OK`: Successful request
-- `201 Created`: Resource created successfully
-- `400 Bad Request`: Invalid request data
-- `404 Not Found`: Resource not found
-- `500 Internal Server Error`: Server error
-
-### Error Response Format
-```json
-{
-  "success": false,
-  "error": "Error message",
-  "details": {
-    "field": "Specific error details"
-  }
-}
-```
-
-## Rate Limiting
-
-Currently, there is no rate limiting. Future versions will implement rate limiting per API key.
-
-## Pagination
-
-List endpoints support pagination:
-- `page`: Page number (default: 1)
-- `limit`: Items per page (default: 10, max: 100)
-
-Response includes:
-- `total`: Total number of items
-- `page`: Current page number
-- `limit`: Items per page
-
----
-
-**API Status**: Production-ready, all endpoints functional
-
