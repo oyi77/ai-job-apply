@@ -35,18 +35,19 @@ export type ApplicationStatus = typeof ApplicationStatus[keyof typeof Applicatio
 // Resume Types
 export interface Resume {
   id: string;
-  title?: string;
-  filename: string;
-  original_filename: string;
+  name?: string; // Backend uses 'name' field
+  title?: string; // Frontend may use 'title'
+  filename?: string;
+  original_filename?: string;
   file_path: string;
-  file_size: number;
-  mime_type: string;
+  file_size?: number;
+  mime_type?: string;
   file_type?: string;
   content?: string;
   skills: string[];
   experience_years: number;
-  education: Education[];
-  certifications: Certification[];
+  education: (Education | string)[]; // Support both structured objects and strings
+  certifications: (Certification | string)[]; // Support both structured objects and strings
   is_default: boolean;
   created_at: string;
   updated_at: string;
@@ -211,9 +212,14 @@ export interface AISettings {
   openrouter_api_key?: string;
   openrouter_model?: string;
   openrouter_base_url?: string;
+  gemini_api_key?: string;
+  gemini_model?: string;
+  cursor_api_key?: string;
+  cursor_model?: string;
+  cursor_base_url?: string;
   local_base_url?: string;
   local_model?: string;
-  provider_preference: 'openai' | 'openrouter' | 'local_ai';
+  provider_preference: 'openai' | 'openrouter' | 'gemini' | 'cursor' | 'local_ai';
 }
 
 export interface NotificationPreferences {
@@ -259,6 +265,12 @@ export interface FormField {
   validation?: ValidationRule[];
 }
 
+export interface Option {
+  value: string;
+  label: string;
+}
+
+
 export interface ValidationRule {
   type: 'required' | 'min' | 'max' | 'pattern' | 'custom';
   value?: any;
@@ -280,6 +292,7 @@ export interface ButtonProps {
 
 export interface InputProps {
   name: string;
+  id?: string;
   label?: string;
   type?: 'text' | 'email' | 'password' | 'textarea' | 'number';
   placeholder?: string;

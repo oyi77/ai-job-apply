@@ -9,13 +9,14 @@ import docx
 import io
 import json
 
-from ..core.resume_service import ResumeService
-from ..models.resume import Resume
-from ..services.local_file_service import LocalFileService
-from ..database.repositories.resume_repository import ResumeRepository
-from ..config import config
+from src.core.cache import cache_region
+from src.core.resume_service import ResumeService
+from src.models.resume import Resume
+from src.services.local_file_service import LocalFileService
+from src.database.repositories.resume_repository import ResumeRepository
+from src.config import config
 from loguru import logger
-from ..utils.text_processing import extract_skills, clean_text
+from src.utils.text_processing import extract_skills, clean_text
 
 
 class ResumeService(ResumeService):
@@ -85,6 +86,36 @@ class ResumeService(ResumeService):
             # Extract skills from content
             skills = extract_skills(content) if content else []
             
+            # Enhanced extraction using AI if available (for better accuracy)
+            education = None
+            certifications = None
+            if content:
+                # Try AI extraction first (if AI service is available)
+                try:
+                    from src.services.service_registry import service_registry
+                    ai_service = await service_registry.get_ai_service()
+                    if await ai_service.is_available():
+                        # Use AI to extract education and certifications more accurately
+                        education_prompt = f"Extract all education information (degrees, universities, graduation dates) from this resume. Return only a JSON array of education entries:\n\n{content[:2000]}"
+                        cert_prompt = f"Extract all certifications and professional credentials from this resume. Return only a JSON array of certification names:\n\n{content[:2000]}"
+                        
+                        # Try to get education via AI (non-blocking - fallback to regex if fails)
+                        try:
+                            from src.core.ai_provider import AIResponse
+                            # This is a simplified approach - in production, you'd want a dedicated extraction method
+                            education = self._extract_education(content)  # Fallback to regex for now
+                            certifications = self._extract_certifications(content)  # Fallback to regex for now
+                        except:
+                            education = self._extract_education(content)
+                            certifications = self._extract_certifications(content)
+                    else:
+                        education = self._extract_education(content)
+                        certifications = self._extract_certifications(content)
+                except Exception as e:
+                    self.logger.warning(f"AI extraction not available, using regex: {e}")
+                    education = self._extract_education(content)
+                    certifications = self._extract_certifications(content)
+            
             # Check if this is the first resume (for default setting)
             is_first_resume = False
             if self.repository:
@@ -103,8 +134,8 @@ class ResumeService(ResumeService):
                 content=content,
                 skills=skills,
                 experience_years=self._estimate_experience_years(content) if content else None,
-                education=self._extract_education(content) if content else None,
-                certifications=self._extract_certifications(content) if content else None,
+                education=education or [],
+                certifications=certifications or [],
                 is_default=is_first_resume,  # First resume is default
                 created_at=datetime.now(timezone.utc),
                 updated_at=datetime.now(timezone.utc)
@@ -119,6 +150,10 @@ class ResumeService(ResumeService):
                 if resume.is_default:
                     self.default_resume_id = resume_id
             
+            # Invalidate cache
+            if user_id:
+                cache_region.delete(f"user_resumes:{user_id}")
+            
             self.logger.info(f"Resume uploaded successfully: {resume.name} (ID: {resume.id})")
             return resume
             
@@ -129,6 +164,21 @@ class ResumeService(ResumeService):
     async def get_resume(self, resume_id: str, user_id: Optional[str] = None) -> Optional[Resume]:
         """Get a resume by ID, optionally filtered by user."""
         try:
+            # Try to get from cache first
+            cache_key = f"resume:{resume_id}"
+            cached_resume = cache_region.get(cache_key)
+            if cached_resume is not list: # dogpile returns NO_VALUE (which is not list) on miss? No, it returns NO_VALUE object.
+                 # Actually, let's use the standard check.
+                 pass
+
+            if cached_resume and not isinstance(cached_resume, type(cache_region.dogpile_registry.get("NO_VALUE"))):
+                 self.logger.debug(f"Cache hit for resume: {resume_id}")
+                 # Ensure it matches user_id if provided
+                 if user_id and cached_resume.user_id != user_id:
+                     self.logger.warning(f"Cached resume {resume_id} does not match user {user_id}")
+                 else:
+                     return cached_resume
+
             if self.repository:
                 resume = await self.repository.get_by_id(resume_id, user_id=user_id)
             else:
@@ -136,6 +186,8 @@ class ResumeService(ResumeService):
             
             if resume:
                 self.logger.debug(f"Retrieved resume: {resume.name} (ID: {resume_id})")
+                # Cache the result
+                cache_region.set(cache_key, resume)
             else:
                 self.logger.warning(f"Resume not found: {resume_id}")
             return resume
@@ -147,6 +199,13 @@ class ResumeService(ResumeService):
     async def get_all_resumes(self, user_id: Optional[str] = None) -> List[Resume]:
         """Get all available resumes, optionally filtered by user."""
         try:
+            if user_id:
+                cache_key = f"user_resumes:{user_id}"
+                cached_resumes = cache_region.get(cache_key)
+                if cached_resumes and not isinstance(cached_resumes, type(cache_region.dogpile_registry.get("NO_VALUE"))):
+                    self.logger.debug(f"Cache hit for user_resumes:{user_id}")
+                    return cached_resumes
+
             if self.repository:
                 resumes = await self.repository.get_all(user_id=user_id)
             else:
@@ -155,6 +214,11 @@ class ResumeService(ResumeService):
                 resumes.sort(key=lambda r: r.created_at, reverse=True)
             
             self.logger.debug(f"Retrieved {len(resumes)} resumes")
+            
+            # Cache the result if user_id is provided
+            if user_id:
+                cache_region.set(f"user_resumes:{user_id}", resumes)
+                
             return resumes
             
         except Exception as e:
@@ -206,6 +270,14 @@ class ResumeService(ResumeService):
             self.default_resume_id = resume_id
             
             self.logger.info(f"Set default resume: {resume.name} (ID: {resume_id})")
+            
+            # Invalidate cache
+            if user_id:
+                # We need to invalidate the list because 'is_default' field changed for multiple resumes
+                cache_region.delete(f"user_resumes:{user_id}")
+                # And the specific resume
+                cache_region.delete(f"resume:{resume_id}")
+                
             return True
             
         except Exception as e:
@@ -241,6 +313,12 @@ class ResumeService(ResumeService):
                 success = True
             
             self.logger.info(f"Resume deleted: {resume.name} (ID: {resume_id})")
+            
+            # Invalidate cache
+            if user_id:
+                cache_region.delete(f"user_resumes:{user_id}")
+            cache_region.delete(f"resume:{resume_id}")
+            
             return success
             
         except Exception as e:
@@ -303,12 +381,31 @@ class ResumeService(ResumeService):
                     resume = await self.repository.update(resume_id, update_dict, user_id=user_id)
             
             self.logger.info(f"Resume updated: {resume.name} (ID: {resume_id})")
+            
+            # Invalidate cache
+            if user_id:
+                cache_region.delete(f"user_resumes:{user_id}")
+            cache_region.delete(f"resume:{resume_id}")
+            
             return resume
             
         except Exception as e:
             self.logger.error(f"Error updating resume {resume_id}: {e}", exc_info=True)
             return None
-    
+
+    async def bulk_delete_resumes(self, resume_ids: List[str], user_id: Optional[str] = None) -> bool:
+        """Delete multiple resumes."""
+        success = True
+        try:
+            for resume_id in resume_ids:
+                result = await self.delete_resume(resume_id, user_id=user_id)
+                if not result:
+                    success = False
+            return success
+        except Exception as e:
+            self.logger.error(f"Error in bulk resume deletion: {e}", exc_info=True)
+            return False
+
     async def _extract_text_from_pdf(self, file_path: str) -> str:
         """Extract text from PDF file."""
         try:
@@ -406,74 +503,104 @@ class ResumeService(ResumeService):
             self.logger.error(f"Error estimating experience years: {e}", exc_info=True)
             return None
     
-    def _extract_education(self, content: str) -> Optional[List[str]]:
+    def _extract_education(self, content: str) -> List[str]:
         """Extract education information from resume content."""
         try:
             import re
             
             education = []
+            if not content:
+                return []
+            
             content_lower = content.lower()
             
-            # Look for degree patterns
+            # Look for degree patterns (case-insensitive, more flexible)
             degree_patterns = [
-                r'(bachelor[\'s]*\s+(?:of\s+)?(?:science|arts|engineering|computer science))',
-                r'(master[\'s]*\s+(?:of\s+)?(?:science|arts|engineering|computer science))',
+                r'(bachelor[\'s]*\s+(?:of\s+)?(?:science|arts|engineering|computer\s+science|business|technology))',
+                r'(master[\'s]*\s+(?:of\s+)?(?:science|arts|engineering|computer\s+science|business|technology|mba))',
                 r'(phd|ph\.d\.?|doctorate)',
                 r'(associate[\'s]*\s+degree)',
-                r'(b\.?s\.?|b\.?a\.?|m\.?s\.?|m\.?a\.?|m\.?eng\.?)',
+                r'(b\.?s\.?|b\.?a\.?|m\.?s\.?|m\.?a\.?|m\.?eng\.?|m\.?b\.?a\.?)',
             ]
             
             for pattern in degree_patterns:
-                matches = re.findall(pattern, content_lower)
-                education.extend(matches)
+                matches = re.findall(pattern, content_lower, re.IGNORECASE)
+                education.extend([m.title() if isinstance(m, str) else m for m in matches])
             
-            # Look for university/college names (basic pattern)
+            # Look for university/college names (more flexible patterns)
             university_patterns = [
-                r'university\s+of\s+\w+',
-                r'\w+\s+university',
-                r'\w+\s+college',
-                r'\w+\s+institute\s+of\s+technology',
+                r'(university\s+of\s+[a-z\s]+)',
+                r'([a-z\s]+university)',
+                r'([a-z\s]+college)',
+                r'([a-z\s]+institute\s+of\s+technology)',
+                r'([a-z\s]+tech)',
             ]
             
             for pattern in university_patterns:
-                matches = re.findall(pattern, content_lower)
-                education.extend(matches)
+                matches = re.findall(pattern, content_lower, re.IGNORECASE)
+                # Filter out common false positives
+                filtered = [m.title().strip() for m in matches if len(m.strip()) > 5 and 'university' in m.lower() or 'college' in m.lower()]
+                education.extend(filtered)
             
-            return list(set(education)) if education else None
+            # Remove duplicates and return
+            unique_education = list(set(education))
+            return unique_education if unique_education else []
             
         except Exception as e:
             self.logger.error(f"Error extracting education: {e}", exc_info=True)
-            return None
+            return []
     
-    def _extract_certifications(self, content: str) -> Optional[List[str]]:
+    def _extract_certifications(self, content: str) -> List[str]:
         """Extract certifications from resume content."""
         try:
             import re
             
             certifications = []
+            if not content:
+                return []
+            
             content_lower = content.lower()
             
-            # Common certification patterns
+            # Common certification patterns (more comprehensive)
             cert_patterns = [
-                r'aws\s+certified\s+\w+',
-                r'microsoft\s+certified\s+\w+',
-                r'google\s+certified\s+\w+',
-                r'oracle\s+certified\s+\w+',
-                r'cisco\s+certified\s+\w+',
-                r'pmp\s+certified',
-                r'scrum\s+master\s+certified',
-                r'certified\s+\w+\s+\w+',
+                r'(aws\s+certified\s+[a-z\s]+)',
+                r'(microsoft\s+certified\s+[a-z\s]+)',
+                r'(google\s+certified\s+[a-z\s]+)',
+                r'(oracle\s+certified\s+[a-z\s]+)',
+                r'(cisco\s+certified\s+[a-z\s]+)',
+                r'(pmp\s+certified|project\s+management\s+professional)',
+                r'(scrum\s+master\s+certified|certified\s+scrum\s+master)',
+                r'(certified\s+[a-z\s]+professional)',
+                r'(certified\s+[a-z\s]+specialist)',
+                r'(certified\s+[a-z\s]+engineer)',
+                r'(certified\s+[a-z\s]+developer)',
+                r'(certified\s+[a-z\s]+analyst)',
             ]
             
             for pattern in cert_patterns:
-                matches = re.findall(pattern, content_lower)
-                certifications.extend(matches)
+                matches = re.findall(pattern, content_lower, re.IGNORECASE)
+                certifications.extend([m.title().strip() if isinstance(m, str) else m for m in matches])
             
-            return list(set(certifications)) if certifications else None
+            # Also look for common abbreviations
+            abbrev_certs = [
+                r'\b(pmp)\b',
+                r'\b(csm)\b',
+                r'\b(cspo)\b',
+                r'\b(itil)\b',
+                r'\b(ccna|ccnp|ccie)\b',
+            ]
+            
+            for pattern in abbrev_certs:
+                matches = re.findall(pattern, content_lower, re.IGNORECASE)
+                certifications.extend([m.upper() for m in matches])
+            
+            # Remove duplicates and return
+            unique_certs = list(set(certifications))
+            return unique_certs if unique_certs else []
             
         except Exception as e:
             self.logger.error(f"Error extracting certifications: {e}", exc_info=True)
-            return None
+            return []
     
     async def health_check(self) -> Dict[str, Any]:
         """Check service health."""

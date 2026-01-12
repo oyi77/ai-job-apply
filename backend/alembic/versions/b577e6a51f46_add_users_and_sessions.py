@@ -27,38 +27,38 @@ def upgrade() -> None:
     tables = inspector.get_table_names()
     
     if 'users' not in tables:
-    op.create_table('users',
-    sa.Column('id', sa.String(), nullable=False),
-    sa.Column('email', sa.String(length=255), nullable=False),
-    sa.Column('password_hash', sa.String(length=255), nullable=False),
-    sa.Column('name', sa.String(length=255), nullable=True),
-    sa.Column('is_active', sa.Boolean(), nullable=False),
-    sa.Column('created_at', sa.DateTime(), nullable=False),
-    sa.Column('updated_at', sa.DateTime(), nullable=False),
-    sa.PrimaryKeyConstraint('id')
-    )
-    op.create_index('idx_user_created_at', 'users', ['created_at'], unique=False)
-    op.create_index('idx_user_email', 'users', ['email'], unique=False)
-    op.create_index('idx_user_is_active', 'users', ['is_active'], unique=False)
-    op.create_index(op.f('ix_users_email'), 'users', ['email'], unique=True)
+        op.create_table('users',
+        sa.Column('id', sa.String(), nullable=False),
+        sa.Column('email', sa.String(length=255), nullable=False),
+        sa.Column('password_hash', sa.String(length=255), nullable=False),
+        sa.Column('name', sa.String(length=255), nullable=True),
+        sa.Column('is_active', sa.Boolean(), nullable=False),
+        sa.Column('created_at', sa.DateTime(), nullable=False),
+        sa.Column('updated_at', sa.DateTime(), nullable=False),
+        sa.PrimaryKeyConstraint('id')
+        )
+        op.create_index('idx_user_created_at', 'users', ['created_at'], unique=False)
+        op.create_index('idx_user_email', 'users', ['email'], unique=False)
+        op.create_index('idx_user_is_active', 'users', ['is_active'], unique=False)
+        op.create_index(op.f('ix_users_email'), 'users', ['email'], unique=True)
     
     if 'user_sessions' not in tables:
-    op.create_table('user_sessions',
-    sa.Column('id', sa.String(), nullable=False),
-    sa.Column('user_id', sa.String(), nullable=False),
-    sa.Column('refresh_token', sa.String(length=500), nullable=False),
-    sa.Column('expires_at', sa.DateTime(), nullable=False),
-    sa.Column('created_at', sa.DateTime(), nullable=False),
-    sa.Column('last_used_at', sa.DateTime(), nullable=False),
-    sa.Column('is_active', sa.Boolean(), nullable=False),
-    sa.ForeignKeyConstraint(['user_id'], ['users.id'], ondelete='CASCADE'),
-    sa.PrimaryKeyConstraint('id')
-    )
-    op.create_index('idx_session_expires_at', 'user_sessions', ['expires_at'], unique=False)
-    op.create_index('idx_session_is_active', 'user_sessions', ['is_active'], unique=False)
-    op.create_index('idx_session_refresh_token', 'user_sessions', ['refresh_token'], unique=False)
-    op.create_index('idx_session_user_id', 'user_sessions', ['user_id'], unique=False)
-    op.create_index(op.f('ix_user_sessions_refresh_token'), 'user_sessions', ['refresh_token'], unique=True)
+        op.create_table('user_sessions',
+        sa.Column('id', sa.String(), nullable=False),
+        sa.Column('user_id', sa.String(), nullable=False),
+        sa.Column('refresh_token', sa.String(length=500), nullable=False),
+        sa.Column('expires_at', sa.DateTime(), nullable=False),
+        sa.Column('created_at', sa.DateTime(), nullable=False),
+        sa.Column('last_used_at', sa.DateTime(), nullable=False),
+        sa.Column('is_active', sa.Boolean(), nullable=False),
+        sa.ForeignKeyConstraint(['user_id'], ['users.id'], ondelete='CASCADE'),
+        sa.PrimaryKeyConstraint('id')
+        )
+        op.create_index('idx_session_expires_at', 'user_sessions', ['expires_at'], unique=False)
+        op.create_index('idx_session_is_active', 'user_sessions', ['is_active'], unique=False)
+        op.create_index('idx_session_refresh_token', 'user_sessions', ['refresh_token'], unique=False)
+        op.create_index('idx_session_user_id', 'user_sessions', ['user_id'], unique=False)
+        op.create_index(op.f('ix_user_sessions_refresh_token'), 'user_sessions', ['refresh_token'], unique=True)
     
     # Use batch mode for SQLite to handle foreign key constraints
     # Check if columns already exist before adding

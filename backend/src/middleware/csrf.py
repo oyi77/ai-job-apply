@@ -5,7 +5,7 @@ from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.responses import Response
 from typing import Callable
 import secrets
-from ...utils.logger import get_logger
+from src.utils.logger import get_logger
 
 logger = get_logger(__name__)
 

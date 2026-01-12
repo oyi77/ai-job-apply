@@ -1,12 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { 
-  Card, 
-  CardHeader, 
-  CardBody, 
-  Button, 
-  Badge, 
-  Modal, 
+import {
+  Card,
+  CardHeader,
+  CardBody,
+  Button,
+  Badge,
+  Modal,
   Spinner,
   Alert,
   Select,
@@ -14,15 +14,18 @@ import {
   FormField
 } from '../components';
 import { useAppStore } from '../stores/appStore';
-import { applicationService } from '../services/api';
+import { applicationService, exportService } from '../services/api';
 import type { JobApplication } from '../types';
 import { ApplicationStatus } from '../types';
+import { ExportModal } from '../components/ExportModal';
 import {
   PlusIcon,
   EyeIcon,
   PencilIcon,
   TrashIcon,
   FunnelIcon,
+  ArrowDownTrayIcon,
+  CheckIcon,
 } from '@heroicons/react/24/outline';
 
 const Applications: React.FC = () => {
@@ -30,7 +33,9 @@ const Applications: React.FC = () => {
   const [selectedApplication, setSelectedApplication] = useState<JobApplication | null>(null);
   const [isViewModalOpen, setIsViewModalOpen] = useState(false);
   const [statusFilter, setStatusFilter] = useState<ApplicationStatus | ''>('');
-  
+  const [selectedIds, setSelectedIds] = useState<string[]>([]);
+  const [isExportModalOpen, setIsExportModalOpen] = useState(false);
+
   const queryClient = useQueryClient();
   const { applications, setApplications, addApplication, updateApplication, deleteApplication } = useAppStore();
 
@@ -42,10 +47,25 @@ const Applications: React.FC = () => {
 
   // Update applications when data is fetched
   useEffect(() => {
-    if (fetchedApplications?.data) {
-      setApplications(fetchedApplications.data);
+    if (fetchedApplications) {
+      // Handle nested response structure: response.data.data contains the array
+      let apps: JobApplication[] = [];
+
+      const response = fetchedApplications as any;
+      if (Array.isArray(response.data)) {
+        // Direct array response
+        apps = response.data;
+      } else if (response.data?.data && Array.isArray(response.data.data)) {
+        // Nested structure: { data: { data: [...], pagination: {...} } }
+        apps = response.data.data;
+      } else if (response.data?.data && Array.isArray(response.data)) {
+        // Alternative nested structure
+        apps = response.data;
+      }
+
+      setApplications(apps);
     }
-  }, [fetchedApplications]);
+  }, [fetchedApplications, setApplications]);
 
   // Create application mutation
   const createMutation = useMutation({
@@ -76,6 +96,25 @@ const Applications: React.FC = () => {
     },
   });
 
+  // Bulk update mutation
+  const bulkUpdateMutation = useMutation({
+    mutationFn: ({ ids, data }: { ids: string[]; data: Partial<JobApplication> }) =>
+      applicationService.bulkUpdate(ids, data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['applications'] });
+      setSelectedIds([]);
+    },
+  });
+
+  // Bulk delete mutation
+  const bulkDeleteMutation = useMutation({
+    mutationFn: applicationService.bulkDelete,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['applications'] });
+      setSelectedIds([]);
+    },
+  });
+
   const handleCreateApplication = (data: any) => {
     createMutation.mutate({
       ...data,
@@ -94,6 +133,56 @@ const Applications: React.FC = () => {
   const handleDelete = (applicationId: string) => {
     if (window.confirm('Are you sure you want to delete this application?')) {
       deleteMutation.mutate(applicationId);
+    }
+  };
+
+  const handleSelectAll = () => {
+    if (selectedIds.length === filteredApplications.length) {
+      setSelectedIds([]);
+    } else {
+      setSelectedIds(filteredApplications.map(app => app.id).filter((id): id is string => !!id));
+    }
+  };
+
+  const handleToggleSelect = (id: string) => {
+    setSelectedIds(prev =>
+      prev.includes(id) ? prev.filter(i => i !== id) : [...prev, id]
+    );
+  };
+
+  const handleBulkStatusChange = (status: ApplicationStatus) => {
+    if (selectedIds.length === 0) return;
+    bulkUpdateMutation.mutate({ ids: selectedIds, data: { status } });
+  };
+
+  const handleBulkDelete = () => {
+    if (selectedIds.length === 0) return;
+    if (window.confirm(`Are you sure you want to delete ${selectedIds.length} applications?`)) {
+      bulkDeleteMutation.mutate(selectedIds);
+    }
+  };
+
+  const handleExport = async (format: 'pdf' | 'csv' | 'excel', options?: { dateFrom?: string; dateTo?: string }) => {
+    try {
+      const blob = await exportService.exportApplications(
+        selectedIds.length > 0 ? selectedIds : undefined,
+        format,
+        options?.dateFrom,
+        options?.dateTo
+      );
+
+      const extension = format === 'excel' ? 'xlsx' : format;
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `applications_export.${extension}`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      window.URL.revokeObjectURL(url);
+    } catch (err: any) {
+      console.error('Export failed:', err);
+      throw new Error(err.message || 'Failed to export applications');
     }
   };
 
@@ -127,7 +216,9 @@ const Applications: React.FC = () => {
     return colorMap[status] || 'default';
   };
 
-  const filteredApplications = applications.filter(app => 
+  // Ensure applications is always an array before filtering
+  const applicationsArray = Array.isArray(applications) ? applications : [];
+  const filteredApplications = applicationsArray.filter(app =>
     !statusFilter || app.status === statusFilter
   );
 
@@ -142,8 +233,8 @@ const Applications: React.FC = () => {
   if (error) {
     return (
       <div className="space-y-6">
-        <Alert 
-          type="error" 
+        <Alert
+          type="error"
           title="Error Loading Applications"
           message="Failed to load applications. Please try again later."
         />
@@ -161,8 +252,8 @@ const Applications: React.FC = () => {
             Manage your job applications and track their progress.
           </p>
         </div>
-        <Button 
-          variant="primary" 
+        <Button
+          variant="primary"
           onClick={() => setIsCreateModalOpen(true)}
           className="flex items-center"
         >
@@ -185,17 +276,86 @@ const Applications: React.FC = () => {
                 placeholder="Filter by status"
               />
             </div>
+            <div className="flex items-center space-x-2">
+              <Button
+                variant="secondary"
+                size="sm"
+                onClick={() => setIsExportModalOpen(true)}
+                className="flex items-center"
+              >
+                <ArrowDownTrayIcon className="h-4 w-4 mr-1" />
+                Export
+              </Button>
+            </div>
             <div className="text-sm text-gray-500">
-              {filteredApplications.length} of {applications.length} applications
+              {filteredApplications.length} of {applicationsArray.length} applications
             </div>
           </div>
         </CardBody>
       </Card>
 
+      {/* Bulk Actions Toolbar */}
+      {selectedIds.length > 0 && (
+        <div className="bg-primary-50 border border-primary-100 rounded-lg p-3 flex items-center justify-between animate-fade-in">
+          <div className="flex items-center space-x-4">
+            <span className="text-primary-800 font-medium">
+              {selectedIds.length} items selected
+            </span>
+            <div className="h-4 w-px bg-primary-200"></div>
+            <div className="flex items-center space-x-2">
+              <span className="text-sm text-primary-700">Update Status:</span>
+              <div className="w-48">
+                <Select
+                  name="bulk-status"
+                  value=""
+                  onChange={(value) => handleBulkStatusChange(value as ApplicationStatus)}
+                  options={statusOptions.slice(1)}
+                  placeholder="Select status..."
+                />
+              </div>
+            </div>
+          </div>
+          <div className="flex items-center space-x-2">
+            <Button
+              variant="secondary"
+              size="sm"
+              onClick={() => handleExport('csv')}
+              className="text-primary-700"
+            >
+              Export Selected
+            </Button>
+            <Button
+              variant="danger"
+              size="sm"
+              onClick={handleBulkDelete}
+              className="flex items-center"
+            >
+              <TrashIcon className="h-4 w-4 mr-1" />
+              Delete Selected
+            </Button>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => setSelectedIds([])}
+            >
+              Cancel
+            </Button>
+          </div>
+        </div>
+      )}
+
       {/* Applications List */}
       <Card>
-        <CardHeader>
-          <h3 className="text-lg font-medium text-gray-900">Your Applications</h3>
+        <CardHeader className="flex justify-between items-center">
+          <div className="flex items-center space-x-3">
+            <input
+              type="checkbox"
+              className="h-4 w-4 rounded border-gray-300 text-primary-600 focus:ring-primary-500"
+              checked={selectedIds.length === filteredApplications.length && filteredApplications.length > 0}
+              onChange={handleSelectAll}
+            />
+            <h3 className="text-lg font-medium text-gray-900">Your Applications</h3>
+          </div>
         </CardHeader>
         <CardBody>
           {filteredApplications.length === 0 ? (
@@ -217,55 +377,69 @@ const Applications: React.FC = () => {
             <div className="space-y-4">
               {filteredApplications.map((application) => (
                 <div
-                  key={application.id}
-                  className="border border-gray-200 rounded-lg p-4 hover:bg-gray-50 transition-colors"
+                  key={application.id || `app-${application.job_title}`}
+                  className={`border rounded-lg p-4 transition-colors ${application.id && selectedIds.includes(application.id)
+                      ? 'border-primary-300 bg-primary-50'
+                      : 'border-gray-200 hover:bg-gray-50'
+                    }`}
                 >
-                  <div className="flex items-center justify-between">
+                  <div className="flex items-center space-x-4">
+                    <input
+                      type="checkbox"
+                      className="h-4 w-4 rounded border-gray-300 text-primary-600 focus:ring-primary-500"
+                      checked={application.id ? selectedIds.includes(application.id) : false}
+                      onChange={() => application.id && handleToggleSelect(application.id)}
+                    />
                     <div className="flex-1">
-                      <div className="flex items-center space-x-3">
-                        <h4 className="text-lg font-medium text-gray-900">
-                          {application.job_title}
-                        </h4>
-                        <Badge variant={getStatusColor(application.status) as any}>
-                          {application.status.replace('_', ' ')}
-                        </Badge>
+                      <div className="flex items-center justify-between">
+                        <div className="flex-1">
+                          <div className="flex items-center space-x-3">
+                            <h4 className="text-lg font-medium text-gray-900">
+                              {application.job_title}
+                            </h4>
+                            <Badge variant={getStatusColor(application.status) as any}>
+                              {application.status.replace('_', ' ')}
+                            </Badge>
+                          </div>
+                          <p className="text-gray-600 mt-1">{application.company}</p>
+                          <p className="text-sm text-gray-500 mt-1">
+                            Applied: {new Date(application.applied_date).toLocaleDateString()}
+                          </p>
+                          {application.notes && (
+                            <p className="text-sm text-gray-600 mt-2 truncate">
+                              {application.notes}
+                            </p>
+                          )}
+                        </div>
+
+                        <div className="flex items-center space-x-2">
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => {
+                              setSelectedApplication(application);
+                              setIsViewModalOpen(true);
+                            }}
+                          >
+                            <EyeIcon className="h-4 w-4" />
+                          </Button>
+                          <Select
+                            name={`status-${application.id || 'unknown'}`}
+                            value={application.status}
+                            onChange={(value) => application.id && handleStatusChange(application.id, value as ApplicationStatus)}
+                            options={statusOptions.slice(1)} // Remove "All Statuses" option
+                          />
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => application.id && handleDelete(application.id)}
+                            disabled={!application.id}
+                            className="text-danger-600 hover:text-danger-700"
+                          >
+                            <TrashIcon className="h-4 w-4" />
+                          </Button>
+                        </div>
                       </div>
-                      <p className="text-gray-600 mt-1">{application.company}</p>
-                      <p className="text-sm text-gray-500 mt-1">
-                        Applied: {new Date(application.applied_date).toLocaleDateString()}
-                      </p>
-                      {application.notes && (
-                        <p className="text-sm text-gray-600 mt-2 truncate">
-                          {application.notes}
-                        </p>
-                      )}
-                    </div>
-                    
-                    <div className="flex items-center space-x-2">
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => {
-                          setSelectedApplication(application);
-                          setIsViewModalOpen(true);
-                        }}
-                      >
-                        <EyeIcon className="h-4 w-4" />
-                      </Button>
-                      <Select
-                        name={`status-${application.id}`}
-                        value={application.status}
-                        onChange={(value) => handleStatusChange(application.id, value as ApplicationStatus)}
-                        options={statusOptions.slice(1)} // Remove "All Statuses" option
-                      />
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => handleDelete(application.id)}
-                        className="text-danger-600 hover:text-danger-700"
-                      >
-                        <TrashIcon className="h-4 w-4" />
-                      </Button>
                     </div>
                   </div>
                 </div>
@@ -313,17 +487,17 @@ const Applications: React.FC = () => {
               placeholder="Additional notes about this application..."
             />
           </div>
-          
+
           <div className="flex justify-end space-x-3 mt-6">
-            <Button 
-              type="button" 
-              variant="secondary" 
+            <Button
+              type="button"
+              variant="secondary"
               onClick={() => setIsCreateModalOpen(false)}
             >
               Cancel
             </Button>
-            <Button 
-              type="submit" 
+            <Button
+              type="submit"
               variant="primary"
               loading={createMutation.isPending}
             >
@@ -348,7 +522,7 @@ const Applications: React.FC = () => {
               </h3>
               <p className="text-gray-600">{selectedApplication.company}</p>
             </div>
-            
+
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <label className="block text-sm font-medium text-gray-700">Status</label>
@@ -375,7 +549,7 @@ const Applications: React.FC = () => {
                 </div>
               )}
             </div>
-            
+
             {selectedApplication.notes && (
               <div>
                 <label className="block text-sm font-medium text-gray-700">Notes</label>
@@ -385,6 +559,17 @@ const Applications: React.FC = () => {
           </div>
         )}
       </Modal>
+
+      {/* Export Modal */}
+      <ExportModal
+        isOpen={isExportModalOpen}
+        onClose={() => setIsExportModalOpen(false)}
+        onExport={handleExport}
+        title="Export Applications"
+        supportedFormats={['pdf', 'csv', 'excel']}
+        showDateRange={true}
+        defaultFormat="csv"
+      />
     </div>
   );
 };

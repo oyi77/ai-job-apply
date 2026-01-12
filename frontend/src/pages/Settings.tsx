@@ -42,6 +42,7 @@ const Settings: React.FC = () => {
   const [isExporting, setIsExporting] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   const [deleteConfirmation, setDeleteConfirmation] = useState('');
+  const [deletePassword, setDeletePassword] = useState('');
 
   const { user, setUser, theme, setTheme, setAuthenticated, aiSettings, updateAISettings } = useAppStore();
 
@@ -154,20 +155,32 @@ const Settings: React.FC = () => {
       return;
     }
 
+    if (!deletePassword) {
+      alert('Please enter your password to confirm account deletion');
+      return;
+    }
+
     setIsDeleting(true);
     try {
-      // TODO: Add API endpoint for account deletion when backend auth is implemented
-      // For now, just clear local data
+      // Call API endpoint for account deletion
+      await authService.deleteAccount();
+
+      // Clear local data
       setAuthenticated(false);
       setUser(null);
       localStorage.removeItem('auth_token');
+      localStorage.removeItem('refresh_token');
       localStorage.removeItem('token');
       setIsDeleteModalOpen(false);
+      setDeleteConfirmation('');
+      setDeletePassword('');
+      
       // Redirect to login
       window.location.href = '/login';
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error deleting account:', error);
-      alert('Failed to delete account. Please try again.');
+      const errorMessage = error?.response?.data?.detail || error?.message || 'Failed to delete account. Please try again.';
+      alert(errorMessage);
     } finally {
       setIsDeleting(false);
     }
@@ -365,7 +378,11 @@ const Settings: React.FC = () => {
             <div className="flex items-center space-x-2 mb-3">
               <span className="text-sm text-gray-600">{t('settings.ai.activeProvider')}</span>
               <Badge variant="primary" size="sm">
-                {aiSettings.provider_preference === 'openai' ? 'OpenAI' : aiSettings.provider_preference === 'openrouter' ? 'OpenRouter' : 'Local AI'}
+                {aiSettings.provider_preference === 'openai' ? 'OpenAI' 
+                  : aiSettings.provider_preference === 'openrouter' ? 'OpenRouter'
+                  : aiSettings.provider_preference === 'gemini' ? 'Gemini'
+                  : aiSettings.provider_preference === 'cursor' ? 'Cursor'
+                  : 'Local AI'}
               </Badge>
             </div>
             <Button
@@ -734,10 +751,12 @@ const Settings: React.FC = () => {
               <label className="block text-sm font-medium text-gray-700 mb-3">
                 Preferred AI Provider
               </label>
-              <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-3 lg:grid-cols-5">
                 {[
                   { id: 'openai', name: 'OpenAI', description: 'GPT-4o, GPT-4' },
                   { id: 'openrouter', name: 'OpenRouter', description: 'Claude, Llama, etc.' },
+                  { id: 'gemini', name: 'Gemini', description: 'Gemini 1.5 Flash' },
+                  { id: 'cursor', name: 'Cursor', description: 'Cursor AI' },
                   { id: 'local_ai', name: 'Local AI', description: 'Ollama, Localhost' }
                 ].map((provider) => (
                   <div
@@ -805,6 +824,53 @@ const Settings: React.FC = () => {
                   placeholder="https://openrouter.ai/api/v1"
                   value={aiSettings.openrouter_base_url || ''}
                   onChange={(val: string) => updateAISettings({ openrouter_base_url: val })}
+                />
+              </div>
+            )}
+
+            {aiSettings.provider_preference === 'gemini' && (
+              <div className="space-y-4 pt-4 border-t border-gray-100">
+                <Input
+                  label="Gemini API Key"
+                  name="gemini_api_key"
+                  type="password"
+                  placeholder="AIza..."
+                  value={aiSettings.gemini_api_key || ''}
+                  onChange={(val: string) => updateAISettings({ gemini_api_key: val })}
+                />
+                <Input
+                  label="Model Selection"
+                  name="gemini_model"
+                  placeholder="gemini-1.5-flash"
+                  value={aiSettings.gemini_model || ''}
+                  onChange={(val: string) => updateAISettings({ gemini_model: val })}
+                />
+              </div>
+            )}
+
+            {aiSettings.provider_preference === 'cursor' && (
+              <div className="space-y-4 pt-4 border-t border-gray-100">
+                <Input
+                  label="Cursor API Key"
+                  name="cursor_api_key"
+                  type="password"
+                  placeholder="key_..."
+                  value={aiSettings.cursor_api_key || ''}
+                  onChange={(val: string) => updateAISettings({ cursor_api_key: val })}
+                />
+                <Input
+                  label="Model Selection"
+                  name="cursor_model"
+                  placeholder="gpt-4o"
+                  value={aiSettings.cursor_model || ''}
+                  onChange={(val: string) => updateAISettings({ cursor_model: val })}
+                />
+                <Input
+                  label="Custom Base URL (Optional)"
+                  name="cursor_base_url"
+                  placeholder="https://api.cursor.sh/openai/v1"
+                  value={aiSettings.cursor_base_url || ''}
+                  onChange={(val: string) => updateAISettings({ cursor_base_url: val })}
                 />
               </div>
             )}
@@ -889,6 +955,19 @@ const Settings: React.FC = () => {
                 className="w-full"
               />
             </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Enter your password to confirm:
+              </label>
+              <Input
+                name="deletePassword"
+                type="password"
+                value={deletePassword}
+                onChange={(val: string) => setDeletePassword(val)}
+                placeholder="Enter your password"
+                className="w-full"
+              />
+            </div>
           </div>
 
           <div className="flex justify-end space-x-3">
@@ -897,6 +976,7 @@ const Settings: React.FC = () => {
               onClick={() => {
                 setIsDeleteModalOpen(false);
                 setDeleteConfirmation('');
+                setDeletePassword('');
               }}
               disabled={isDeleting}
             >
@@ -905,7 +985,7 @@ const Settings: React.FC = () => {
             <Button
               variant="danger"
               onClick={handleDeleteAccount}
-              disabled={isDeleting || deleteConfirmation !== 'DELETE'}
+              disabled={isDeleting || deleteConfirmation !== 'DELETE' || !deletePassword}
             >
               {isDeleting ? (
                 <>

@@ -4,14 +4,19 @@ from typing import Dict, Any
 from loguru import logger
 from abc import ABC, abstractmethod
 
-from ..core.ai_service import AIService
-from ..core.file_service import FileService
-from ..core.resume_service import ResumeService
-from ..core.application_service import ApplicationService
-from ..core.job_search import JobSearchService
-from ..core.cover_letter_service import CoverLetterService
-from ..core.job_application import JobApplicationService
-from ..core.auth_service import AuthService
+from src.core.ai_service import AIService
+from src.core.file_service import FileService
+from src.core.resume_service import ResumeService
+from src.core.application_service import ApplicationService
+from src.core.job_search import JobSearchService
+from src.core.cover_letter_service import CoverLetterService
+from src.core.job_application import JobApplicationService
+from src.core.auth_service import AuthService
+from src.core.monitoring_service import MonitoringService
+from src.core.auth_service import AuthService
+from src.core.monitoring_service import MonitoringService
+from src.core.export_service import ExportService
+from src.services.email_service import EmailService
 
 
 class ServiceProvider(ABC):
@@ -69,67 +74,113 @@ class ServiceRegistry:
     
     async def _initialize_core_services(self) -> None:
         """Initialize core infrastructure services."""
+        # Ensure database is initialized first (required by auth and monitoring services)
+        from src.database.config import database_config
+        if not database_config._initialized:
+            self._logger.info("Initializing database for services...")
+            await database_config.initialize()
+            await database_config.create_tables()
+            self._logger.info("Database initialized for services")
+        
         # Auth service (no dependencies, but needs database)
-        from .auth_service import JWTAuthService
-        auth_provider = JWTAuthServiceProvider()
+        # Database is initialized
+        
+        # Email service (no dependencies)
+        from src.services.email_service import EmailService
+        email_provider = EmailServiceProvider()
+        self.register_service('email_service', email_provider)
+        await email_provider.initialize()
+        self._instances['email_service'] = email_provider.get_service()
+
+        # Auth service (depends on email service)
+        from src.services.auth_service import JWTAuthService
+        auth_provider = JWTAuthServiceProvider(self._instances['email_service'])
         self.register_service('auth_service', auth_provider)
         await auth_provider.initialize()
         self._instances['auth_service'] = auth_provider.get_service()
         
         # File service (no dependencies)
-        from .local_file_service import LocalFileService
+        from src.services.local_file_service import LocalFileService
         file_provider = LocalFileServiceProvider()
         self.register_service('file_service', file_provider)
         await file_provider.initialize()
         self._instances['file_service'] = file_provider.get_service()
         
-        # AI service (no dependencies)
-        from .gemini_ai_service import GeminiAIService
-        ai_provider = GeminiAIProvider()
-        self.register_service('ai_service', ai_provider)
-        await ai_provider.initialize()
-        self._instances['ai_service'] = ai_provider.get_service()
+        # AI service (no dependencies) - Use unified service with multiple providers
+        try:
+            from src.services.unified_ai_service import UnifiedAIService
+            ai_provider = UnifiedAIServiceProvider()
+            self.register_service('ai_service', ai_provider)
+            await ai_provider.initialize()
+            self._instances['ai_service'] = ai_provider.get_service()
+        except Exception as e:
+            self._logger.warning(f"Failed to initialize unified AI service, falling back to Gemini: {e}")
+            # Fallback to Gemini-only service
+            from src.services.gemini_ai_service import GeminiAIService
+            ai_provider = GeminiAIProvider()
+            self.register_service('ai_service', ai_provider)
+            await ai_provider.initialize()
+            self._instances['ai_service'] = ai_provider.get_service()
+        
+        # Monitoring service (no dependencies, but needs database)
+        # Make this optional - if it fails, app can still run
+        try:
+            from src.services.monitoring_service import DatabaseMonitoringService
+            monitoring_provider = MonitoringServiceProvider()
+            self.register_service('monitoring_service', monitoring_provider)
+            await monitoring_provider.initialize()
+            self._instances['monitoring_service'] = monitoring_provider.get_service()
+        except ImportError as e:
+            self._logger.warning(f"Monitoring service not available: {e}. Continuing without monitoring.")
+        except Exception as e:
+            self._logger.warning(f"Failed to initialize monitoring service: {e}. Continuing without monitoring.")
     
     async def _initialize_business_services(self) -> None:
         """Initialize business logic services."""
         # Initialize repository factory
-        from .repository_factory import repository_factory
+        from src.services.repository_factory import repository_factory
         await repository_factory.initialize()
         
         # Resume service (depends on file service)
-        from .resume_service import ResumeService
+        from src.services.resume_service import ResumeService
         resume_provider = ResumeServiceProvider(self._instances['file_service'])
         self.register_service('resume_service', resume_provider)
         await resume_provider.initialize()
         self._instances['resume_service'] = resume_provider.get_service()
         
         # Application service (depends on file service)
-        from .application_service import ApplicationService
+        from src.services.application_service import ApplicationService
         app_provider = ApplicationServiceProvider(self._instances['file_service'])
         self.register_service('application_service', app_provider)
         await app_provider.initialize()
         self._instances['application_service'] = app_provider.get_service()
         
         # Cover letter service (depends on AI service)
-        from .cover_letter_service import CoverLetterService
+        from src.services.cover_letter_service import CoverLetterService
         cover_provider = CoverLetterServiceProvider(self._instances['ai_service'])
         self.register_service('cover_letter_service', cover_provider)
         await cover_provider.initialize()
         self._instances['cover_letter_service'] = cover_provider.get_service()
         
         # Job search service (no dependencies)
-        from .job_search_service import JobSearchService
+        from src.services.job_search_service import JobSearchService
         job_provider = JobSearchServiceProvider()
         self.register_service('job_search_service', job_provider)
         await job_provider.initialize()
         self._instances['job_search_service'] = job_provider.get_service()
         
         # Job application service (no dependencies)
-        from .job_application_service import MultiPlatformJobApplicationService
+        from src.services.job_application_service import MultiPlatformJobApplicationService
         job_app_provider = JobApplicationServiceProvider()
         self.register_service('job_application_service', job_app_provider)
         await job_app_provider.initialize()
         self._instances['job_application_service'] = job_app_provider.get_service()
+        
+        # Export service (no dependencies)
+        export_provider = ExportServiceProvider()
+        self.register_service('export_service', export_provider)
+        await export_provider.initialize()
+        self._instances['export_service'] = export_provider.get_service()
     
     async def get_service(self, name: str) -> Any:
         """Get a service instance by name."""
@@ -174,6 +225,26 @@ class ServiceRegistry:
     async def get_auth_service(self) -> AuthService:
         """Get the authentication service instance."""
         return await self.get_service('auth_service')
+    
+    async def get_monitoring_service(self) -> MonitoringService:
+        """Get the monitoring service instance."""
+        return await self.get_service('monitoring_service')
+    
+    async def get_export_service(self) -> ExportService:
+        """Get the export service instance."""
+        return await self.get_service('export_service')
+    
+    async def get_email_service(self) -> EmailService:
+        """Get the email service instance."""
+        return await self.get_service('email_service')
+    
+    def get_monitoring_service_sync(self) -> MonitoringService:
+        """Get the monitoring service instance synchronously (for middleware)."""
+        if not self._initialized:
+            raise RuntimeError("Service registry not initialized")
+        if 'monitoring_service' not in self._instances:
+            raise KeyError("Monitoring service not found")
+        return self._instances['monitoring_service']
     
     async def health_check(self) -> Dict[str, Any]:
         """Check the health of all services."""
@@ -248,7 +319,7 @@ class LocalFileServiceProvider(ServiceProvider):
         return self._service
     
     async def initialize(self) -> None:
-        from .local_file_service import LocalFileService
+        from src.services.local_file_service import LocalFileService
         self._service = LocalFileService()
     
     async def cleanup(self) -> None:
@@ -256,14 +327,30 @@ class LocalFileServiceProvider(ServiceProvider):
             await self._service.cleanup()
 
 
-class GeminiAIProvider(ServiceProvider):
-    """Provider for Gemini AI service."""
+class UnifiedAIServiceProvider(ServiceProvider):
+    """Provider for unified AI service with multiple providers."""
     
     def get_service(self) -> AIService:
         return self._service
     
     async def initialize(self) -> None:
-        from .gemini_ai_service import GeminiAIService
+        from src.services.unified_ai_service import UnifiedAIService
+        self._service = UnifiedAIService()
+        await self._service.initialize()
+    
+    async def cleanup(self) -> None:
+        if hasattr(self._service, 'cleanup'):
+            await self._service.cleanup()
+
+
+class GeminiAIProvider(ServiceProvider):
+    """Provider for Gemini AI service (fallback)."""
+    
+    def get_service(self) -> AIService:
+        return self._service
+    
+    async def initialize(self) -> None:
+        from src.services.gemini_ai_service import GeminiAIService
         self._service = GeminiAIService()
     
     async def cleanup(self) -> None:
@@ -282,9 +369,9 @@ class ResumeServiceProvider(ServiceProvider):
         return self._service
     
     async def initialize(self) -> None:
-        from .resume_service import ResumeService
-        from .repository_factory import repository_factory
-        from ..database.repositories.resume_repository import ResumeRepository
+        from src.services.resume_service import ResumeService
+        from src.services.repository_factory import repository_factory
+        from src.database.repositories.resume_repository import ResumeRepository
         
         # Try to create repository if database is available
         repository = None
@@ -312,9 +399,9 @@ class ApplicationServiceProvider(ServiceProvider):
         return self._service
     
     async def initialize(self) -> None:
-        from .application_service import ApplicationService
-        from .repository_factory import repository_factory
-        from ..database.repositories.application_repository import ApplicationRepository
+        from src.services.application_service import ApplicationService
+        from src.services.repository_factory import repository_factory
+        from src.database.repositories.application_repository import ApplicationRepository
         
         # Try to create repository if database is available
         repository = None
@@ -342,9 +429,9 @@ class CoverLetterServiceProvider(ServiceProvider):
         return self._service
     
     async def initialize(self) -> None:
-        from .cover_letter_service import CoverLetterService
-        from .repository_factory import repository_factory
-        from ..database.repositories.cover_letter_repository import CoverLetterRepository
+        from src.services.cover_letter_service import CoverLetterService
+        from src.services.repository_factory import repository_factory
+        from src.database.repositories.cover_letter_repository import CoverLetterRepository
         
         # Try to create repository if database is available
         repository = None
@@ -368,7 +455,7 @@ class JobSearchServiceProvider(ServiceProvider):
         return self._service
     
     async def initialize(self) -> None:
-        from .job_search_service import JobSearchService
+        from src.services.job_search_service import JobSearchService
         self._service = JobSearchService()
         # Initialize the service to check JobSpy availability
         await self._service.initialize()
@@ -385,7 +472,7 @@ class JobApplicationServiceProvider(ServiceProvider):
         return self._service
     
     async def initialize(self) -> None:
-        from .job_application_service import MultiPlatformJobApplicationService
+        from src.services.job_application_service import MultiPlatformJobApplicationService
         self._service = MultiPlatformJobApplicationService()
         await self._service.initialize()
     
@@ -397,13 +484,91 @@ class JobApplicationServiceProvider(ServiceProvider):
 class JWTAuthServiceProvider(ServiceProvider):
     """Provider for JWT authentication service."""
     
+    def __init__(self, email_service: EmailService):
+        self.email_service = email_service
+
     def get_service(self) -> AuthService:
         return self._service
     
     async def initialize(self) -> None:
-        from .auth_service import JWTAuthService
-        self._service = JWTAuthService()
+        from src.services.auth_service import JWTAuthService
+        self._service = JWTAuthService(self.email_service)
         await self._service.initialize()
+    
+    async def cleanup(self) -> None:
+        if hasattr(self._service, 'cleanup'):
+            await self._service.cleanup()
+
+
+class MonitoringServiceProvider(ServiceProvider):
+    """Provider for monitoring service."""
+    
+    def __init__(self):
+        self._logger = logger.bind(module="MonitoringServiceProvider")
+    
+    def get_service(self) -> MonitoringService:
+        return self._service
+    
+    async def initialize(self) -> None:
+        from src.services.monitoring_service import DatabaseMonitoringService
+        self._service = DatabaseMonitoringService()
+        # Initialize default alert rules
+        await self._initialize_default_alert_rules()
+    
+    async def _initialize_default_alert_rules(self) -> None:
+        """Initialize default alert rules."""
+        try:
+            rules = await self._service.get_alert_rules()
+            existing_rule_names = {rule.get("rule_name") for rule in rules}
+            
+            default_rules = [
+                {
+                    "rule_name": "High Error Rate",
+                    "metric_name": "error_rate",
+                    "threshold": 5.0,
+                    "condition": "gt",
+                    "cooldown_seconds": 300
+                },
+                {
+                    "rule_name": "Slow Response Time",
+                    "metric_name": "api.response_time",
+                    "threshold": 1000.0,  # 1 second in milliseconds
+                    "condition": "gt",
+                    "cooldown_seconds": 300
+                },
+                {
+                    "rule_name": "Slow Database Query",
+                    "metric_name": "database.query_time",
+                    "threshold": 100.0,  # 100ms in milliseconds
+                    "condition": "gt",
+                    "cooldown_seconds": 300
+                }
+            ]
+            
+            for rule_config in default_rules:
+                if rule_config["rule_name"] not in existing_rule_names:
+                    try:
+                        await self._service.create_alert_rule(**rule_config)
+                        self._logger.info(f"Created default alert rule: {rule_config['rule_name']}")
+                    except Exception as e:
+                        self._logger.warning(f"Could not create default alert rule {rule_config['rule_name']}: {e}")
+        except Exception as e:
+            self._logger.warning(f"Could not initialize default alert rules: {e}")
+    
+    async def cleanup(self) -> None:
+        if hasattr(self._service, 'cleanup'):
+            await self._service.cleanup()
+
+
+class ExportServiceProvider(ServiceProvider):
+    """Provider for export service."""
+    
+    def get_service(self) -> ExportService:
+        return self._service
+    
+    async def initialize(self) -> None:
+        from src.services.export_service import MultiFormatExportService
+        self._service = MultiFormatExportService()
     
     async def cleanup(self) -> None:
         if hasattr(self._service, 'cleanup'):
@@ -412,3 +577,17 @@ class JWTAuthServiceProvider(ServiceProvider):
 
 # Global service registry instance
 service_registry = ServiceRegistry()
+
+
+class EmailServiceProvider(ServiceProvider):
+    """Provider for email service."""
+    
+    def get_service(self) -> EmailService:
+        return self._service
+    
+    async def initialize(self) -> None:
+        from src.services.email_service import EmailService
+        self._service = EmailService()
+    
+    async def cleanup(self) -> None:
+        pass

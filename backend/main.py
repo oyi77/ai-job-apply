@@ -16,15 +16,16 @@ sys.path.append(str(Path(__file__).parent / "src"))
 from src.api import app
 from src.config import config
 
-# Configure logging
-logging.basicConfig(
-    level=logging.INFO,
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
-    handlers=[
-        logging.FileHandler('logs/app.log'),
-        logging.StreamHandler()
-    ]
-)
+# Configure logging with noise filtering
+from src.utils.logger import setup_root_logging
+import logging
+
+# Get log level from environment or config
+log_level_str = os.getenv("LOG_LEVEL", "INFO").upper()
+log_level = getattr(logging, log_level_str, logging.INFO)
+
+# Setup root logging with noise filtering
+setup_root_logging(level=log_level, log_dir="logs", log_filename="app.log")
 
 logger = logging.getLogger(__name__)
 

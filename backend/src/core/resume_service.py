@@ -2,7 +2,7 @@
 
 from abc import ABC, abstractmethod
 from typing import List, Optional
-from ..models.resume import Resume
+from src.models.resume import Resume
 
 
 class ResumeService(ABC):
@@ -46,4 +46,9 @@ class ResumeService(ABC):
     @abstractmethod
     async def update_resume(self, resume_id: str, updates: dict, user_id: Optional[str] = None) -> Optional[Resume]:
         """Update resume information."""
+        pass
+
+    @abstractmethod
+    async def bulk_delete_resumes(self, resume_ids: List[str], user_id: Optional[str] = None) -> bool:
+        """Delete multiple resumes."""
         pass

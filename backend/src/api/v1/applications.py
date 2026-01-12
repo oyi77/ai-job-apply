@@ -1,12 +1,20 @@
 """Applications API endpoints for the AI Job Application Assistant."""
 
-from fastapi import APIRouter, HTTPException, Depends
+from fastapi import APIRouter, HTTPException, Depends, Response
 from typing import List, Dict, Any, Optional
-from ...models.application import JobApplication, ApplicationUpdateRequest, ApplicationStatus
-from ...models.user import UserProfile
-from ...services.service_registry import service_registry
-from ...utils.response_wrapper import success_response, error_response, paginated_response
-from ..dependencies import get_current_user
+from src.models.application import (
+    JobApplication, 
+    ApplicationUpdateRequest, 
+    ApplicationStatus,
+    BulkApplicationCreate,
+    BulkApplicationUpdate,
+    BulkDeleteRequest,
+    BulkExportRequest
+)
+from src.models.user import UserProfile
+from src.services.service_registry import service_registry
+from src.utils.response_wrapper import success_response, error_response, paginated_response
+from src.api.dependencies import get_current_user
 from loguru import logger
 
 router = APIRouter()
@@ -43,35 +51,77 @@ async def create_application(
         raise HTTPException(status_code=500, detail=f"Application creation failed: {str(e)}")
 
 
-@router.get("", response_model=Dict[str, Any])
-async def get_all_applications(
-    status: Optional[ApplicationStatus] = None,
+@router.post("/bulk", response_model=Dict[str, Any])
+async def bulk_create_applications(
+    request: BulkApplicationCreate,
     current_user: UserProfile = Depends(get_current_user)
 ) -> Dict[str, Any]:
-    """
-    Get all applications with optional status filter.
-    
-    Args:
-        status: Optional status filter
-        
-    Returns:
-        Consistent API response with list of applications
-    """
+    """Bulk create applications."""
     try:
-        # Get application service from registry
         application_service = await service_registry.get_application_service()
-        
-        # Use the application service with user_id
-        if status:
-            applications = await application_service.get_applications_by_status(status, user_id=current_user.id)
-        else:
-            applications = await application_service.get_all_applications(user_id=current_user.id)
-        
-        return success_response([app.dict() for app in applications], f"Retrieved {len(applications)} applications").dict()
-        
+        applications = await application_service.bulk_create_applications(request.applications, user_id=current_user.id)
+        return success_response([app.dict() for app in applications], f"Successfully created {len(applications)} applications").dict()
     except Exception as e:
-        logger.error(f"Error getting applications: {e}", exc_info=True)
-        raise HTTPException(status_code=500, detail=f"Failed to get applications: {str(e)}")
+        logger.error(f"Error in bulk creation: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.put("/bulk", response_model=Dict[str, Any])
+async def bulk_update_applications(
+    request: BulkApplicationUpdate,
+    current_user: UserProfile = Depends(get_current_user)
+) -> Dict[str, Any]:
+    """Bulk update applications."""
+    try:
+        application_service = await service_registry.get_application_service()
+        applications = await application_service.bulk_update_applications(request.ids, request.updates, user_id=current_user.id)
+        return success_response([app.dict() for app in applications], f"Successfully updated {len(applications)} applications").dict()
+    except Exception as e:
+        logger.error(f"Error in bulk update: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.delete("/bulk", response_model=Dict[str, Any])
+async def bulk_delete_applications(
+    request: BulkDeleteRequest,
+    current_user: UserProfile = Depends(get_current_user)
+) -> Dict[str, Any]:
+    """Bulk delete applications."""
+    try:
+        application_service = await service_registry.get_application_service()
+        success = await application_service.bulk_delete_applications(request.ids, user_id=current_user.id)
+        if success:
+            return success_response(None, f"Successfully deleted {len(request.ids)} applications").dict()
+        else:
+            return error_response("Some applications could not be deleted", status_code=207).dict()
+    except Exception as e:
+        logger.error(f"Error in bulk deletion: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.post("/export")
+async def export_applications(
+    request: BulkExportRequest,
+    current_user: UserProfile = Depends(get_current_user)
+) -> Response:
+    """Export applications."""
+    try:
+        application_service = await service_registry.get_application_service()
+        export_data = await application_service.export_applications(request.ids, request.format, user_id=current_user.id)
+        
+        media_type = "text/csv" if request.format == "csv" else "application/json"
+        extension = request.format
+        
+        return Response(
+            content=export_data,
+            media_type=media_type,
+            headers={
+                "Content-Disposition": f"attachment; filename=applications_export.{extension}"
+            }
+        )
+    except Exception as e:
+        logger.error(f"Error in export: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail=str(e))
 
 
 @router.get("/stats")
@@ -108,6 +158,54 @@ async def get_application_stats_summary(
         Application statistics
     """
     return await get_application_stats()
+
+
+@router.get("", response_model=Dict[str, Any])
+@router.get("/", response_model=Dict[str, Any])
+async def get_all_applications(
+    status: Optional[ApplicationStatus] = None,
+    page: Optional[int] = 1,
+    limit: Optional[int] = 10,
+    current_user: UserProfile = Depends(get_current_user)
+) -> Dict[str, Any]:
+    """
+    Get all applications with optional status filter and pagination.
+    
+    Args:
+        status: Optional status filter
+        page: Page number (default: 1)
+        limit: Items per page (default: 10)
+        
+    Returns:
+        Consistent API response with list of applications
+    """
+    try:
+        # Get application service from registry
+        application_service = await service_registry.get_application_service()
+        
+        # Use the application service with user_id
+        if status:
+            applications = await application_service.get_applications_by_status(status, user_id=current_user.id)
+        else:
+            applications = await application_service.get_all_applications(user_id=current_user.id)
+        
+        # Apply pagination
+        total = len(applications)
+        start = (page - 1) * limit
+        end = start + limit
+        paginated_applications = applications[start:end]
+        
+        return paginated_response(
+            data=[app.dict() for app in paginated_applications],
+            total=total,
+            page=page,
+            limit=limit,
+            message=f"Retrieved {len(paginated_applications)} applications"
+        ).dict()
+        
+    except Exception as e:
+        logger.error(f"Error getting applications: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail=f"Failed to get applications: {str(e)}")
 
 
 @router.get("/{application_id}", response_model=Dict[str, Any])

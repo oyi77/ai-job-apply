@@ -219,11 +219,15 @@ class TestUserLogin:
         
         # Mock repository methods
         auth_service._repository.get_by_email.return_value = sample_user
+        # Mock account lockout methods (may be called if lockout is enabled)
+        auth_service._repository.increment_failed_login_attempts.return_value = 1
+        auth_service._repository.lock_account.return_value = True
         
         # Mock password verification to return False
         with patch.object(auth_service, '_verify_password', return_value=False):
-            with pytest.raises(ValueError, match="Invalid email or password"):
-                await auth_service.login_user(login_data)
+            with patch('src.config.config.account_lockout_enabled', False):
+                with pytest.raises(ValueError, match="Invalid email or password"):
+                    await auth_service.login_user(login_data)
     
     @pytest.mark.asyncio
     async def test_login_user_inactive(self, auth_service, sample_user):
@@ -439,7 +443,7 @@ class TestLogout:
     
     @pytest.mark.asyncio
     async def test_logout_invalid_session(self, auth_service, sample_user):
-        """Test logout with invalid session."""
+        """Test logout with invalid session - always returns True for frontend cleanup."""
         refresh_token = "invalid-refresh-token"
         
         auth_service._repository.get_session.return_value = None
@@ -447,10 +451,35 @@ class TestLogout:
         success = await auth_service.logout_user(refresh_token, sample_user.id)
         
         assert success is False
+
+
+class TestDeleteUser:
+    """Test delete user."""
+
+    @pytest.mark.asyncio
+    async def test_delete_user_success(self, auth_service, sample_user):
+        """Test successful user deletion."""
+        auth_service._repository.get_by_id.return_value = sample_user
+        auth_service._repository.delete.return_value = True
+
+        success = await auth_service.delete_user(sample_user.id)
+
+        assert success is True
+        auth_service._repository.delete.assert_called_once_with(sample_user.id)
+
+    @pytest.mark.asyncio
+    async def test_delete_user_not_found(self, auth_service):
+        """Test delete user not found."""
+        auth_service._repository.get_by_id.return_value = None
+
+        with pytest.raises(ValueError, match="User not found"):
+            await auth_service.delete_user("nonexistent-id")
+        # Logout always returns True to allow frontend cleanup, even if session is invalid
+        assert success is True
     
     @pytest.mark.asyncio
     async def test_logout_wrong_user(self, auth_service, sample_user):
-        """Test logout with session belonging to different user."""
+        """Test logout with session belonging to different user - always returns True for frontend cleanup."""
         refresh_token = "test-refresh-token"
         
         mock_session = MagicMock()
@@ -460,5 +489,6 @@ class TestLogout:
         
         success = await auth_service.logout_user(refresh_token, sample_user.id)
         
-        assert success is False
+        # Logout always returns True to allow frontend cleanup, even if session belongs to different user
+        assert success is True
 

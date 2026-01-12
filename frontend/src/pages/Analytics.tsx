@@ -11,7 +11,8 @@ import {
   Alert
 } from '../components';
 import { useAppStore } from '../stores/appStore';
-import { applicationService } from '../services/api';
+import { applicationService, exportService } from '../services/api';
+import { ExportModal } from '../components/ExportModal';
 import {
   ChartBarIcon,
   DocumentArrowDownIcon,
@@ -28,6 +29,7 @@ import { ApplicationStatus } from '../types';
 const Analytics: React.FC = () => {
   const [timeRange, setTimeRange] = useState('30d');
   const [chartType, setChartType] = useState('bar');
+  const [isExportModalOpen, setIsExportModalOpen] = useState(false);
   const { applications, resumes } = useAppStore();
 
   // Fetch analytics data
@@ -85,24 +87,23 @@ const Analytics: React.FC = () => {
     { label: 'No Response', value: 17, color: '#6B7280' },
   ];
 
-  const handleExportData = () => {
-    const exportData = {
-      analytics: analytics,
-      applications: applications,
-      resumes: resumes,
-      timestamp: new Date().toISOString(),
-      timeRange: timeRange,
-    };
-    
-    const blob = new Blob([JSON.stringify(exportData, null, 2)], { type: 'application/json' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `analytics-${timeRange}-${new Date().toISOString().split('T')[0]}.json`;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    URL.revokeObjectURL(url);
+  const handleExport = async (format: 'pdf' | 'csv' | 'excel', options?: { includeCharts?: boolean }) => {
+    try {
+      const blob = await exportService.exportAnalytics(format, options?.includeCharts ?? true);
+      
+      const extension = format === 'excel' ? 'xlsx' : format;
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `analytics_export.${extension}`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      window.URL.revokeObjectURL(url);
+    } catch (err: any) {
+      console.error('Export failed:', err);
+      throw new Error(err.message || 'Failed to export analytics');
+    }
   };
 
   if (analyticsLoading) {
@@ -134,9 +135,9 @@ const Analytics: React.FC = () => {
             options={timeRangeOptions}
             className="w-40"
           />
-          <Button onClick={handleExportData} variant="secondary">
+          <Button onClick={() => setIsExportModalOpen(true)} variant="secondary">
             <DocumentArrowDownIcon className="h-4 w-4 mr-2" />
-            Export Data
+            Export
           </Button>
         </div>
       </div>
@@ -359,6 +360,17 @@ const Analytics: React.FC = () => {
           </div>
         </CardBody>
       </Card>
+
+      {/* Export Modal */}
+      <ExportModal
+        isOpen={isExportModalOpen}
+        onClose={() => setIsExportModalOpen(false)}
+        onExport={handleExport}
+        title="Export Analytics"
+        supportedFormats={['pdf', 'csv', 'excel']}
+        showDateRange={false}
+        defaultFormat="pdf"
+      />
     </div>
   );
 };

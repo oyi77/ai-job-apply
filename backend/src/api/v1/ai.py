@@ -1,15 +1,16 @@
 """AI service API endpoints for the AI Job Application Assistant."""
 
 from fastapi import APIRouter, HTTPException, Depends
-from typing import Dict, Any
+from typing import Dict, Any, Optional
 from datetime import datetime
-from ...models.resume import Resume, ResumeOptimizationRequest, ResumeOptimizationResponse
-from ...models.cover_letter import CoverLetterRequest, CoverLetter
-from ...models.career_insights import CareerInsightsRequest, CareerInsightsResponse
-from ...models.user import UserProfile
-from ...api.dependencies import get_current_user
-from ...utils.logger import get_logger
-from ...services.service_registry import service_registry
+from src.models.resume import Resume, ResumeOptimizationRequest, ResumeOptimizationResponse
+from src.models.cover_letter import CoverLetterRequest, CoverLetter
+from src.models.career_insights import CareerInsightsRequest, CareerInsightsResponse
+from pydantic import BaseModel
+from src.models.user import UserProfile
+from src.api.dependencies import get_current_user
+from src.utils.logger import get_logger
+from src.services.service_registry import service_registry
 
 logger = get_logger(__name__)
 
@@ -225,6 +226,50 @@ async def generate_career_insights(
         raise HTTPException(status_code=500, detail=f"Career insights generation failed: {str(e)}")
 
 
+class InterviewPrepRequest(BaseModel):
+    """Request model for interview preparation."""
+    job_description: str
+    resume_content: str
+    company_name: Optional[str] = None
+    job_title: Optional[str] = None
+
+
+@router.post("/interview-prep")
+async def prepare_interview(
+    request: InterviewPrepRequest,
+    current_user: UserProfile = Depends(get_current_user)
+) -> Dict[str, Any]:
+    """
+    Prepare interview questions and tips based on job description and resume.
+    
+    Args:
+        request: Interview preparation request with job description and resume
+        
+    Returns:
+        Interview preparation materials (questions, tips, research)
+    """
+    try:
+        logger.info(f"Interview preparation request for {request.job_title} at {request.company_name}")
+        
+        # Get AI service from unified registry
+        ai_service = await service_registry.get_ai_service()
+        
+        # Use the real AI service for interview preparation
+        response = await ai_service.prepare_interview(
+            job_description=request.job_description,
+            resume_content=request.resume_content,
+            company_name=request.company_name,
+            job_title=request.job_title
+        )
+        
+        logger.info("Interview preparation completed successfully")
+        return response
+        
+    except Exception as e:
+        logger.error(f"Error preparing interview: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail=f"Interview preparation failed: {str(e)}")
+
+
 @router.get("/health")
 async def ai_service_health() -> Dict[str, Any]:
     """
@@ -251,7 +296,8 @@ async def ai_service_health() -> Dict[str, Any]:
                 "job_match_analysis",
                 "skills_extraction",
                 "resume_improvement",
-                "career_insights"
+                "career_insights",
+                "interview_preparation"
             ]
         }
         

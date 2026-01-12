@@ -48,7 +48,60 @@ A comprehensive, enterprise-grade application that helps you manage job applicat
 
 ## 🚀 Quick Start
 
-### Prerequisites
+### Option 1: Docker (Recommended) 🐳
+
+The easiest way to get started is using Docker:
+
+```bash
+# Start all services (development)
+make docker-up
+# or
+docker-compose up -d
+
+# View logs
+make docker-logs
+# or
+docker-compose logs -f
+
+# Stop services
+make docker-down
+# or
+docker-compose down
+```
+
+**Access the application:**
+- Frontend: http://localhost:5173
+- Backend API: http://localhost:8000
+- API Docs: http://localhost:8000/docs
+
+**Docker Commands:**
+```bash
+make docker-up      # Start development
+make docker-down    # Stop containers
+make docker-logs    # View logs
+make docker-build   # Build images
+make docker-prod    # Start production
+make docker-clean   # Clean everything
+```
+
+**Production Deployment:**
+```bash
+# Set environment variables first
+export POSTGRES_USER=your_user
+export POSTGRES_PASSWORD=your_password
+export SECRET_KEY=your_secret_key
+export GEMINI_API_KEY=your_api_key
+
+# Start production
+docker-compose -f docker-compose.prod.yml up -d --build
+
+# Run migrations
+docker-compose -f docker-compose.prod.yml exec backend alembic upgrade head
+```
+
+### Option 2: Manual Setup
+
+**Prerequisites:**
 - Python 3.9+
 - Node.js 18+
 - PostgreSQL (optional, SQLite for development)
@@ -94,6 +147,57 @@ npm run dev
 # From project root
 ./start.sh  # Handles everything automatically
 ```
+
+## 🐳 Docker Details
+
+### Development Environment
+
+The `docker-compose.yml` includes:
+- **Backend**: FastAPI with hot reload on port 8000
+- **Frontend**: React with Vite dev server on port 5173
+- **PostgreSQL**: Database on port 5432
+- **Volumes**: Persistent data for uploads, resumes, logs
+
+**Common Tasks:**
+```bash
+# Run database migrations
+docker-compose exec backend alembic upgrade head
+
+# Access container shells
+docker-compose exec backend bash
+docker-compose exec frontend sh
+docker-compose exec postgres psql -U postgres -d ai_job_assistant
+
+# View specific service logs
+docker-compose logs -f backend
+docker-compose logs -f frontend
+```
+
+### Production Environment
+
+The `docker-compose.prod.yml` includes:
+- **Multi-stage builds** for optimized images
+- **Nginx reverse proxy** with SSL support
+- **Resource limits** for containers
+- **Health checks** for all services
+- **Security hardening** (non-root users, minimal images)
+
+**Environment Variables Required:**
+```bash
+POSTGRES_USER=postgres
+POSTGRES_PASSWORD=secure_password
+POSTGRES_DB=ai_job_assistant
+SECRET_KEY=your_secret_key
+JWT_SECRET_KEY=your_jwt_secret
+GEMINI_API_KEY=your_gemini_key
+CORS_ORIGINS=https://yourdomain.com
+```
+
+**Troubleshooting:**
+- Port conflicts: Change ports in docker-compose.yml
+- Database connection: Check `docker-compose logs postgres`
+- Build failures: Run `docker-compose build --no-cache`
+- Permission issues: Check file ownership with `ls -la`
 
 ## 🔧 Configuration
 
@@ -245,6 +349,12 @@ python setup-database.py  # Initialize database
 ## 📝 License
 
 This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+
+## 📚 Documentation
+
+- **[Architecture Documentation](docs/01-architecture.md)**: System architecture and design
+- **[API Reference](docs/02-api-reference.md)**: Complete API documentation
+- **[Development Guide](docs/04-development-guide.md)**: Development workflow and standards
 
 ## 🆘 Support
 

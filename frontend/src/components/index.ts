@@ -20,6 +20,9 @@ export { default as Search } from './ui/Search';
 export { default as Form } from './forms/Form';
 export { default as FormField } from './forms/FormField';
 
+// Export components
+export { ExportModal } from './ExportModal';
+
 // Layout components
 export { default as Layout } from './layout/Layout';
 export { default as Sidebar } from './layout/Sidebar';

@@ -3,17 +3,17 @@
 from typing import Optional
 from fastapi import Depends, HTTPException, status
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
-from ..services.service_registry import service_registry
-from ..models.user import UserProfile
-from ..utils.logger import get_logger
+from src.services.service_registry import service_registry
+from src.models.user import UserProfile
+from src.utils.logger import get_logger
 
 logger = get_logger(__name__)
 
-security = HTTPBearer()
+security = HTTPBearer(auto_error=False)
 
 
 async def get_current_user(
-    credentials: HTTPAuthorizationCredentials = Depends(security)
+    credentials: Optional[HTTPAuthorizationCredentials] = Depends(security)
 ) -> UserProfile:
     """
     Get current authenticated user from JWT token.
@@ -27,6 +27,13 @@ async def get_current_user(
     Raises:
         HTTPException: If token is invalid or user not found
     """
+    if not credentials:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Authentication required",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+    
     try:
         token = credentials.credentials
         auth_service = await service_registry.get_auth_service()
@@ -87,4 +94,9 @@ async def get_optional_user(
         return user_profile
     except Exception:
         return None
+
+
+async def get_service_registry():
+    """Get the service registry instance."""
+    return service_registry
 

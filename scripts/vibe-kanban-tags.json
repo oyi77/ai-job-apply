@@ -1,0 +1,263 @@
+[
+  {
+    "tag_name": "@openspec_review",
+    "content": "Review OpenSpec proposal, design document, and tasks.md before starting implementation. Ensure all requirements are understood and approved."
+  },
+  {
+    "tag_name": "@openspec_validate",
+    "content": "Run `openspec validate <change-id> --strict` to ensure the OpenSpec proposal is valid before implementation."
+  },
+  {
+    "tag_name": "@openspec_tasks",
+    "content": "Break down implementation into subtasks based on tasks.md from OpenSpec. Each major section should become a subtask."
+  },
+  {
+    "tag_name": "@openspec_design",
+    "content": "Review design.md document (if exists) for technical decisions, architecture patterns, and implementation guidelines before coding."
+  },
+  {
+    "tag_name": "@openspec_link",
+    "content": "Link this Vibe Kanban task to OpenSpec proposal: openspec/changes/<change-id>/proposal.md. Include link in task description."
+  },
+  {
+    "tag_name": "@add_unit_tests",
+    "content": "Write unit tests to improve code coverage and ensure reliability. Target 95%+ coverage for new code. Use pytest with async support."
+  },
+  {
+    "tag_name": "@add_integration_tests",
+    "content": "Write integration tests for API endpoints and service interactions. Test complete workflows end-to-end."
+  },
+  {
+    "tag_name": "@code_review",
+    "content": "Perform code review focusing on: SOLID principles, type safety, error handling, performance, security, and documentation."
+  },
+  {
+    "tag_name": "@code_refactoring",
+    "content": "Improve code structure and maintainability without changing functionality. Follow DRY principles and eliminate technical debt."
+  },
+  {
+    "tag_name": "@add_type_hints",
+    "content": "Add comprehensive type hints to all functions, methods, and classes. Ensure 100% type coverage. Use mypy for validation."
+  },
+  {
+    "tag_name": "@add_docstrings",
+    "content": "Add Google-style docstrings to all public APIs, classes, and functions. Include parameter descriptions and return types."
+  },
+  {
+    "tag_name": "@test_coverage",
+    "content": "Ensure test coverage meets 95%+ target. Add missing tests for edge cases, error scenarios, and boundary conditions."
+  },
+  {
+    "tag_name": "@test_performance",
+    "content": "Add performance tests to ensure API response times < 500ms, database queries < 100ms, and frontend load < 2.5s."
+  },
+  {
+    "tag_name": "@test_security",
+    "content": "Add security tests for authentication, authorization, input validation, SQL injection prevention, and XSS protection."
+  },
+  {
+    "tag_name": "@test_e2e",
+    "content": "Add end-to-end tests using Playwright or Cypress for critical user workflows: register, login, create application, etc."
+  },
+  {
+    "tag_name": "@database_migration",
+    "content": "Create Alembic migration for schema changes. Test migration up and down. Ensure data integrity and backward compatibility."
+  },
+  {
+    "tag_name": "@database_indexing",
+    "content": "Add database indexes for frequently queried fields, foreign keys, and composite keys to optimize query performance."
+  },
+  {
+    "tag_name": "@database_optimization",
+    "content": "Optimize database queries: eliminate N+1 problems, use selectinload for relationships, implement query result caching."
+  },
+  {
+    "tag_name": "@database_backup",
+    "content": "Implement database backup strategy with automated backups, retention policies, and recovery procedures."
+  },
+  {
+    "tag_name": "@api_endpoint",
+    "content": "Create new API endpoint with: request validation (Pydantic), response formatting, error handling, authentication, and documentation."
+  },
+  {
+    "tag_name": "@api_documentation",
+    "content": "Add comprehensive OpenAPI/Swagger documentation: endpoint description, request/response examples, error responses, authentication requirements."
+  },
+  {
+    "tag_name": "@api_versioning",
+    "content": "Implement API versioning strategy. Use /api/v1/ prefix. Plan for future version migration and deprecation policy."
+  },
+  {
+    "tag_name": "@api_rate_limiting",
+    "content": "Add rate limiting to API endpoint using slowapi. Configure appropriate limits based on endpoint sensitivity and usage patterns."
+  },
+  {
+    "tag_name": "@api_security",
+    "content": "Implement security measures: input validation, SQL injection prevention, XSS protection, CSRF tokens, and security headers."
+  },
+  {
+    "tag_name": "@component_development",
+    "content": "Create React component with TypeScript, proper prop types, accessibility (ARIA labels), responsive design, and error boundaries."
+  },
+  {
+    "tag_name": "@state_management",
+    "content": "Implement state management using Zustand for client state and React Query for server state. Avoid prop drilling."
+  },
+  {
+    "tag_name": "@form_validation",
+    "content": "Implement form validation using React Hook Form with comprehensive validation rules, error messages, and user feedback."
+  },
+  {
+    "tag_name": "@responsive_design",
+    "content": "Ensure component is responsive and mobile-friendly. Use Tailwind CSS responsive utilities. Test on multiple screen sizes."
+  },
+  {
+    "tag_name": "@accessibility",
+    "content": "Ensure component meets WCAG 2.1 AA standards: keyboard navigation, screen reader support, color contrast, ARIA labels."
+  },
+  {
+    "tag_name": "@security_audit",
+    "content": "Perform security audit: review authentication, authorization, input validation, file upload security, and OWASP Top 10 compliance."
+  },
+  {
+    "tag_name": "@security_headers",
+    "content": "Implement security headers: HSTS, CSP, X-Frame-Options, X-Content-Type-Options, Referrer-Policy, Permissions-Policy."
+  },
+  {
+    "tag_name": "@authentication",
+    "content": "Implement authentication: JWT tokens, password hashing (bcrypt), session management, token refresh, and logout functionality."
+  },
+  {
+    "tag_name": "@authorization",
+    "content": "Implement authorization: role-based access control, permission checks, protected routes, and resource-level permissions."
+  },
+  {
+    "tag_name": "@input_validation",
+    "content": "Add comprehensive input validation: type checking, range validation, sanitization, and SQL injection prevention."
+  },
+  {
+    "tag_name": "@performance_optimization",
+    "content": "Optimize performance: reduce API response times, optimize database queries, implement caching, and minimize bundle size."
+  },
+  {
+    "tag_name": "@caching",
+    "content": "Implement caching strategy: Redis for API responses, database query results, and session storage. Configure TTLs and invalidation."
+  },
+  {
+    "tag_name": "@database_performance",
+    "content": "Optimize database performance: add indexes, optimize queries, implement connection pooling, and monitor query performance."
+  },
+  {
+    "tag_name": "@frontend_performance",
+    "content": "Optimize frontend performance: code splitting, lazy loading, image optimization, bundle size reduction, and Core Web Vitals."
+  },
+  {
+    "tag_name": "@docker_setup",
+    "content": "Create Dockerfile and docker-compose.yml for containerization. Use multi-stage builds, non-root user, and minimal image size."
+  },
+  {
+    "tag_name": "@ci_cd_pipeline",
+    "content": "Set up CI/CD pipeline: GitHub Actions workflow, automated testing, code quality checks, security scanning, and deployment."
+  },
+  {
+    "tag_name": "@monitoring",
+    "content": "Implement monitoring: APM integration, error tracking (Sentry), log aggregation, health checks, and performance metrics."
+  },
+  {
+    "tag_name": "@deployment",
+    "content": "Set up production deployment: environment configuration, database setup, SSL/TLS certificates, backup strategy, and rollback plan."
+  },
+  {
+    "tag_name": "@update_readme",
+    "content": "Update README.md with new features, setup instructions, API documentation, and usage examples."
+  },
+  {
+    "tag_name": "@api_docs",
+    "content": "Update API documentation: add endpoint descriptions, request/response examples, error codes, and authentication requirements."
+  },
+  {
+    "tag_name": "@architecture_docs",
+    "content": "Update architecture documentation: system design, component diagrams, data flow, and technical decisions."
+  },
+  {
+    "tag_name": "@user_docs",
+    "content": "Create user documentation: feature guides, tutorials, FAQs, and troubleshooting guides."
+  },
+  {
+    "tag_name": "@bug_analysis",
+    "content": "Perform comprehensive analysis of the bug: root cause, reproduction steps, impact assessment, and fix strategy."
+  },
+  {
+    "tag_name": "@bug_fix",
+    "content": "Fix the bug with proper error handling, logging, and tests to prevent regression."
+  },
+  {
+    "tag_name": "@bug_testing",
+    "content": "Add tests to reproduce the bug and verify the fix. Include edge cases and regression tests."
+  },
+  {
+    "tag_name": "@feature_implementation",
+    "content": "Implement feature following OpenSpec proposal, design document, and tasks.md. Ensure type safety, error handling, and tests."
+  },
+  {
+    "tag_name": "@feature_testing",
+    "content": "Write comprehensive tests for new feature: unit tests, integration tests, and E2E tests. Target 95%+ coverage."
+  },
+  {
+    "tag_name": "@feature_documentation",
+    "content": "Document new feature: API documentation, user guide, code comments, and architecture notes."
+  },
+  {
+    "tag_name": "@technical_debt",
+    "content": "Address technical debt: refactor code, improve architecture, update dependencies, and eliminate code smells."
+  },
+  {
+    "tag_name": "@dependency_update",
+    "content": "Update dependencies: review changelogs, test compatibility, update requirements.txt, and verify functionality."
+  },
+  {
+    "tag_name": "@code_cleanup",
+    "content": "Clean up code: remove unused imports, dead code, commented code, and improve code organization."
+  },
+  {
+    "tag_name": "@openspec_create_proposal",
+    "content": "Create OpenSpec proposal: proposal.md, tasks.md, optional design.md, and spec deltas. Run validation before submission."
+  },
+  {
+    "tag_name": "@openspec_implement",
+    "content": "Implement OpenSpec change: follow tasks.md checklist, update STATUS.md, and ensure all requirements are met."
+  },
+  {
+    "tag_name": "@openspec_archive",
+    "content": "Archive OpenSpec change after deployment: move to archive/, update specs/, run validation, and update documentation."
+  },
+  {
+    "tag_name": "@openspec_sync",
+    "content": "Synchronize Vibe Kanban task with OpenSpec: update task status based on tasks.md completion, link documents."
+  },
+  {
+    "tag_name": "@analytics_implementation",
+    "content": "Implement analytics: metrics collection, data aggregation, visualization, and reporting functionality."
+  },
+  {
+    "tag_name": "@reporting",
+    "content": "Create reporting functionality: data export (PDF, CSV, Excel), custom reports, and scheduled reports."
+  },
+  {
+    "tag_name": "@ai_integration",
+    "content": "Integrate AI service: configure API, implement error handling, add fallback mechanisms, and optimize prompts."
+  },
+  {
+    "tag_name": "@ai_optimization",
+    "content": "Optimize AI integration: improve prompts, reduce API calls, implement caching, and enhance response quality."
+  },
+  {
+    "tag_name": "@job_search_integration",
+    "content": "Integrate job search platform: implement API client, handle rate limits, parse responses, and store results."
+  },
+  {
+    "tag_name": "@job_matching",
+    "content": "Implement job matching algorithm: skills matching, experience level, location preferences, and ranking."
+  }
+]
+

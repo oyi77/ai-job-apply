@@ -6,9 +6,9 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, update, delete, func, and_, or_
 from sqlalchemy.orm import selectinload
 
-from ..models import DBCoverLetter, DBJobApplication
-from ...models.cover_letter import CoverLetter
-from ...utils.logger import get_logger
+from src.database.models import DBCoverLetter, DBJobApplication
+from src.models.cover_letter import CoverLetter
+from src.utils.logger import get_logger
 
 
 class CoverLetterRepository:
@@ -114,14 +114,16 @@ class CoverLetterRepository:
             self.logger.error(f"Error getting cover letters for company {company_name}: {e}", exc_info=True)
             return []
     
-    async def get_by_job_title(self, job_title: str) -> List[CoverLetter]:
+    async def get_by_job_title(self, job_title: str, user_id: Optional[str] = None) -> List[CoverLetter]:
         """Get cover letters by job title."""
         try:
+            where_clause = func.lower(DBCoverLetter.job_title) == job_title.lower()
+            if user_id:
+                where_clause = and_(where_clause, DBCoverLetter.user_id == user_id)
+                
             stmt = select(DBCoverLetter).options(
                 selectinload(DBCoverLetter.applications)
-            ).where(
-                func.lower(DBCoverLetter.job_title) == job_title.lower()
-            ).order_by(DBCoverLetter.created_at.desc())
+            ).where(where_clause).order_by(DBCoverLetter.created_at.desc())
             
             result = await self.session.execute(stmt)
             db_cover_letters = result.scalars().all()
@@ -135,14 +137,16 @@ class CoverLetterRepository:
             self.logger.error(f"Error getting cover letters for job title {job_title}: {e}", exc_info=True)
             return []
     
-    async def get_by_tone(self, tone: str, limit: Optional[int] = None) -> List[CoverLetter]:
+    async def get_by_tone(self, tone: str, limit: Optional[int] = None, user_id: Optional[str] = None) -> List[CoverLetter]:
         """Get cover letters by tone."""
         try:
+            where_clause = func.lower(DBCoverLetter.tone) == tone.lower()
+            if user_id:
+                where_clause = and_(where_clause, DBCoverLetter.user_id == user_id)
+            
             stmt = select(DBCoverLetter).options(
                 selectinload(DBCoverLetter.applications)
-            ).where(
-                func.lower(DBCoverLetter.tone) == tone.lower()
-            ).order_by(DBCoverLetter.created_at.desc())
+            ).where(where_clause).order_by(DBCoverLetter.created_at.desc())
             
             if limit:
                 stmt = stmt.limit(limit)
@@ -247,13 +251,16 @@ class CoverLetterRepository:
             self.logger.error(f"Error searching cover letters with query '{query}': {e}", exc_info=True)
             return []
     
-    async def get_by_word_count_range(self, min_words: int, max_words: Optional[int] = None) -> List[CoverLetter]:
+    async def get_by_word_count_range(self, min_words: int, max_words: Optional[int] = None, user_id: Optional[str] = None) -> List[CoverLetter]:
         """Get cover letters by word count range."""
         try:
             conditions = [DBCoverLetter.word_count >= min_words]
             
             if max_words is not None:
                 conditions.append(DBCoverLetter.word_count <= max_words)
+            
+            if user_id:
+                conditions.append(DBCoverLetter.user_id == user_id)
             
             stmt = select(DBCoverLetter).options(
                 selectinload(DBCoverLetter.applications)
@@ -271,16 +278,18 @@ class CoverLetterRepository:
             self.logger.error(f"Error getting cover letters by word count: {e}", exc_info=True)
             return []
     
-    async def get_recent(self, days: int = 30, limit: Optional[int] = None) -> List[CoverLetter]:
+    async def get_recent(self, days: int = 30, limit: Optional[int] = None, user_id: Optional[str] = None) -> List[CoverLetter]:
         """Get recent cover letters."""
         try:
             cutoff_date = datetime.now(timezone.utc) - timedelta(days=days)
             
+            where_clause = DBCoverLetter.created_at >= cutoff_date
+            if user_id:
+                where_clause = and_(where_clause, DBCoverLetter.user_id == user_id)
+            
             stmt = select(DBCoverLetter).options(
                 selectinload(DBCoverLetter.applications)
-            ).where(
-                DBCoverLetter.created_at >= cutoff_date
-            ).order_by(DBCoverLetter.created_at.desc())
+            ).where(where_clause).order_by(DBCoverLetter.created_at.desc())
             
             if limit:
                 stmt = stmt.limit(limit)
@@ -297,11 +306,16 @@ class CoverLetterRepository:
             self.logger.error(f"Error getting recent cover letters: {e}", exc_info=True)
             return []
     
-    async def get_statistics(self) -> Dict[str, Any]:
+    async def get_statistics(self, user_id: Optional[str] = None) -> Dict[str, Any]:
         """Get cover letter statistics."""
         try:
+            # Base filter for user_id
+            user_filter = DBCoverLetter.user_id == user_id if user_id else None
+
             # Get total count
             total_stmt = select(func.count(DBCoverLetter.id))
+            if user_filter:
+                total_stmt = total_stmt.where(user_filter)
             total_result = await self.session.execute(total_stmt)
             total_cover_letters = total_result.scalar()
             
@@ -311,11 +325,16 @@ class CoverLetterRepository:
                 func.count(DBCoverLetter.id)
             ).group_by(DBCoverLetter.tone)
             
+            if user_filter:
+                tone_stmt = tone_stmt.where(user_filter)
+            
             tone_result = await self.session.execute(tone_stmt)
             tone_breakdown = dict(tone_result.all())
             
             # Get average word count
             avg_words_stmt = select(func.avg(DBCoverLetter.word_count))
+            if user_filter:
+                avg_words_stmt = avg_words_stmt.where(user_filter)
             avg_words_result = await self.session.execute(avg_words_stmt)
             avg_word_count = avg_words_result.scalar() or 0
             

@@ -7,6 +7,7 @@ from unittest.mock import AsyncMock, MagicMock
 import tempfile
 import shutil
 from pathlib import Path
+import uuid
 
 # Import test fixtures and utilities
 from .fixtures.test_data import (
@@ -102,3 +103,34 @@ def mock_config():
     config.GEMINI_API_KEY = "test_api_key"
     config.DATABASE_URL = "sqlite:///test.db"
     return config
+
+@pytest.fixture
+async def test_user_2(client):
+    """Register and return a second test user."""
+    user_data = {
+        "email": f"user2_{uuid.uuid4()}@example.com",
+        "password": "Password123!",
+        "name": "User Two"
+    }
+    # Note: validation of response status should be done in tests
+    # But usually fixtures should guarantee success or fail
+    response = await client.post("/api/v1/auth/register", json=user_data)
+    if response.status_code == 400 and "already registered" in response.text:
+         # Try login
+         response = await client.post("/api/v1/auth/login", json={
+             "email": user_data["email"],
+             "password": user_data["password"]
+         })
+    
+    if response.status_code not in [200, 201]:
+        # Return basic data if registration fails (e.g. if client is mocked without auth logic)
+        return user_data
+        
+    return response.json()
+
+@pytest.fixture
+def test_user_2_token(test_user_2):
+    """Return the access token for test_user_2."""
+    if isinstance(test_user_2, dict):
+        return test_user_2.get("access_token")
+    return None

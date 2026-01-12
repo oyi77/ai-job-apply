@@ -34,6 +34,7 @@ const Resumes: React.FC = () => {
   const [isViewModalOpen, setIsViewModalOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [filterStatus, setFilterStatus] = useState<string>('all');
+  const [selectedIds, setSelectedIds] = useState<string[]>([]);
   
   const fileInputRef = useRef<HTMLInputElement>(null);
   const queryClient = useQueryClient();
@@ -48,32 +49,18 @@ const Resumes: React.FC = () => {
   // Upload resume mutation
   const uploadMutation = useMutation({
     mutationFn: async (file: File) => {
-      try {
-        const uploadResponse = await fileService.uploadFile(file, 'resume');
-        
-        const resumeData: Partial<Resume> = {
-          filename: uploadResponse.filename,
-          original_filename: file.name,
-          file_path: uploadResponse.url,
-          file_size: file.size,
-          mime_type: file.type,
-          file_type: file.type.split('/')[1],
-          skills: [],
-          experience_years: 0,
-          education: [],
-          certifications: [],
-          is_default: resumes.length === 0,
-        };
-
-        return resumeService.uploadResume(file, resumeData);
-      } catch (error) {
-        console.error('Error uploading resume:', error);
-        throw error;
-      }
+      // Use resume service directly - it handles file upload and processing
+      return resumeService.uploadResume(file);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['resumes'] });
       console.log('Resume uploaded successfully!');
+      // Close modal and reset file selection
+      setIsUploadModalOpen(false);
+      setSelectedFile(null);
+      if (fileInputRef.current) {
+        fileInputRef.current.value = '';
+      }
     },
     onError: (error) => {
       console.error('Upload error:', error);
@@ -91,6 +78,15 @@ const Resumes: React.FC = () => {
     onError: (error) => {
       console.error('Delete error:', error);
       console.error('Failed to delete resume. Please try again.');
+    },
+  });
+
+  // Bulk delete mutation
+  const bulkDeleteMutation = useMutation({
+    mutationFn: resumeService.bulkDelete,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['resumes'] });
+      setSelectedIds([]);
     },
   });
 
@@ -143,6 +139,27 @@ const Resumes: React.FC = () => {
     setDefaultMutation.mutate(resumeId);
   };
 
+  const handleSelectAll = () => {
+    if (selectedIds.length === resumes.length) {
+      setSelectedIds([]);
+    } else {
+      setSelectedIds(resumes.map(r => r.id).filter((id): id is string => !!id));
+    }
+  };
+
+  const handleToggleSelect = (id: string) => {
+    setSelectedIds(prev => 
+      prev.includes(id) ? prev.filter(i => i !== id) : [...prev, id]
+    );
+  };
+
+  const handleBulkDelete = () => {
+    if (selectedIds.length === 0) return;
+    if (window.confirm(`Are you sure you want to delete ${selectedIds.length} resumes?`)) {
+      bulkDeleteMutation.mutate(selectedIds);
+    }
+  };
+
   const getFileTypeIcon = (fileType: string) => {
     if (fileType.includes('pdf')) return '📄';
     if (fileType.includes('word') || fileType.includes('docx')) return '📝';
@@ -186,10 +203,47 @@ const Resumes: React.FC = () => {
         </Button>
       </div>
 
+      {/* Bulk Actions Toolbar */}
+      {selectedIds.length > 0 && (
+        <div className="bg-primary-50 border border-primary-100 rounded-lg p-3 flex items-center justify-between animate-fade-in">
+          <div className="flex items-center space-x-4">
+            <span className="text-primary-800 font-medium">
+              {selectedIds.length} items selected
+            </span>
+          </div>
+          <div className="flex items-center space-x-2">
+            <Button 
+              variant="danger" 
+              size="sm" 
+              onClick={handleBulkDelete}
+              className="flex items-center"
+            >
+              <TrashIcon className="h-4 w-4 mr-1" />
+              Delete Selected
+            </Button>
+            <Button 
+              variant="ghost" 
+              size="sm" 
+              onClick={() => setSelectedIds([])}
+            >
+              Cancel
+            </Button>
+          </div>
+        </div>
+      )}
+
       {/* Resumes List */}
       <Card>
-        <CardHeader>
-          <h3 className="text-lg font-medium text-gray-900">Your Resumes</h3>
+        <CardHeader className="flex justify-between items-center">
+          <div className="flex items-center space-x-3">
+            <input
+              type="checkbox"
+              className="h-4 w-4 rounded border-gray-300 text-primary-600 focus:ring-primary-500"
+              checked={selectedIds.length === resumes.length && resumes.length > 0}
+              onChange={handleSelectAll}
+            />
+            <h3 className="text-lg font-medium text-gray-900">Your Resumes</h3>
+          </div>
         </CardHeader>
         <CardBody>
           {resumes.length === 0 ? (
@@ -211,76 +265,89 @@ const Resumes: React.FC = () => {
             <div className="space-y-4">
               {resumes.map((resume) => (
                 <div
-                  key={resume.id}
-                  className="border border-gray-200 rounded-lg p-4 hover:bg-gray-50 transition-colors"
+                  key={resume.id || `resume-${resume.name || resume.filename || 'unknown'}`}
+                  className={`border rounded-lg p-4 transition-colors ${
+                    resume.id && selectedIds.includes(resume.id) 
+                      ? 'border-primary-300 bg-primary-50' 
+                      : 'border-gray-200 hover:bg-gray-50'
+                  }`}
                 >
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center space-x-4">
-                      <div className="flex-shrink-0">
-                        <div className="w-12 h-12 bg-primary-100 rounded-lg flex items-center justify-center text-2xl">
-                          {getFileTypeIcon(resume.file_type || 'pdf')}
+                  <div className="flex items-center space-x-4">
+                    <input
+                      type="checkbox"
+                      className="h-4 w-4 rounded border-gray-300 text-primary-600 focus:ring-primary-500"
+                      checked={resume.id ? selectedIds.includes(resume.id) : false}
+                      onChange={() => resume.id && handleToggleSelect(resume.id)}
+                    />
+                    <div className="flex-1 flex items-center justify-between">
+                      <div className="flex items-center space-x-4">
+                        <div className="flex-shrink-0">
+                          <div className="w-12 h-12 bg-primary-100 rounded-lg flex items-center justify-center text-2xl">
+                            {getFileTypeIcon(resume.file_type || 'pdf')}
+                          </div>
                         </div>
-                      </div>
-                      <div className="flex-1">
-                        <div className="flex items-center space-x-3">
-                          <h4 className="text-lg font-medium text-gray-900">
-                            {resume.title}
-                          </h4>
-                          {resume.is_default && (
-                            <Badge variant="success" className="flex items-center">
-                              <StarIcon className="h-3 w-3 mr-1" />
-                              Default
-                            </Badge>
-                          )}
-                        </div>
-                        <p className="text-sm text-gray-500 mt-1">
-                          {formatFileSize(resume.file_size)} • {resume.file_type}
-                        </p>
-                        {resume.skills && resume.skills.length > 0 && (
-                          <div className="flex flex-wrap gap-2 mt-2">
-                            {resume.skills.slice(0, 5).map((skill, index) => (
-                              <Badge key={index} variant="secondary" size="sm">
-                                {skill}
-                              </Badge>
-                            ))}
-                            {resume.skills.length > 5 && (
-                              <Badge variant="secondary" size="sm">
-                                +{resume.skills.length - 5} more
+                        <div className="flex-1">
+                          <div className="flex items-center space-x-3">
+                            <h4 className="text-lg font-medium text-gray-900">
+                              {resume.name || resume.title || resume.original_filename || resume.filename || 'Unnamed Resume'}
+                            </h4>
+                            {resume.is_default && (
+                              <Badge variant="success" className="flex items-center">
+                                <StarIcon className="h-3 w-3 mr-1" />
+                                Default
                               </Badge>
                             )}
                           </div>
-                        )}
+                          <p className="text-sm text-gray-500 mt-1">
+                            {formatFileSize(resume.file_size || 0)} • {resume.file_type || 'pdf'}
+                          </p>
+                          {resume.skills && resume.skills.length > 0 && (
+                            <div className="flex flex-wrap gap-2 mt-2">
+                              {resume.skills.slice(0, 5).map((skill, index) => (
+                                <Badge key={index} variant="secondary" size="sm">
+                                  {skill}
+                                </Badge>
+                              ))}
+                              {resume.skills.length > 5 && (
+                                <Badge variant="secondary" size="sm">
+                                  +{resume.skills.length - 5} more
+                                </Badge>
+                              )}
+                            </div>
+                          )}
+                        </div>
                       </div>
-                    </div>
-                    
-                    <div className="flex items-center space-x-2">
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => {
-                          setSelectedResume(resume);
-                          setIsViewModalOpen(true);
-                        }}
-                      >
-                        <EyeIcon className="h-4 w-4" />
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => handleSetDefault(resume.id)}
-                        disabled={resume.is_default}
-                        className={resume.is_default ? 'text-gray-400' : 'text-primary-600 hover:text-primary-700'}
-                      >
-                        <StarIcon className="h-4 w-4" />
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => handleDelete(resume.id)}
-                        className="text-danger-600 hover:text-danger-700"
-                      >
-                        <TrashIcon className="h-4 w-4" />
-                      </Button>
+                      
+                      <div className="flex items-center space-x-2">
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => {
+                            setSelectedResume(resume);
+                            setIsViewModalOpen(true);
+                          }}
+                        >
+                          <EyeIcon className="h-4 w-4" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => resume.id && handleSetDefault(resume.id)}
+                          disabled={resume.is_default || !resume.id}
+                          className={resume.is_default ? 'text-gray-400' : 'text-primary-600 hover:text-primary-700'}
+                        >
+                          <StarIcon className="h-4 w-4" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => resume.id && handleDelete(resume.id)}
+                          disabled={!resume.id}
+                          className="text-danger-600 hover:text-danger-700"
+                        >
+                          <TrashIcon className="h-4 w-4" />
+                        </Button>
+                      </div>
                     </div>
                   </div>
                 </div>
@@ -386,10 +453,10 @@ const Resumes: React.FC = () => {
                 </div>
                 <div>
                   <h3 className="text-xl font-medium text-gray-900">
-                    {selectedResume.title}
+                    {selectedResume.name || selectedResume.title || selectedResume.original_filename || selectedResume.filename || 'Unnamed Resume'}
                   </h3>
                   <p className="text-gray-600">
-                    {formatFileSize(selectedResume.file_size)} • {selectedResume.file_type}
+                    {formatFileSize(selectedResume.file_size || 0)} • {selectedResume.file_type || 'pdf'}
                   </p>
                   {selectedResume.is_default && (
                     <Badge variant="success" className="mt-2">
@@ -431,12 +498,28 @@ const Resumes: React.FC = () => {
                 <div>
                   <h4 className="text-lg font-medium text-gray-900 mb-3">Education</h4>
                   <div className="space-y-2">
-                    {selectedResume.education.map((edu, index) => (
-                      <div key={index} className="text-gray-600">
-                        <p className="font-medium">{edu.degree}</p>
-                        <p className="text-sm">{edu.institution} • {edu.year}</p>
-                      </div>
-                    ))}
+                    {selectedResume.education.map((edu, index) => {
+                      // Handle both string format (from backend) and object format
+                      if (typeof edu === 'string') {
+                        return (
+                          <div key={index} className="text-gray-600">
+                            <p className="font-medium">{edu}</p>
+                          </div>
+                        );
+                      } else {
+                        // Object format with degree, institution, year
+                        return (
+                          <div key={index} className="text-gray-600">
+                            <p className="font-medium">{edu.degree || 'N/A'}</p>
+                            <p className="text-sm">
+                              {edu.institution || ''}
+                              {edu.institution && edu.year ? ' • ' : ''}
+                              {edu.year || ''}
+                            </p>
+                          </div>
+                        );
+                      }
+                    })}
                   </div>
                 </div>
               )}
@@ -446,12 +529,28 @@ const Resumes: React.FC = () => {
                 <div>
                   <h4 className="text-lg font-medium text-gray-900 mb-3">Certifications</h4>
                   <div className="space-y-2">
-                    {selectedResume.certifications.map((cert, index) => (
-                      <div key={index} className="text-gray-600">
-                        <p className="font-medium">{cert.name}</p>
-                        <p className="text-sm">{cert.issuer} • {cert.year}</p>
-                      </div>
-                    ))}
+                    {selectedResume.certifications.map((cert, index) => {
+                      // Handle both string format (from backend) and object format
+                      if (typeof cert === 'string') {
+                        return (
+                          <div key={index} className="text-gray-600">
+                            <p className="font-medium">{cert}</p>
+                          </div>
+                        );
+                      } else {
+                        // Object format with name, issuer, year
+                        return (
+                          <div key={index} className="text-gray-600">
+                            <p className="font-medium">{cert.name || 'N/A'}</p>
+                            <p className="text-sm">
+                              {cert.issuer || ''}
+                              {cert.issuer && cert.year ? ' • ' : ''}
+                              {cert.year || ''}
+                            </p>
+                          </div>
+                        );
+                      }
+                    })}
                   </div>
                 </div>
               )}

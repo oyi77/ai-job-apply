@@ -1,10 +1,12 @@
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { Suspense, lazy, useEffect } from 'react';
+import { VibeKanbanWebCompanion } from 'vibe-kanban-web-companion';
 import Layout from './components/layout/Layout';
 import Spinner from './components/ui/Spinner';
 import { NotificationContainer, useNotifications } from './components/ui/Notification';
 import ProtectedRoute from './components/auth/ProtectedRoute';
+import { useTheme } from './hooks/useTheme';
 
 // Lazy load all page components for code splitting
 const Dashboard = lazy(() => import('./pages/Dashboard'));
@@ -17,6 +19,8 @@ const Analytics = lazy(() => import('./pages/Analytics'));
 const Settings = lazy(() => import('./pages/Settings'));
 const Login = lazy(() => import('./pages/Login'));
 const Register = lazy(() => import('./pages/Register'));
+const PasswordResetRequest = lazy(() => import('./pages/PasswordResetRequest').then(module => ({ default: module.PasswordResetRequest })));
+const PasswordReset = lazy(() => import('./pages/PasswordReset').then(module => ({ default: module.PasswordReset })));
 const NotFound = lazy(() => import('./pages/NotFound'));
 
 // Loading component for Suspense fallback
@@ -84,6 +88,8 @@ function AppWithNotifications() {
 }
 
 function AppContent({ notifications, dismissNotification }: { notifications: any[], dismissNotification: (id: string) => void }) {
+  // Apply theme to document
+  useTheme();
 
   // Performance monitoring
   useEffect(() => {
@@ -143,8 +149,9 @@ function AppContent({ notifications, dismissNotification }: { notifications: any
 
   return (
     <QueryClientProvider client={queryClient}>
+      <VibeKanbanWebCompanion />
       <Router>
-        <div className="min-h-screen bg-gray-50">
+        <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
           <NotificationContainer
             notifications={notifications}
             onDismiss={dismissNotification}
@@ -162,7 +169,17 @@ function AppContent({ notifications, dismissNotification }: { notifications: any
                 <Register />
               </Suspense>
             } />
-            
+            <Route path="/login/reset" element={
+              <Suspense fallback={<PageLoader />}>
+                <PasswordResetRequest />
+              </Suspense>
+            } />
+            <Route path="/reset-password" element={
+              <Suspense fallback={<PageLoader />}>
+                <PasswordReset />
+              </Suspense>
+            } />
+
             {/* Protected routes */}
             <Route element={<ProtectedRoute />}>
               <Route path="/" element={<Layout />}>
@@ -208,7 +225,7 @@ function AppContent({ notifications, dismissNotification }: { notifications: any
                 } />
               </Route>
             </Route>
-            
+
             {/* 404 route */}
             <Route path="*" element={
               <Suspense fallback={<PageLoader />}>

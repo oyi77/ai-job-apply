@@ -2,8 +2,8 @@
 
 from abc import ABC, abstractmethod
 from typing import Optional, Dict, Any, List
-from ..models.job import Job, ApplicationInfo, ApplicationForm
-from ..models.resume import Resume
+from src.models.job import Job, ApplicationInfo, ApplicationForm
+from src.models.resume import Resume
 
 
 class JobApplicationService(ABC):
