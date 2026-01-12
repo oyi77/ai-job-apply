@@ -61,6 +61,7 @@ htmlcov/
 .cache/
 
 # Unused files
+node_modules/
 .DS_*
 
 # Auto-generated config files

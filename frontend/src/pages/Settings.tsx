@@ -138,12 +138,13 @@ const Settings: React.FC = () => {
     setIsDeleting(true);
     try {
       // Call API endpoint for account deletion
-      await authService.deleteAccount(deletePassword);
-      
+      await authService.deleteAccount();
+
       // Clear local data
       setAuthenticated(false);
       setUser(null);
       localStorage.removeItem('auth_token');
+      localStorage.removeItem('refresh_token');
       localStorage.removeItem('token');
       setIsDeleteModalOpen(false);
       setDeleteConfirmation('');

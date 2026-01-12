@@ -450,6 +450,30 @@ class TestLogout:
         
         success = await auth_service.logout_user(refresh_token, sample_user.id)
         
+        assert success is False
+
+
+class TestDeleteUser:
+    """Test delete user."""
+
+    @pytest.mark.asyncio
+    async def test_delete_user_success(self, auth_service, sample_user):
+        """Test successful user deletion."""
+        auth_service._repository.get_by_id.return_value = sample_user
+        auth_service._repository.delete.return_value = True
+
+        success = await auth_service.delete_user(sample_user.id)
+
+        assert success is True
+        auth_service._repository.delete.assert_called_once_with(sample_user.id)
+
+    @pytest.mark.asyncio
+    async def test_delete_user_not_found(self, auth_service):
+        """Test delete user not found."""
+        auth_service._repository.get_by_id.return_value = None
+
+        with pytest.raises(ValueError, match="User not found"):
+            await auth_service.delete_user("nonexistent-id")
         # Logout always returns True to allow frontend cleanup, even if session is invalid
         assert success is True
     
