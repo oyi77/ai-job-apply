@@ -332,6 +332,7 @@ pytz==2025.2
 pyunormalize==17.0.0
 PyYAML==6.0.1
 pyzmq==27.1.0
+pywebpush==1.14.0
 quark-engine==25.9.1
 questionary==2.1.1
 r2pipe==1.8.0

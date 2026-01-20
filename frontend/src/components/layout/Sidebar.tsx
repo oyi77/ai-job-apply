@@ -12,6 +12,7 @@ import {
   Cog6ToothIcon,
   Bars3Icon,
   XMarkIcon,
+  UserCircleIcon,
 } from '@heroicons/react/24/outline';
 
 const navigation = [
@@ -23,6 +24,7 @@ const navigation = [
   { name: 'AI Services', href: '/ai-services', icon: SparklesIcon },
   { name: 'Analytics', href: '/analytics', icon: ChartBarIcon },
   { name: 'Settings', href: '/settings', icon: Cog6ToothIcon },
+  { name: 'Admin Settings', href: '/admin-settings', icon: UserCircleIcon },
 ];
 
 const Sidebar: React.FC = () => {

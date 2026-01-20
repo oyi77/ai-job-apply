@@ -106,5 +106,16 @@ testpaths = ["tests"]
 python_files = ["test_*.py"]
 python_classes = ["Test*"]
 python_functions = ["test_*"]
-addopts = "-v --tb=short"
+addopts = "-v --tb=short --import-mode=importlib"
 asyncio_mode = "auto"
+
+[tool.coverage.run]
+source = [
+    "src.utils.token_manager",
+    "src.validators.auth_validators",
+]
+
+[tool.coverage.report]
+fail_under = 95
+show_missing = true
+

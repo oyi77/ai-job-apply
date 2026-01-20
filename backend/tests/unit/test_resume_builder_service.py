@@ -1,0 +1,415 @@
+"""Unit tests for resume builder service."""
+
+import pytest
+import sys
+from pathlib import Path
+from datetime import datetime
+from unittest.mock import AsyncMock, MagicMock, patch
+from typing import Any
+
+# Ensure `src` package is importable when running tests without installing the
+# project into the current environment.
+PROJECT_ROOT = Path(__file__).resolve().parents[2]
+SRC_ROOT = PROJECT_ROOT / "src"
+if str(PROJECT_ROOT) not in sys.path:
+    sys.path.insert(0, str(PROJECT_ROOT))
+if str(SRC_ROOT) not in sys.path:
+    sys.path.insert(0, str(SRC_ROOT))
+
+from src.services.resume_builder_service import (
+    ResumeBuilderService,
+    ProfileData,
+    ResumeOptions,
+    ResumeFormat,
+    TemplateType,
+)
+from src.models.resume import Resume, ResumeSection
+
+
+class TestProfileData:
+    """Test cases for ProfileData model."""
+
+    def test_profile_data_creation(self):
+        """Test creating profile data."""
+        profile = ProfileData(
+            full_name="John Doe",
+            email="john@example.com",
+            phone="555-1234",
+            location="San Francisco, CA",
+            title="Software Engineer",
+            summary="Experienced software engineer with 5+ years of experience.",
+            experience=[
+                {
+                    "title": "Senior Software Engineer",
+                    "company": "TechCorp",
+                    "start_date": "2020-01",
+                    "end_date": "Present",
+                    "description": "Led development of microservices architecture.",
+                }
+            ],
+            education=[
+                {
+                    "degree": "Bachelor of Science in Computer Science",
+                    "institution": "University of Technology",
+                    "graduation_year": 2018,
+                }
+            ],
+            skills=["Python", "FastAPI", "React", "PostgreSQL"],
+            projects=[
+                {
+                    "name": "AI Job Assistant",
+                    "description": "Built an AI-powered job application assistant.",
+                    "technologies": ["Python", "React", "FastAPI"],
+                }
+            ],
+        )
+
+        assert profile.full_name == "John Doe"
+        assert profile.email == "john@example.com"
+        assert len(profile.experience) == 1
+        assert len(profile.skills) == 4
+
+    def test_profile_data_validation(self):
+        """Test profile data validation."""
+        profile = ProfileData(full_name="Jane Smith", email="jane@example.com")
+
+        assert profile.full_name == "Jane Smith"
+        assert profile.experience == []
+        assert profile.education == []
+        assert profile.skills == []
+
+
+class TestResumeOptions:
+    """Test cases for ResumeOptions model."""
+
+    def test_default_options(self):
+        """Test default resume options."""
+        options = ResumeOptions()
+
+        assert options.format == ResumeFormat.PDF
+        assert options.template == TemplateType.MODERN
+        assert options.include_photo is False
+        assert options.include_references is False
+        assert options.font_size == 11
+        assert options.page_size == "A4"
+
+    def test_custom_options(self):
+        """Test custom resume options."""
+        options = ResumeOptions(
+            format=ResumeFormat.DOCX,
+            template=TemplateType.PROFESSIONAL,
+            include_photo=True,
+            font_size=12,
+            custom_sections=["volunteer", "certifications"],
+        )
+
+        assert options.format == ResumeFormat.DOCX
+        assert options.template == TemplateType.PROFESSIONAL
+        assert options.include_photo is True
+        assert "volunteer" in options.custom_sections
+
+
+class TestResumeBuilderService:
+    """Test cases for ResumeBuilderService class."""
+
+    @pytest.fixture
+    def mock_config(self):
+        """Create mock configuration for testing."""
+        config = MagicMock()
+        config.RESUME_TEMPLATES_PATH = "src/services/templates/resumes"
+        config.DEFAULT_FONT = "Arial"
+        config.DEFAULT_FONT_SIZE = 11
+        return config
+
+    @pytest.fixture
+    def resume_service(self, mock_config):
+        """Create ResumeBuilderService with mocked dependencies."""
+        with patch("src.services.resume_builder_service.config", mock_config):
+            return ResumeBuilderService()
+
+    def test_service_initialization(self, resume_service):
+        """Test service initializes with correct settings."""
+        assert resume_service is not None
+        assert resume_service.templates_path == "src/services/templates/resumes"
+
+    @pytest.mark.asyncio
+    async def test_build_pdf_resume(self, resume_service):
+        """Test building a PDF resume."""
+        profile = ProfileData(
+            full_name="John Doe",
+            email="john@example.com",
+            phone="555-1234",
+            title="Software Engineer",
+            summary="Experienced software engineer.",
+            experience=[
+                {
+                    "title": "Senior Engineer",
+                    "company": "TechCorp",
+                    "start_date": "2020-01",
+                    "end_date": "Present",
+                    "description": "Led development team.",
+                }
+            ],
+            skills=["Python", "FastAPI"],
+            education=[
+                {
+                    "degree": "BS Computer Science",
+                    "institution": "Tech University",
+                    "graduation_year": 2018,
+                }
+            ],
+        )
+
+        options = ResumeOptions(format=ResumeFormat.PDF, template=TemplateType.MODERN)
+
+        with patch.object(
+            resume_service, "_generate_pdf", new_callable=AsyncMock
+        ) as mock_pdf:
+            mock_pdf.return_value = b"%PDF-1.4 mock pdf content"
+
+            result = await resume_service.build_resume(profile, options)
+
+            assert result is not None
+            assert "content" in result
+            assert result["format"] == "pdf"
+            mock_pdf.assert_called_once()
+
+    @pytest.mark.asyncio
+    async def test_build_docx_resume(self, resume_service):
+        """Test building a DOCX resume."""
+        profile = ProfileData(
+            full_name="Jane Smith",
+            email="jane@example.com",
+            title="Product Manager",
+            summary="Product leader with 7 years of experience.",
+            experience=[
+                {
+                    "title": "Product Manager",
+                    "company": "StartupXYZ",
+                    "start_date": "2019-03",
+                    "end_date": "Present",
+                    "description": "Led product strategy and roadmap.",
+                }
+            ],
+            skills=["Product Strategy", "Agile", "User Research"],
+            education=[
+                {
+                    "degree": "MBA",
+                    "institution": "Business School",
+                    "graduation_year": 2015,
+                }
+            ],
+        )
+
+        options = ResumeOptions(
+            format=ResumeFormat.DOCX, template=TemplateType.PROFESSIONAL
+        )
+
+        with patch.object(
+            resume_service, "_generate_docx", new_callable=AsyncMock
+        ) as mock_docx:
+            mock_docx.return_value = b"mock docx content"
+
+            result = await resume_service.build_resume(profile, options)
+
+            assert result is not None
+            assert result["format"] == "docx"
+            mock_docx.assert_called_once()
+
+    @pytest.mark.asyncio
+    async def test_build_html_resume(self, resume_service):
+        """Test building an HTML resume."""
+        profile = ProfileData(
+            full_name="Bob Johnson",
+            email="bob@example.com",
+            title="Data Scientist",
+            summary="Data scientist with expertise in machine learning.",
+            experience=[
+                {
+                    "title": "Data Scientist",
+                    "company": "DataCorp",
+                    "start_date": "2021-06",
+                    "end_date": "Present",
+                    "description": "Built ML models for prediction.",
+                }
+            ],
+            skills=["Python", "TensorFlow", "SQL", "Tableau"],
+            education=[
+                {
+                    "degree": "PhD in Statistics",
+                    "institution": "Research University",
+                    "graduation_year": 2020,
+                }
+            ],
+        )
+
+        options = ResumeOptions(
+            format=ResumeFormat.HTML, template=TemplateType.MINIMALIST
+        )
+
+        with patch.object(
+            resume_service, "_generate_html", new_callable=AsyncMock
+        ) as mock_html:
+            mock_html.return_value = "<html><body>Resume content</body></html>"
+
+            result = await resume_service.build_resume(profile, options)
+
+            assert result is not None
+            assert result["format"] == "html"
+            mock_html.assert_called_once()
+
+    @pytest.mark.asyncio
+    async def test_optimize_resume_for_job(self, resume_service):
+        """Test optimizing resume for a specific job."""
+        profile = ProfileData(
+            full_name="Alice Williams",
+            email="alice@example.com",
+            title="Full Stack Developer",
+            summary="Full stack developer with React and Python experience.",
+            experience=[
+                {
+                    "title": "Full Stack Developer",
+                    "company": "WebAgency",
+                    "start_date": "2019-01",
+                    "end_date": "Present",
+                    "description": "Developed web applications for clients.",
+                }
+            ],
+            skills=["JavaScript", "React", "Node.js", "Python"],
+            education=[
+                {
+                    "degree": "BS Computer Science",
+                    "institution": "State University",
+                    "graduation_year": 2018,
+                }
+            ],
+        )
+
+        job_description = """
+        We are looking for a Senior Python Developer to join our team.
+        Requirements:
+        - 5+ years of Python experience
+        - Experience with FastAPI or Django
+        - Knowledge of PostgreSQL
+        - Experience with AWS
+        """
+
+        target_role = "Senior Python Developer"
+        company_name = "TechGiant Corp"
+
+        with patch.object(
+            resume_service,
+            "_optimize_skills",
+            return_value=["Python", "FastAPI", "PostgreSQL", "AWS"],
+        ):
+            with patch.object(
+                resume_service,
+                "_rewrite_summary",
+                return_value="Experienced Python developer with 5+ years of expertise in building scalable applications using FastAPI and Django.",
+            ):
+                optimized = await resume_service.optimize_for_job(
+                    profile, job_description, target_role, company_name
+                )
+
+                assert optimized is not None
+                assert optimized.full_name == profile.full_name
+
+    @pytest.mark.asyncio
+    async def test_get_available_templates(self, resume_service):
+        """Test getting available resume templates."""
+        templates = resume_service.get_available_templates()
+
+        assert len(templates) == 4
+        template_names = [t.name for t in templates]
+        assert "modern" in template_names
+        assert "professional" in template_names
+        assert "minimalist" in template_names
+        assert "basic" in template_names
+
+    @pytest.mark.asyncio
+    async def test_get_template_info(self, resume_service):
+        """Test getting information about a specific template."""
+        template = resume_service.get_template_info(TemplateType.MODERN)
+
+        assert template is not None
+        assert template.name == "modern"
+        assert "Clean and modern design" in template.description
+        assert "pdf" in template.supported_formats
+        assert "docx" in template.supported_formats
+
+    @pytest.mark.asyncio
+    async def test_preview_template(self, resume_service):
+        """Test previewing a template."""
+        profile = ProfileData(
+            full_name="Test User",
+            email="test@example.com",
+            title="Test Position",
+            summary="Test summary.",
+            experience=[],
+            skills=[],
+            education=[],
+        )
+
+        with patch.object(
+            resume_service, "_generate_html", new_callable=AsyncMock
+        ) as mock_html:
+            mock_html.return_value = "<html><body>Preview content</body></html>"
+
+            preview = await resume_service.preview_template(
+                profile, TemplateType.MODERN
+            )
+
+            assert preview is not None
+            mock_html.assert_called_once()
+
+    @pytest.mark.asyncio
+    async def test_validate_profile_data(self, resume_service):
+        """Test validating profile data."""
+        # Valid profile
+        valid_profile = ProfileData(full_name="John Doe", email="john@example.com")
+        is_valid, errors = resume_service.validate_profile_data(valid_profile)
+        assert is_valid is True
+        assert len(errors) == 0
+
+        # Invalid profile - missing name
+        invalid_profile = ProfileData(email="john@example.com")
+        is_valid, errors = resume_service.validate_profile_data(invalid_profile)
+        assert is_valid is False
+        assert len(errors) > 0
+
+        # Invalid profile - invalid email
+        invalid_profile = ProfileData(full_name="John Doe", email="invalid-email")
+        is_valid, errors = resume_service.validate_profile_data(invalid_profile)
+        assert is_valid is False
+        assert any("email" in error.lower() for error in errors)
+
+
+class TestResumeFormat:
+    """Test cases for ResumeFormat enum."""
+
+    def test_formats(self):
+        """Test all resume formats are defined."""
+        assert ResumeFormat.PDF.value == "pdf"
+        assert ResumeFormat.DOCX.value == "docx"
+        assert ResumeFormat.HTML.value == "html"
+
+
+class TestTemplateType:
+    """Test cases for TemplateType enum."""
+
+    def test_templates(self):
+        """Test all template types are defined."""
+        assert TemplateType.MODERN.value == "modern"
+        assert TemplateType.PROFESSIONAL.value == "professional"
+        assert TemplateType.MINIMALIST.value == "minimalist"
+        assert TemplateType.BASIC.value == "basic"
+
+    def test_template_info(self):
+        """Test template info properties."""
+        modern = TemplateType.MODERN
+        assert modern.info is not None
+        assert "clean" in modern.info.description.lower()
+
+        professional = TemplateType.PROFESSIONAL
+        assert professional.info is not None
+        assert "corporate" in professional.info.description.lower()

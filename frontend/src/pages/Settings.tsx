@@ -14,6 +14,7 @@ import {
   Alert,
   Spinner
 } from '../components';
+import EmailSettingsForm from '../components/forms/EmailSettingsForm';
 import { useAppStore } from '../stores/appStore';
 import { applicationService, resumeService, coverLetterService, authService } from '../services/api';
 import {
@@ -469,60 +470,7 @@ const Settings: React.FC = () => {
         title="Notification Preferences"
         size="lg"
       >
-        <div className="space-y-6">
-          <div className="space-y-4">
-            <div className="flex items-center justify-between">
-              <div>
-                <h4 className="font-medium text-gray-900">Application Updates</h4>
-                <p className="text-sm text-gray-600">Get notified when your application status changes</p>
-              </div>
-              <input type="checkbox" className="rounded border-gray-300 text-primary-600 focus:ring-primary-500" defaultChecked />
-            </div>
-
-            <div className="flex items-center justify-between">
-              <div>
-                <h4 className="font-medium text-gray-900">New Job Matches</h4>
-                <p className="text-sm text-gray-600">Receive alerts for jobs that match your profile</p>
-              </div>
-              <input type="checkbox" className="rounded border-gray-300 text-primary-600 focus:ring-primary-500" defaultChecked />
-            </div>
-
-            <div className="flex items-center justify-between">
-              <div>
-                <h4 className="font-medium text-gray-900">AI Service Updates</h4>
-                <p className="text-sm text-gray-600">Notifications about AI service availability</p>
-              </div>
-              <input type="checkbox" className="rounded border-gray-300 text-primary-600 focus:ring-primary-500" defaultChecked />
-            </div>
-
-            <div className="flex items-center justify-between">
-              <div>
-                <h4 className="font-medium text-gray-900">Weekly Reports</h4>
-                <p className="text-sm text-gray-600">Get weekly summaries of your job search activity</p>
-              </div>
-              <input type="checkbox" className="rounded border-gray-300 text-primary-600 focus:ring-primary-500" />
-            </div>
-          </div>
-
-          <div className="flex justify-end space-x-3 pt-4 border-t border-gray-200">
-            <Button
-              variant="secondary"
-              onClick={() => setIsNotificationsModalOpen(false)}
-            >
-              Cancel
-            </Button>
-            <Button
-              variant="primary"
-              onClick={() => {
-                setIsNotificationsModalOpen(false);
-                setShowSuccessMessage(true);
-                setTimeout(() => setShowSuccessMessage(false), 3000);
-              }}
-            >
-              Save Preferences
-            </Button>
-          </div>
-        </div>
+        <EmailSettingsForm onClose={() => setIsNotificationsModalOpen(false)} />
       </Modal>
 
       {/* Privacy Modal */}

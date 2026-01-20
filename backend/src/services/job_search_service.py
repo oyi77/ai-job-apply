@@ -3,14 +3,18 @@
 import asyncio
 import hashlib
 import json
+import os
 from typing import List, Dict, Any, Optional
 from datetime import datetime, timezone
 from loguru import logger
-import re # Added for regex operations
+import re
+from html import unescape
+from urllib.parse import urlparse
+from urllib.request import Request, urlopen
 
 from src.core.cache import cache_region
 from src.core.job_search import JobSearchService
-from src.models.job import Job, JobSearchRequest, JobSearchResponse
+from src.models.job import Job, JobSearchRequest, JobSearchResponse, ExperienceLevel
 
 
 class JobSearchService(JobSearchService):
@@ -401,26 +405,23 @@ class JobSearchService(JobSearchService):
         """
         try:
             await self.initialize()
-            
-            # For now, return a mock job with the given ID
-            # In a real implementation, this would fetch from the platform
-            mock_job = Job(
-                title=f"Mock Job {job_id}",
-                company="Mock Company",
-                location="Mock Location",
-                url=f"https://{platform}.com/job/{job_id}",
-                portal=platform,
-                description="This is a mock job description for demonstration purposes.",
-                salary="Not specified",
-                posted_date="Recently",
-                experience_level="mid",
-                created_at=datetime.now(timezone.utc),
-                updated_at=datetime.now(timezone.utc)
-            )
-            
+
+            job_url = self._normalize_job_url(job_id)
+            job = None
+
+            if self._jobspy_available:
+                job = await self._get_job_details_with_jobspy(job_id, platform, job_url)
+
+            if not job and job_url:
+                job = await self._scrape_job_details_from_url(job_url, platform)
+
+            if job:
+                return job
+
+            mock_job = self._build_mock_job_details(job_id, platform, job_url)
             self.logger.info(f"Retrieved mock job details for {job_id} on {platform}")
             return mock_job
-            
+             
         except Exception as e:
             self.logger.error(f"Error getting job details: {e}")
             return None
@@ -457,8 +458,336 @@ class JobSearchService(JobSearchService):
         # Add remote work filtering if specified
         if hasattr(request, 'is_remote') and request.is_remote:
             params["is_remote"] = request.is_remote
+
+        proxies = self._get_jobspy_proxies()
+        if proxies:
+            params["proxies"] = proxies
+
+        ca_cert = os.getenv("JOBSPY_CA_CERT")
+        if ca_cert:
+            params["ca_cert"] = ca_cert
         
         return params
+
+    def _get_jobspy_proxies(self) -> Optional[List[str]]:
+        proxy_env_vars = [
+            "JOBSPY_PROXIES",
+            "JOBSPY_PROXY",
+            "HTTPS_PROXY",
+            "HTTP_PROXY",
+        ]
+        for env_var in proxy_env_vars:
+            raw_value = os.getenv(env_var)
+            if not raw_value:
+                continue
+            if env_var in {"HTTPS_PROXY", "HTTP_PROXY"}:
+                parsed = urlparse(raw_value)
+                raw_value = parsed.netloc or raw_value
+            proxies = [proxy.strip() for proxy in raw_value.split(",") if proxy.strip()]
+            if proxies:
+                return proxies
+        return None
+
+    def _normalize_job_url(self, job_id: str) -> Optional[str]:
+        if job_id.startswith("http://") or job_id.startswith("https://"):
+            return job_id
+        return None
+
+    async def _get_job_details_with_jobspy(
+        self,
+        job_id: str,
+        platform: str,
+        job_url: Optional[str],
+    ) -> Optional[Job]:
+        try:
+            from jobspy import scrape_jobs
+
+            search_term = self._build_detail_search_term(job_id, job_url)
+            jobspy_params = self._build_jobspy_detail_params(platform, search_term)
+
+            loop = asyncio.get_event_loop()
+            jobs_df = await loop.run_in_executor(
+                None,
+                lambda: scrape_jobs(**jobspy_params),
+            )
+
+            if jobs_df is None or getattr(jobs_df, "empty", True):
+                return None
+
+            matching_rows = None
+            if job_url:
+                matching_rows = jobs_df[
+                    jobs_df["job_url"].astype(str).str.contains(job_url, case=False)
+                ]
+            if matching_rows is not None and not matching_rows.empty:
+                selected_row = matching_rows.iloc[0]
+            else:
+                selected_row = jobs_df.iloc[0]
+
+            detail_request = JobSearchRequest(
+                keywords=[],
+                location="Remote",
+                experience_level=ExperienceLevel.MID,
+            )
+            job = self._convert_job_row(selected_row, detail_request)
+            if job:
+                self.logger.info(
+                    f"Retrieved job details via JobSpy for {job_id} on {platform}"
+                )
+            return job
+
+        except Exception as e:
+            self.logger.warning(
+                f"JobSpy detail fetch failed for {job_id} on {platform}: {e}"
+            )
+            return None
+
+    def _build_jobspy_detail_params(self, platform: str, search_term: str) -> Dict[str, Any]:
+        params: Dict[str, Any] = {
+            "site_name": [platform],
+            "search_term": search_term,
+            "location": "Remote",
+            "results_wanted": 5,
+            "country_indeed": "USA",
+            "linkedin_fetch_description": True,
+        }
+
+        if platform == "google":
+            params["google_search_term"] = search_term
+
+        proxies = self._get_jobspy_proxies()
+        if proxies:
+            params["proxies"] = proxies
+
+        ca_cert = os.getenv("JOBSPY_CA_CERT")
+        if ca_cert:
+            params["ca_cert"] = ca_cert
+
+        return params
+
+    def _build_detail_search_term(self, job_id: str, job_url: Optional[str]) -> str:
+        if job_url:
+            tokens = self._extract_keywords_from_url(job_url)
+            if tokens:
+                return " ".join(tokens)
+        if job_id and not job_id.startswith("http"):
+            return job_id
+        return "job"
+
+    def _extract_keywords_from_url(self, job_url: str) -> List[str]:
+        parsed = urlparse(job_url)
+        raw_path = parsed.path or ""
+        tokens = []
+        for segment in re.split(r"[\-/_.]+", raw_path):
+            if not segment or segment.isdigit() or len(segment) < 3:
+                continue
+            if not re.search(r"[A-Za-z]", segment):
+                continue
+            cleaned = re.sub(r"[^A-Za-z]", "", segment)
+            if cleaned:
+                lower = cleaned.lower()
+                if lower not in {"jobs", "job", "view", "listing", "apply"}:
+                    tokens.append(lower)
+        return tokens[:6]
+
+    async def _scrape_job_details_from_url(
+        self,
+        job_url: str,
+        platform: str,
+    ) -> Optional[Job]:
+        loop = asyncio.get_event_loop()
+        return await loop.run_in_executor(
+            None,
+            lambda: self._scrape_job_details_from_url_sync(job_url, platform),
+        )
+
+    def _scrape_job_details_from_url_sync(
+        self,
+        job_url: str,
+        platform: str,
+    ) -> Optional[Job]:
+        try:
+            request = Request(
+                job_url,
+                headers={"User-Agent": "Mozilla/5.0"},
+            )
+            with urlopen(request, timeout=15) as response:
+                html_content = response.read().decode("utf-8", errors="ignore")
+
+            job_payload = self._extract_jobposting_json_ld(html_content)
+            title = None
+            description = None
+            company = None
+            location = None
+            posted_date = None
+            salary = None
+
+            if job_payload:
+                title = job_payload.get("title")
+                description = job_payload.get("description")
+                posted_date = job_payload.get("datePosted")
+                hiring_org = job_payload.get("hiringOrganization") or {}
+                if isinstance(hiring_org, dict):
+                    company = hiring_org.get("name")
+                location = self._format_job_location(job_payload.get("jobLocation"))
+                salary = self._format_salary(job_payload.get("baseSalary"))
+
+            if not title:
+                title = self._extract_meta_content(html_content, "og:title")
+            if not description:
+                description = self._extract_meta_content(html_content, "og:description")
+            if not description:
+                description = self._extract_meta_content(html_content, "description")
+            if not company:
+                company = self._extract_company_from_json(html_content)
+            if not location:
+                location = self._extract_location_from_json(html_content)
+
+            if description:
+                description = self._clean_text(description)
+
+            if not title or not company:
+                return None
+
+            apply_url = self._extract_apply_url(job_url, description or "")
+            contact_email = self._extract_contact_email(description or "")
+            contact_phone = self._extract_contact_phone(description or "")
+
+            return Job(
+                title=title,
+                company=company,
+                location=location or "Unknown",
+                url=job_url,
+                portal=platform,
+                description=description,
+                salary=salary,
+                posted_date=posted_date,
+                apply_url=apply_url,
+                contact_email=contact_email,
+                contact_phone=contact_phone,
+                external_application=bool(apply_url and apply_url != job_url),
+                application_method=self._determine_application_method(
+                    apply_url,
+                    contact_email,
+                    platform,
+                ),
+                created_at=datetime.now(timezone.utc),
+                updated_at=datetime.now(timezone.utc),
+            )
+
+        except Exception as e:
+            self.logger.warning(
+                f"Targeted scrape failed for {job_url} on {platform}: {e}"
+            )
+            return None
+
+    def _extract_jobposting_json_ld(self, html_content: str) -> Optional[Dict[str, Any]]:
+        script_pattern = re.compile(
+            r"<script[^>]*type=\"application/ld\+json\"[^>]*>(.*?)</script>",
+            re.IGNORECASE | re.DOTALL,
+        )
+        for match in script_pattern.finditer(html_content):
+            raw_json = match.group(1).strip()
+            raw_json = re.sub(r"<!--|-->", "", raw_json).strip()
+            if not raw_json:
+                continue
+            try:
+                parsed = json.loads(raw_json)
+            except json.JSONDecodeError:
+                continue
+            candidates = parsed if isinstance(parsed, list) else [parsed]
+            for candidate in candidates:
+                if not isinstance(candidate, dict):
+                    continue
+                if candidate.get("@type") == "JobPosting":
+                    return candidate
+        return None
+
+    def _format_job_location(self, job_location: Any) -> Optional[str]:
+        if not job_location:
+            return None
+        locations = job_location if isinstance(job_location, list) else [job_location]
+        for location in locations:
+            if not isinstance(location, dict):
+                continue
+            address = location.get("address") or {}
+            if isinstance(address, dict):
+                city = address.get("addressLocality")
+                region = address.get("addressRegion")
+                country = address.get("addressCountry")
+                parts = [part for part in [city, region, country] if part]
+                if parts:
+                    return ", ".join(parts)
+        return None
+
+    def _format_salary(self, salary_payload: Any) -> Optional[str]:
+        if not salary_payload or not isinstance(salary_payload, dict):
+            return None
+        value = salary_payload.get("value")
+        if isinstance(value, dict):
+            min_value = value.get("minValue")
+            max_value = value.get("maxValue")
+            unit = value.get("unitText")
+            if min_value and max_value:
+                return f"{min_value}-{max_value} {unit or ''}".strip()
+            if min_value:
+                return f"{min_value} {unit or ''}".strip()
+        return None
+
+    def _extract_meta_content(self, html_content: str, meta_name: str) -> Optional[str]:
+        pattern = re.compile(
+            rf"<meta[^>]+(?:property|name)=\"{re.escape(meta_name)}\"[^>]+content=\"(.*?)\"",
+            re.IGNORECASE,
+        )
+        match = pattern.search(html_content)
+        if match:
+            return unescape(match.group(1))
+        return None
+
+    def _extract_company_from_json(self, html_content: str) -> Optional[str]:
+        match = re.search(
+            r"\"hiringOrganization\"\s*:\s*\{[^}]*\"name\"\s*:\s*\"(.*?)\"",
+            html_content,
+            re.IGNORECASE,
+        )
+        if match:
+            return unescape(match.group(1))
+        return None
+
+    def _extract_location_from_json(self, html_content: str) -> Optional[str]:
+        match = re.search(
+            r"\"addressLocality\"\s*:\s*\"(.*?)\"",
+            html_content,
+            re.IGNORECASE,
+        )
+        if match:
+            return unescape(match.group(1))
+        return None
+
+    def _clean_text(self, text: str) -> str:
+        cleaned = re.sub(r"<[^>]+>", " ", text)
+        cleaned = re.sub(r"\s+", " ", cleaned)
+        return unescape(cleaned).strip()
+
+    def _build_mock_job_details(
+        self,
+        job_id: str,
+        platform: str,
+        job_url: Optional[str],
+    ) -> Job:
+        return Job(
+            title=f"Mock Job {job_id}",
+            company="Mock Company",
+            location="Mock Location",
+            url=job_url or f"https://{platform}.com/job/{job_id}",
+            portal=platform,
+            description="This is a mock job description for demonstration purposes.",
+            salary="Not specified",
+            posted_date="Recently",
+            experience_level="mid",
+            created_at=datetime.now(timezone.utc),
+            updated_at=datetime.now(timezone.utc),
+        )
     
     def _convert_jobspy_results(self, jobs_df, request: JobSearchRequest) -> JobSearchResponse:
         """Convert JobSpy results to our format."""

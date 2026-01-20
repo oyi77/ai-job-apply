@@ -1,21 +1,33 @@
 """Pytest configuration and fixtures for the AI Job Application Assistant."""
 
-import pytest
+from __future__ import annotations
+
 import asyncio
+import sys
+from pathlib import Path
+import shutil
+import tempfile
 from typing import AsyncGenerator, Generator
 from unittest.mock import AsyncMock, MagicMock
-import tempfile
-import shutil
-from pathlib import Path
 import uuid
 
-# Import test fixtures and utilities
-from .fixtures.test_data import (
-    sample_resume_data,
+import pytest
+
+from .fixtures.test_data import (  # noqa: E402
     sample_application_data,
+    sample_cover_letter_data,
     sample_job_data,
-    sample_cover_letter_data
+    sample_resume_data,
 )
+
+# Ensure `src` package is importable when running tests without installing the
+# project into the current environment.
+PROJECT_ROOT = Path(__file__).resolve().parents[1]
+SRC_ROOT = PROJECT_ROOT / "src"
+if str(PROJECT_ROOT) not in sys.path:
+    sys.path.insert(0, str(PROJECT_ROOT))
+if str(SRC_ROOT) not in sys.path:
+    sys.path.insert(0, str(SRC_ROOT))
 
 
 @pytest.fixture(scope="session")
@@ -58,7 +70,7 @@ def mock_file_service():
         "name": "test.pdf",
         "size": 1024,
         "extension": ".pdf",
-        "mime_type": "application/pdf"
+        "mime_type": "application/pdf",
     }
     return mock_service
 
@@ -104,29 +116,31 @@ def mock_config():
     config.DATABASE_URL = "sqlite:///test.db"
     return config
 
+
 @pytest.fixture
 async def test_user_2(client):
     """Register and return a second test user."""
     user_data = {
         "email": f"user2_{uuid.uuid4()}@example.com",
         "password": "Password123!",
-        "name": "User Two"
+        "name": "User Two",
     }
     # Note: validation of response status should be done in tests
     # But usually fixtures should guarantee success or fail
     response = await client.post("/api/v1/auth/register", json=user_data)
     if response.status_code == 400 and "already registered" in response.text:
-         # Try login
-         response = await client.post("/api/v1/auth/login", json={
-             "email": user_data["email"],
-             "password": user_data["password"]
-         })
-    
+        # Try login
+        response = await client.post(
+            "/api/v1/auth/login",
+            json={"email": user_data["email"], "password": user_data["password"]},
+        )
+
     if response.status_code not in [200, 201]:
         # Return basic data if registration fails (e.g. if client is mocked without auth logic)
         return user_data
-        
+
     return response.json()
+
 
 @pytest.fixture
 def test_user_2_token(test_user_2):

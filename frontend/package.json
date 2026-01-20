@@ -10,9 +10,13 @@
     "build:prod": "tsc -b && vite build --mode production",
     "preview": "vite preview",
     "test": "vitest",
+    "test:watch": "vitest --watch",
     "test:ui": "vitest --ui",
     "test:run": "vitest run",
     "test:coverage": "vitest run --coverage",
+    "test:ci": "vitest run --coverage --reporter=default",
+    "test:unit": "vitest run",
+    "test:unit:watch": "vitest",
     "test:e2e": "playwright test",
     "test:e2e:ui": "playwright test --ui",
     "test:e2e:headed": "playwright test --headed",
@@ -23,6 +27,7 @@
   "dependencies": {
     "@headlessui/react": "^2.2.7",
     "@heroicons/react": "^2.2.0",
+    "@hookform/resolvers": "^5.2.2",
     "@tanstack/react-query": "^5.85.5",
     "@types/node": "^24.3.0",
     "axios": "^1.11.0",
@@ -36,19 +41,21 @@
     "react-router-dom": "^7.8.1",
     "recharts": "^3.6.0",
     "vibe-kanban-web-companion": "^0.0.5",
+    "zod": "^4.3.5",
     "zustand": "^5.0.8"
   },
   "devDependencies": {
     "@eslint/js": "^9.33.0",
     "@playwright/test": "^1.57.0",
-    "@testing-library/jest-dom": "^6.6.3",
-    "@testing-library/react": "^16.1.0",
-    "@testing-library/user-event": "^14.5.2",
+    "@testing-library/jest-dom": "^6.9.1",
+    "@testing-library/react": "^16.3.2",
+    "@testing-library/user-event": "^14.6.1",
     "@types/react": "^19.1.10",
     "@types/react-dom": "^19.1.7",
     "@typescript-eslint/eslint-plugin": "^8.40.0",
     "@typescript-eslint/parser": "^8.40.0",
-    "@vitejs/plugin-react": "^5.0.0",
+    "@vitejs/plugin-react": "^5.1.2",
+    "@vitest/coverage-v8": "^4.0.17",
     "autoprefixer": "^10.4.21",
     "eslint": "^9.33.0",
     "eslint-config-prettier": "^10.1.8",
@@ -68,6 +75,6 @@
     "typescript-eslint": "^8.39.1",
     "vite": "^7.1.2",
     "vite-bundle-analyzer": "^0.7.0",
-    "vitest": "^2.1.8"
+    "vitest": "^4.0.17"
   }
 }

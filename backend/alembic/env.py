@@ -17,12 +17,14 @@ sys.path.insert(0, str(backend_dir))
 
 # Set environment to load .env file
 from dotenv import load_dotenv
+
 env_file = backend_dir / ".env"
 if env_file.exists():
     load_dotenv(env_file)
 
 # Import database config and models
 from src.database.config import Base, database_config
+
 # Import all models to register them with Base.metadata
 from src.database.models import (
     DBResume,
@@ -32,7 +34,14 @@ from src.database.models import (
     DBAIActivity,
     DBFileMetadata,
     DBUser,
-    DBUserSession
+    DBUserSession,
+    DBPerformanceMetric,
+    DBErrorLog,
+    DBAlertRule,
+    DBAlertHistory,
+    DBConfig,
+    AIProviderConfig,
+    GlobalAISettings,
 )
 from src.models.password_history import PasswordHistory
 
@@ -100,9 +109,9 @@ def run_migrations_online() -> None:
     # For async databases, we need to use sync engine for migrations
     # Alembic doesn't fully support async yet, so we use sync engine
     from sqlalchemy import create_engine
-    
+
     database_url = config.get_main_option("sqlalchemy.url")
-    
+
     # Create sync engine (Alembic works with sync engines)
     connectable = create_engine(
         database_url,
@@ -110,9 +119,7 @@ def run_migrations_online() -> None:
     )
 
     with connectable.connect() as connection:
-        context.configure(
-            connection=connection, target_metadata=target_metadata
-        )
+        context.configure(connection=connection, target_metadata=target_metadata)
 
         with context.begin_transaction():
             context.run_migrations()

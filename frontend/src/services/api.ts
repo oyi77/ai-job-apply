@@ -671,9 +671,70 @@ export const fileService = {
   },
 };
 
+// Notification Services
+export interface EmailTemplate {
+  id: string;
+  name: string;
+  description: string;
+}
+
+export interface NotificationSettings {
+  email_enabled: boolean;
+  follow_up_reminders: boolean;
+  interview_reminders: boolean;
+  application_status_updates: boolean;
+  marketing_emails: boolean;
+}
+
+export interface SendEmailRequest {
+  to_email: string;
+  template_name: string;
+  template_data: Record<string, any>;
+  attachments?: Array<{
+    filename: string;
+    content: string;
+    mime_type: string;
+  }>;
+  tags?: string[];
+}
+
+export const notificationService = {
+  // Get notification settings
+  getSettings: async (): Promise<NotificationSettings> => {
+    const response = await apiClient.get('/api/v1/notifications/settings');
+    return response.data.data || response.data;
+  },
+
+  // Update notification settings
+  updateSettings: async (settings: NotificationSettings): Promise<NotificationSettings> => {
+    const response = await apiClient.post('/api/v1/notifications/settings', settings);
+    return response.data.data || response.data;
+  },
+
+  // Get available email templates
+  getTemplates: async (): Promise<EmailTemplate[]> => {
+    const response = await apiClient.get('/api/v1/notifications/email/templates');
+    return response.data.data?.templates || [];
+  },
+
+  // Send test email
+  sendTestEmail: async (toEmail: string, templateName?: string): Promise<{ test_sent_to: string }> => {
+    const response = await apiClient.post('/api/v1/notifications/email/test', {
+      to_email: toEmail,
+      template_name: templateName,
+    });
+    return response.data.data || response.data;
+  },
+
+  // Send email notification
+  sendEmail: async (request: SendEmailRequest): Promise<{ message_id: string }> => {
+    const response = await apiClient.post('/api/v1/notifications/email', request);
+    return response.data.data || response.data;
+  },
+};
+
 // Export all services
-export default {
-  healthCheck,
+export {
   authService,
   applicationService,
   resumeService,

@@ -1,88 +1,47 @@
-import React, { useState } from 'react';
+import React from 'react';
 import { useNavigate, Link } from 'react-router-dom';
+import { useForm } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
+import { z } from 'zod';
 import { Card, CardBody } from '../components/ui/Card';
 import Input from '../components/ui/Input';
 import Button from '../components/ui/Button';
-import { useAppStore } from '../stores/appStore';
-import { authService } from '../services/api';
+import { useAuth } from '../contexts/AuthContext';
 import { useNotifications } from '../components/ui/Notification';
+
+const loginSchema = z.object({
+  email: z.string().email('Please enter a valid email address'),
+  password: z.string().min(1, 'Password is required'),
+});
+
+type LoginFormData = z.infer<typeof loginSchema>;
 
 const Login: React.FC = () => {
   const navigate = useNavigate();
-  const { setUser, setAuthenticated } = useAppStore();
+  const { login } = useAuth();
   const { showSuccess, showError } = useNotifications();
-  const [formData, setFormData] = useState({
-    email: '',
-    password: '',
+  
+  const {
+    register,
+    handleSubmit,
+    formState: { errors, isSubmitting },
+  } = useForm<LoginFormData>({
+    resolver: zodResolver(loginSchema),
+    defaultValues: {
+      email: '',
+      password: '',
+    },
   });
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState('');
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setLoading(true);
-    setError('');
-
+  const onSubmit = async (data: LoginFormData) => {
     try {
-      if (!formData.email || !formData.password) {
-        setError('Please enter both email and password');
-        return;
-      }
-
-      // Call authentication API
-      await authService.login({
-        email: formData.email,
-        password: formData.password,
-      });
-
-      // Get user profile
-      const userProfile = await authService.getProfile();
-
-      // Update store with user data
-      const user = {
-        id: userProfile.id,
-        email: userProfile.email,
-        name: userProfile.name || userProfile.email,
-        preferences: {
-          theme: 'system' as const,
-          notifications: {
-            email: true,
-            push: true,
-            follow_up_reminders: true,
-            interview_reminders: true,
-            application_updates: true,
-          },
-          privacy: {
-            profile_visibility: 'private' as const,
-            data_sharing: false,
-            analytics_tracking: true,
-          },
-          ai: {
-            provider_preference: 'openai' as const,
-          },
-        },
-        created_at: userProfile.created_at,
-        updated_at: userProfile.updated_at,
-      };
-
-      setUser(user);
-      setAuthenticated(true);
-
+      await login(data.email, data.password);
       showSuccess('Login successful!', 'Welcome back');
-
-      // Redirect to dashboard
       navigate('/', { replace: true });
-    } catch (err: any) {
-      const errorMessage = err.response?.data?.detail || err.message || 'Login failed. Please try again.';
-      setError(errorMessage);
+    } catch (err: unknown) {
+      const errorMessage = err instanceof Error ? err.message : 'Login failed. Please try again.';
       showError('Login failed', errorMessage);
-    } finally {
-      setLoading(false);
     }
-  };
-
-  const handleInputChange = (field: string, value: string) => {
-    setFormData(prev => ({ ...prev, [field]: value }));
   };
 
   return (
@@ -102,21 +61,14 @@ const Login: React.FC = () => {
 
         <Card>
           <CardBody className="p-6">
-            <form className="space-y-6" onSubmit={handleSubmit}>
-              {error && (
-                <div className="bg-danger-50 border border-danger-200 text-danger-700 px-4 py-3 rounded-md">
-                  {error}
-                </div>
-              )}
-
+            <form className="space-y-6" onSubmit={handleSubmit(onSubmit)}>
               <Input
                 name="email"
                 label="Email address"
                 type="email"
                 placeholder="Enter your email"
-                value={formData.email}
-                onChange={(value: string) => handleInputChange('email', value)}
-                required
+                error={errors.email?.message}
+                {...register('email')}
               />
 
               <Input
@@ -124,16 +76,15 @@ const Login: React.FC = () => {
                 label="Password"
                 type="password"
                 placeholder="Enter your password"
-                value={formData.password}
-                onChange={(value: string) => handleInputChange('password', value)}
-                required
+                error={errors.password?.message}
+                {...register('password')}
               />
 
               <div>
                 <Button
                   type="submit"
                   variant="primary"
-                  loading={loading}
+                  loading={isSubmitting}
                   className="w-full"
                 >
                   Sign in

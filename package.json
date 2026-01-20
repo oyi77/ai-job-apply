@@ -5,7 +5,7 @@
     "@testing-library/user-event": "^14.6.1",
     "@vitejs/plugin-react": "^5.1.2",
     "jsdom": "^27.4.0",
-    "vitest": "^4.0.16"
+    "vitest": "^4.0.16",
     "@playwright/test": "^1.57.0",
     "playwright": "^1.57.0"
   }

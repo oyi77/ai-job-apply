@@ -98,6 +98,12 @@ export interface Job {
   requirements?: string[];
   benefits?: string[];
   skills?: string[];
+  // Application-related fields (from Backend)
+  application_method?: string;
+  apply_url?: string;
+  contact_email?: string;
+  contact_phone?: string;
+  application_deadline?: string;
   created_at?: string;
   updated_at?: string;
 }

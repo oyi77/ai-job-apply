@@ -40,25 +40,24 @@ def create_app() -> FastAPI:
         redoc_url="/redoc" if config.DEBUG else None,
         redirect_slashes=False,  # Allow both /endpoint and /endpoint/ to work
     )
-    
+
     # Initialize rate limiter (always create, but may be configured to not limit)
     limiter = Limiter(key_func=get_remote_address)
     app.state.limiter = limiter
-    
+
     # Add rate limit exception handler
     from fastapi.responses import JSONResponse
-    
+
     @app.exception_handler(RateLimitExceeded)
     async def rate_limit_handler(request: Request, exc: RateLimitExceeded):
         """Handle rate limit exceeded exceptions."""
         return JSONResponse(
-            status_code=429,
-            content={"detail": f"Rate limit exceeded: {exc.detail}"}
+            status_code=429, content={"detail": f"Rate limit exceeded: {exc.detail}"}
         )
-    
+
     if not config.rate_limit_enabled:
         logger.info("Rate limiting is disabled in configuration.")
-    
+
     # Add CORS middleware
     app.add_middleware(
         CORSMiddleware,
@@ -67,24 +66,25 @@ def create_app() -> FastAPI:
         allow_methods=["*"],
         allow_headers=["*"],
     )
-    
+
     # Add Security Headers Middleware
     from src.middleware.security_headers import SecurityHeadersMiddleware
+
     app.add_middleware(SecurityHeadersMiddleware)
 
     # Add Security Logging Middleware
     from src.middleware.security_logging import SecurityLoggingMiddleware
+
     app.add_middleware(SecurityLoggingMiddleware)
 
-    
     # Response wrapper middleware disabled - using manual wrapping in endpoints
     # add_response_wrapper_middleware(app)
-    
+
     # Mount static files if directory exists
     static_dir = Path("static")
     if static_dir.exists() and static_dir.is_dir():
         app.mount("/static", StaticFiles(directory="static"), name="static")
-    
+
     # Include routers - handle import errors gracefully
     try:
         from src.api.v1.auth import router as auth_router
@@ -100,32 +100,60 @@ def create_app() -> FastAPI:
         from src.api.v1.config import router as config_router
         from src.api.v1.cache import router as cache_router
         from src.api.v1.analytics import router as analytics_router
-        
+        from src.api.v1.ai_config import router as ai_config_router
+        from src.api.v1.automation import router as automation_router
+        from src.api.v1.scheduler import router as scheduler_router
+        from src.api.v1.resume_builder import router as resume_builder_router
+
         app.include_router(auth_router, prefix="/api/v1/auth", tags=["authentication"])
         app.include_router(jobs_router, prefix="/api/v1/jobs", tags=["jobs"])
         app.include_router(resumes_router, prefix="/api/v1/resumes", tags=["resumes"])
-        app.include_router(applications_router, prefix="/api/v1/applications", tags=["applications"])
+        app.include_router(
+            applications_router, prefix="/api/v1/applications", tags=["applications"]
+        )
         app.include_router(ai_router, prefix="/api/v1/ai", tags=["ai"])
-        app.include_router(cover_letters_router, prefix="/api/v1/cover-letters", tags=["cover-letters"])
-        app.include_router(job_applications_router, prefix="/api/v1/job-applications", tags=["job-applications"])
-        app.include_router(monitoring_router, prefix="/api/v1/monitoring", tags=["monitoring"])
+        app.include_router(
+            cover_letters_router, prefix="/api/v1/cover-letters", tags=["cover-letters"]
+        )
+        app.include_router(
+            job_applications_router,
+            prefix="/api/v1/job-applications",
+            tags=["job-applications"],
+        )
+        app.include_router(
+            monitoring_router, prefix="/api/v1/monitoring", tags=["monitoring"]
+        )
         app.include_router(exports_router, prefix="/api/v1/exports", tags=["exports"])
         app.include_router(files_router, prefix="/api/v1/files", tags=["files"])
-        app.include_router(config_router, prefix="/api/v1/config", tags=["configuration"])
+        app.include_router(
+            config_router, prefix="/api/v1/config", tags=["configuration"]
+        )
         app.include_router(cache_router, prefix="/api/v1", tags=["cache"])
         app.include_router(analytics_router, prefix="/api/v1", tags=["analytics"])
-        
+        app.include_router(
+            ai_config_router, prefix="/api/v1/ai-config", tags=["ai-configuration"]
+        )
+        app.include_router(
+            automation_router, prefix="/api/v1/automation", tags=["automation"]
+        )
+        app.include_router(
+            scheduler_router, prefix="/api/v1/scheduler", tags=["scheduler"]
+        )
+        app.include_router(
+            resume_builder_router, prefix="/api/v1", tags=["resume-builder"]
+        )
+
         logger.info("All API routers loaded successfully")
     except ImportError as e:
         logger.warning(f"Some API routers could not be loaded: {e}")
         logger.info("Running with basic endpoints only")
-    
+
     # Root endpoint
     @app.get("/", response_class=HTMLResponse)
     async def root():
         """Serve the main HTML interface."""
         return get_main_html()
-    
+
     # Health check
     @app.get("/health")
     async def health_check():
@@ -138,61 +166,87 @@ def create_app() -> FastAPI:
                     "status": "healthy",
                     "version": "1.0.0",
                     "environment": config.ENVIRONMENT,
-                    "services": health_status.get("services", {})
+                    "services": health_status.get("services", {}),
                 }
         except Exception as e:
             logger.warning(f"Error getting detailed health: {e}")
-        
+
         return {
             "status": "healthy",
             "version": "1.0.0",
-            "environment": config.ENVIRONMENT
+            "environment": config.ENVIRONMENT,
         }
-    
+
     # Startup event
     @app.on_event("startup")
     async def startup_event():
         """Initialize the application on startup."""
         try:
             logger.info("🚀 Starting AI Job Application Assistant...")
-            
+
             # Load configurations from database (if available)
             try:
                 from src.config import config
+
                 await config.load_from_database()
                 logger.info("✅ Configuration loaded from database")
             except Exception as e:
-                logger.warning(f"Could not load configs from database: {e}. Using environment variables.")
-            
+                logger.warning(
+                    f"Could not load configs from database: {e}. Using environment variables."
+                )
+
             # Configuration is automatically validated by Pydantic
             logger.debug("Configuration loaded successfully")
-            
+
             # Initialize services
             logger.info("Initializing services...")
             await initialize_services()
             logger.info("✅ Services initialized")
+
+            # Start scheduler service if enabled
+            try:
+                scheduler_service = service_registry.get_scheduler_service()
+                if scheduler_service:
+                    from src.config import config
+
+                    if getattr(config, "SCHEDULER_ENABLED", True):
+                        await scheduler_service.start()
+                        logger.info("✅ Scheduler service started")
+                    else:
+                        logger.info("Scheduler service disabled by configuration")
+            except (KeyError, AttributeError) as e:
+                logger.debug(f"Scheduler service not available: {e}")
 
             # Setup query performance monitoring (optional - don't fail if it doesn't work)
             if database_config.engine:
                 try:
                     # Get monitoring service for query tracking (if available)
                     try:
-                        monitoring_service = service_registry.get_monitoring_service_sync()
-                        setup_query_performance_monitoring(database_config.engine, monitoring_service)
+                        monitoring_service = (
+                            service_registry.get_monitoring_service_sync()
+                        )
+                        setup_query_performance_monitoring(
+                            database_config.engine, monitoring_service
+                        )
                     except (KeyError, AttributeError) as e:
-                        logger.warning(f"Monitoring service not available for query performance: {e}")
+                        logger.warning(
+                            f"Monitoring service not available for query performance: {e}"
+                        )
                         # Continue without monitoring service
                         setup_query_performance_monitoring(database_config.engine)
                 except Exception as e:
                     logger.debug(f"Query performance monitoring not available: {e}")
                     # Don't fail startup if monitoring setup fails
-            
+
             # Add metrics middleware (optional - don't fail if it doesn't work)
             try:
                 from src.middleware.metrics_middleware import MetricsMiddleware
+
                 try:
                     monitoring_service = service_registry.get_monitoring_service_sync()
-                    app.add_middleware(MetricsMiddleware, monitoring_service=monitoring_service)
+                    app.add_middleware(
+                        MetricsMiddleware, monitoring_service=monitoring_service
+                    )
                     logger.debug("Metrics middleware added")
                 except (KeyError, AttributeError) as e:
                     logger.debug(f"Metrics middleware not available: {e}")
@@ -200,17 +254,18 @@ def create_app() -> FastAPI:
             except Exception as e:
                 logger.debug(f"Metrics middleware setup skipped: {e}")
                 # Don't fail startup if middleware setup fails
-            
+
             # Start background tasks for metrics aggregation and cleanup
             try:
                 import asyncio
+
                 monitoring_service = service_registry.get_monitoring_service_sync()
                 asyncio.create_task(metrics_aggregation_task(monitoring_service))
                 asyncio.create_task(metrics_cleanup_task(monitoring_service))
                 logger.debug("Background tasks started")
             except Exception as e:
                 logger.debug(f"Background tasks not available: {e}")
-            
+
             logger.info("=" * 60)
             logger.info("✅ AI Job Application Assistant ready!")
             logger.info(f"📚 API Docs: http://localhost:{config.port}/docs")
@@ -218,7 +273,31 @@ def create_app() -> FastAPI:
         except Exception as e:
             logger.error(f"❌ Error during startup: {e}", exc_info=True)
             raise
-    
+
+    # Shutdown event
+    @app.on_event("shutdown")
+    async def shutdown_event():
+        """Cleanup the application on shutdown."""
+        try:
+            logger.info("🔄 Shutting down AI Job Application Assistant...")
+
+            # Stop scheduler service gracefully
+            try:
+                scheduler_service = service_registry.get_scheduler_service()
+                if scheduler_service:
+                    await scheduler_service.stop()
+                    logger.info("✅ Scheduler service stopped")
+            except (KeyError, AttributeError) as e:
+                logger.debug(f"Scheduler service not available for shutdown: {e}")
+
+            # Shutdown service registry
+            await service_registry.shutdown()
+            logger.info("✅ Services shut down")
+
+            logger.info("👋 AI Job Application Assistant shut down complete")
+        except Exception as e:
+            logger.error(f"❌ Error during shutdown: {e}", exc_info=True)
+
     return app
 
 
@@ -231,45 +310,48 @@ async def initialize_services() -> None:
             await database_config.initialize()
             await database_config.create_tables()
             logger.info("✅ Database initialized")
-        
+
         # Initialize unified service registry
         await service_registry.initialize()
-        
+
         # Perform health check on all services
         health_status = await service_registry.health_check()
         logger.debug(f"Services health: {health_status}")
-        
+
         # Log service availability
         ai_service = await service_registry.get_ai_service()
         ai_available = await ai_service.is_available()
-        
+
         if ai_available:
             logger.debug("AI Service available")
         else:
             logger.warning("⚠️  AI Service not available - using mock responses")
-        
+
     except Exception as e:
         logger.error(f"Error initializing services: {e}", exc_info=True)
         # Don't raise the exception - allow the app to start with degraded functionality
-        logger.warning("Some services may not be available - continuing with reduced functionality")
+        logger.warning(
+            "Some services may not be available - continuing with reduced functionality"
+        )
 
 
 async def metrics_aggregation_task(monitoring_service):
     """Background task for metrics aggregation."""
     import asyncio
     from src.services.monitoring_service import DatabaseMonitoringService
-    
+
     if not isinstance(monitoring_service, DatabaseMonitoringService):
         return
-    
+
     while True:
         try:
             await asyncio.sleep(3600)  # Run every hour
             logger.info("Running hourly metrics aggregation...")
             await monitoring_service.aggregate_metrics("hourly")
-            
+
             # Run daily aggregation at midnight
             from datetime import datetime
+
             now = datetime.now()
             if now.hour == 0 and now.minute < 5:
                 logger.info("Running daily metrics aggregation...")
@@ -285,15 +367,17 @@ async def metrics_cleanup_task(monitoring_service):
     """Background task for metrics cleanup."""
     import asyncio
     from src.services.monitoring_service import DatabaseMonitoringService
-    
+
     if not isinstance(monitoring_service, DatabaseMonitoringService):
         return
-    
+
     while True:
         try:
             await asyncio.sleep(86400)  # Run daily
             logger.info("Running metrics cleanup...")
-            deleted_count = await monitoring_service.cleanup_old_metrics(retention_days=7)
+            deleted_count = await monitoring_service.cleanup_old_metrics(
+                retention_days=7
+            )
             logger.info(f"Cleaned up {deleted_count} old metrics")
         except asyncio.CancelledError:
             break

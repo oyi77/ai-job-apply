@@ -1,25 +1,41 @@
 """Database models for the AI Job Application Assistant."""
 
+
 from datetime import datetime, timezone
 from typing import Optional, List
-from sqlalchemy import String, DateTime, Text, Boolean, Integer, Float, Enum as SQLEnum, ForeignKey, Index
+from sqlalchemy import (
+    String,
+    DateTime,
+    Text,
+    Boolean,
+    Integer,
+    Float,
+    Enum as SQLEnum,
+    ForeignKey,
+    Index,
+)
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from sqlalchemy.dialects.postgresql import UUID
 import uuid
 
 from src.database.config import Base
-from src.models.application import ApplicationStatus
+from src.models.application import ApplicationStatus, JobApplication
 from src.models.resume import Resume
 from src.models.cover_letter import CoverLetter
 from src.models.user import User as UserModel
 
+# Keep an explicit reference so static analyzers see UUID as used.
+POSTGRESQL_UUID_TYPE = UUID
+
 
 class DBResume(Base):
     """Database model for resumes."""
-    
+
     __tablename__ = "resumes"
-    
-    id: Mapped[str] = mapped_column(String, primary_key=True, default=lambda: str(uuid.uuid4()))
+
+    id: Mapped[str] = mapped_column(
+        String, primary_key=True, default=lambda: str(uuid.uuid4())
+    )
     name: Mapped[str] = mapped_column(String(255), nullable=False)
     file_path: Mapped[str] = mapped_column(String(500), nullable=False)
     file_type: Mapped[str] = mapped_column(String(10), nullable=False)
@@ -27,14 +43,24 @@ class DBResume(Base):
     skills: Mapped[Optional[str]] = mapped_column(Text, nullable=True)  # JSON string
     experience_years: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
     education: Mapped[Optional[str]] = mapped_column(Text, nullable=True)  # JSON string
-    certifications: Mapped[Optional[str]] = mapped_column(Text, nullable=True)  # JSON string
+    certifications: Mapped[Optional[str]] = mapped_column(
+        Text, nullable=True
+    )  # JSON string
     is_default: Mapped[bool] = mapped_column(Boolean, default=False)
-    created_at: Mapped[datetime] = mapped_column(DateTime, default=lambda: datetime.now(timezone.utc))
-    updated_at: Mapped[datetime] = mapped_column(DateTime, default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc))
-    
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime, default=lambda: datetime.now(timezone.utc)
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime,
+        default=lambda: datetime.now(timezone.utc),
+        onupdate=lambda: datetime.now(timezone.utc),
+    )
+
     # Foreign keys
-    user_id: Mapped[Optional[str]] = mapped_column(String, ForeignKey("users.id", ondelete="CASCADE"), nullable=True)
-    
+    user_id: Mapped[Optional[str]] = mapped_column(
+        String, ForeignKey("users.id", ondelete="CASCADE"), nullable=True
+    )
+
     # Relationships
     applications: Mapped[List["DBJobApplication"]] = relationship(
         "DBJobApplication", back_populates="resume", cascade="all, delete-orphan"
@@ -42,21 +68,23 @@ class DBResume(Base):
     user: Mapped[Optional["DBUser"]] = relationship(
         "DBUser", back_populates="resumes", foreign_keys=[user_id]
     )
-    
+
     # Indexes for performance
     __table_args__ = (
         Index("idx_resume_created_at", "created_at"),
         Index("idx_resume_is_default", "is_default"),
     )
-    
+
     def to_model(self) -> Resume:
         """Convert database model to domain model."""
         import json
-        
+
         skills = json.loads(self.skills) if self.skills else None
         education = json.loads(self.education) if self.education else None
-        certifications = json.loads(self.certifications) if self.certifications else None
-        
+        certifications = (
+            json.loads(self.certifications) if self.certifications else None
+        )
+
         return Resume(
             id=self.id,
             name=self.name,
@@ -71,12 +99,12 @@ class DBResume(Base):
             created_at=self.created_at,
             updated_at=self.updated_at,
         )
-    
+
     @classmethod
     def from_model(cls, resume: Resume) -> "DBResume":
         """Create database model from domain model."""
         import json
-        
+
         return cls(
             id=resume.id if resume.id else None,
             name=resume.name,
@@ -86,7 +114,9 @@ class DBResume(Base):
             skills=json.dumps(resume.skills) if resume.skills else None,
             experience_years=resume.experience_years,
             education=json.dumps(resume.education) if resume.education else None,
-            certifications=json.dumps(resume.certifications) if resume.certifications else None,
+            certifications=json.dumps(resume.certifications)
+            if resume.certifications
+            else None,
             is_default=resume.is_default,
             created_at=resume.created_at,
             updated_at=resume.updated_at,
@@ -95,21 +125,31 @@ class DBResume(Base):
 
 class DBCoverLetter(Base):
     """Database model for cover letters."""
-    
+
     __tablename__ = "cover_letters"
-    
-    id: Mapped[str] = mapped_column(String, primary_key=True, default=lambda: str(uuid.uuid4()))
+
+    id: Mapped[str] = mapped_column(
+        String, primary_key=True, default=lambda: str(uuid.uuid4())
+    )
     job_title: Mapped[str] = mapped_column(String(255), nullable=False)
     company_name: Mapped[str] = mapped_column(String(255), nullable=False)
     content: Mapped[str] = mapped_column(Text, nullable=False)
     tone: Mapped[str] = mapped_column(String(50), nullable=False)
     word_count: Mapped[int] = mapped_column(Integer, nullable=False)
-    created_at: Mapped[datetime] = mapped_column(DateTime, default=lambda: datetime.now(timezone.utc))
-    updated_at: Mapped[datetime] = mapped_column(DateTime, default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc))
-    
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime, default=lambda: datetime.now(timezone.utc)
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime,
+        default=lambda: datetime.now(timezone.utc),
+        onupdate=lambda: datetime.now(timezone.utc),
+    )
+
     # Foreign keys
-    user_id: Mapped[Optional[str]] = mapped_column(String, ForeignKey("users.id", ondelete="CASCADE"), nullable=True)
-    
+    user_id: Mapped[Optional[str]] = mapped_column(
+        String, ForeignKey("users.id", ondelete="CASCADE"), nullable=True
+    )
+
     # Relationships
     applications: Mapped[List["DBJobApplication"]] = relationship(
         "DBJobApplication", back_populates="cover_letter", cascade="all, delete-orphan"
@@ -117,7 +157,7 @@ class DBCoverLetter(Base):
     user: Mapped[Optional["DBUser"]] = relationship(
         "DBUser", back_populates="cover_letters", foreign_keys=[user_id]
     )
-    
+
     def to_model(self) -> CoverLetter:
         """Convert database model to domain model."""
         return CoverLetter(
@@ -130,7 +170,7 @@ class DBCoverLetter(Base):
             created_at=self.created_at,
             updated_at=self.updated_at,
         )
-    
+
     @classmethod
     def from_model(cls, cover_letter: CoverLetter) -> "DBCoverLetter":
         """Create database model from domain model."""
@@ -148,28 +188,44 @@ class DBCoverLetter(Base):
 
 class DBJobApplication(Base):
     """Database model for job applications."""
-    
+
     __tablename__ = "job_applications"
-    
-    id: Mapped[str] = mapped_column(String, primary_key=True, default=lambda: str(uuid.uuid4()))
+
+    id: Mapped[str] = mapped_column(
+        String, primary_key=True, default=lambda: str(uuid.uuid4())
+    )
     job_id: Mapped[str] = mapped_column(String(255), nullable=False)
     job_title: Mapped[str] = mapped_column(String(255), nullable=False)
     company: Mapped[str] = mapped_column(String(255), nullable=False)
-    status: Mapped[ApplicationStatus] = mapped_column(SQLEnum(ApplicationStatus), nullable=False)
+    status: Mapped[ApplicationStatus] = mapped_column(
+        SQLEnum(ApplicationStatus), nullable=False
+    )
     resume_path: Mapped[Optional[str]] = mapped_column(String(500), nullable=True)
     cover_letter_path: Mapped[Optional[str]] = mapped_column(String(500), nullable=True)
     applied_date: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
     interview_date: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
     follow_up_date: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
     notes: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
-    created_at: Mapped[datetime] = mapped_column(DateTime, default=lambda: datetime.now(timezone.utc))
-    updated_at: Mapped[datetime] = mapped_column(DateTime, default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc))
-    
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime, default=lambda: datetime.now(timezone.utc)
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime,
+        default=lambda: datetime.now(timezone.utc),
+        onupdate=lambda: datetime.now(timezone.utc),
+    )
+
     # Foreign keys
-    resume_id: Mapped[Optional[str]] = mapped_column(String, ForeignKey("resumes.id"), nullable=True)
-    cover_letter_id: Mapped[Optional[str]] = mapped_column(String, ForeignKey("cover_letters.id"), nullable=True)
-    user_id: Mapped[Optional[str]] = mapped_column(String, ForeignKey("users.id", ondelete="CASCADE"), nullable=True)
-    
+    resume_id: Mapped[Optional[str]] = mapped_column(
+        String, ForeignKey("resumes.id"), nullable=True
+    )
+    cover_letter_id: Mapped[Optional[str]] = mapped_column(
+        String, ForeignKey("cover_letters.id"), nullable=True
+    )
+    user_id: Mapped[Optional[str]] = mapped_column(
+        String, ForeignKey("users.id", ondelete="CASCADE"), nullable=True
+    )
+
     # Relationships
     resume: Mapped[Optional[DBResume]] = relationship(
         "DBResume", back_populates="applications", foreign_keys=[resume_id]
@@ -180,7 +236,7 @@ class DBJobApplication(Base):
     user: Mapped[Optional["DBUser"]] = relationship(
         "DBUser", back_populates="applications", foreign_keys=[user_id]
     )
-    
+
     # Indexes for performance optimization
     __table_args__ = (
         Index("idx_application_status", "status"),
@@ -190,13 +246,15 @@ class DBJobApplication(Base):
         Index("idx_application_applied_date", "applied_date"),
         Index("idx_application_follow_up_date", "follow_up_date"),
         Index("idx_application_resume_id", "resume_id"),
-        Index("idx_application_company_status", "company", "status"),  # Composite index for common queries
+        Index(
+            "idx_application_company_status", "company", "status"
+        ),  # Composite index for common queries
     )
-    
+
     def to_model(self) -> "JobApplication":
         """Convert database model to domain model."""
         from src.models.application import JobApplication
-        
+
         return JobApplication(
             id=self.id,
             job_id=self.job_id,
@@ -212,7 +270,7 @@ class DBJobApplication(Base):
             created_at=self.created_at,
             updated_at=self.updated_at,
         )
-    
+
     @classmethod
     def from_model(cls, application: "JobApplication") -> "DBJobApplication":
         """Create database model from domain model."""
@@ -235,36 +293,44 @@ class DBJobApplication(Base):
 
 class DBJobSearch(Base):
     """Database model for job search history."""
-    
+
     __tablename__ = "job_searches"
-    
-    id: Mapped[str] = mapped_column(String, primary_key=True, default=lambda: str(uuid.uuid4()))
+
+    id: Mapped[str] = mapped_column(
+        String, primary_key=True, default=lambda: str(uuid.uuid4())
+    )
     keywords: Mapped[str] = mapped_column(Text, nullable=False)  # JSON string
     location: Mapped[str] = mapped_column(String(255), nullable=False)
     experience_level: Mapped[Optional[str]] = mapped_column(String(100), nullable=True)
     results_count: Mapped[int] = mapped_column(Integer, default=0)
-    search_date: Mapped[datetime] = mapped_column(DateTime, default=lambda: datetime.now(timezone.utc))
-    created_at: Mapped[datetime] = mapped_column(DateTime, default=lambda: datetime.now(timezone.utc))
-    
+    search_date: Mapped[datetime] = mapped_column(
+        DateTime, default=lambda: datetime.now(timezone.utc)
+    )
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime, default=lambda: datetime.now(timezone.utc)
+    )
+
     # Foreign keys
-    user_id: Mapped[Optional[str]] = mapped_column(String, ForeignKey("users.id", ondelete="CASCADE"), nullable=True)
-    
+    user_id: Mapped[Optional[str]] = mapped_column(
+        String, ForeignKey("users.id", ondelete="CASCADE"), nullable=True
+    )
+
     # Relationships
     user: Mapped[Optional["DBUser"]] = relationship(
         "DBUser", back_populates="job_searches", foreign_keys=[user_id]
     )
-    
+
     # Indexes for performance
     __table_args__ = (
         Index("idx_job_search_date", "search_date"),
         Index("idx_job_search_location", "location"),
         Index("idx_job_search_user_id", "user_id"),
     )
-    
+
     def to_dict(self) -> dict:
         """Convert to dictionary."""
         import json
-        
+
         return {
             "id": self.id,
             "keywords": json.loads(self.keywords) if self.keywords else [],
@@ -278,25 +344,37 @@ class DBJobSearch(Base):
 
 class DBAIActivity(Base):
     """Database model for AI activity tracking."""
-    
+
     __tablename__ = "ai_activities"
-    
-    id: Mapped[str] = mapped_column(String, primary_key=True, default=lambda: str(uuid.uuid4()))
-    activity_type: Mapped[str] = mapped_column(String(100), nullable=False)  # optimize_resume, generate_cover_letter, etc.
-    input_data: Mapped[Optional[str]] = mapped_column(Text, nullable=True)  # JSON string
-    output_data: Mapped[Optional[str]] = mapped_column(Text, nullable=True)  # JSON string
+
+    id: Mapped[str] = mapped_column(
+        String, primary_key=True, default=lambda: str(uuid.uuid4())
+    )
+    activity_type: Mapped[str] = mapped_column(
+        String(100), nullable=False
+    )  # optimize_resume, generate_cover_letter, etc.
+    input_data: Mapped[Optional[str]] = mapped_column(
+        Text, nullable=True
+    )  # JSON string
+    output_data: Mapped[Optional[str]] = mapped_column(
+        Text, nullable=True
+    )  # JSON string
     success: Mapped[bool] = mapped_column(Boolean, default=True)
     error_message: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
     processing_time_ms: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
     confidence_score: Mapped[Optional[float]] = mapped_column(Float, nullable=True)
-    user_id: Mapped[Optional[str]] = mapped_column(String(255), ForeignKey("users.id", ondelete="CASCADE"), nullable=True)
-    created_at: Mapped[datetime] = mapped_column(DateTime, default=lambda: datetime.now(timezone.utc))
-    
+    user_id: Mapped[Optional[str]] = mapped_column(
+        String(255), ForeignKey("users.id", ondelete="CASCADE"), nullable=True
+    )
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime, default=lambda: datetime.now(timezone.utc)
+    )
+
     # Relationships
     user: Mapped[Optional["DBUser"]] = relationship(
         "DBUser", back_populates="ai_activities", foreign_keys=[user_id]
     )
-    
+
     # Indexes for performance
     __table_args__ = (
         Index("idx_ai_activity_type", "activity_type"),
@@ -304,11 +382,11 @@ class DBAIActivity(Base):
         Index("idx_ai_activity_success", "success"),
         Index("idx_ai_activity_user_id", "user_id"),
     )
-    
+
     def to_dict(self) -> dict:
         """Convert to dictionary."""
         import json
-        
+
         return {
             "id": self.id,
             "activity_type": self.activity_type,
@@ -325,29 +403,37 @@ class DBAIActivity(Base):
 
 class DBFileMetadata(Base):
     """Database model for file metadata."""
-    
+
     __tablename__ = "file_metadata"
-    
-    id: Mapped[str] = mapped_column(String, primary_key=True, default=lambda: str(uuid.uuid4()))
+
+    id: Mapped[str] = mapped_column(
+        String, primary_key=True, default=lambda: str(uuid.uuid4())
+    )
     file_path: Mapped[str] = mapped_column(String(500), nullable=False, unique=True)
     file_name: Mapped[str] = mapped_column(String(255), nullable=False)
     file_size: Mapped[int] = mapped_column(Integer, nullable=False)
     file_type: Mapped[str] = mapped_column(String(50), nullable=False)
     mime_type: Mapped[str] = mapped_column(String(100), nullable=False)
     md5_hash: Mapped[str] = mapped_column(String(32), nullable=False)
-    uploaded_at: Mapped[datetime] = mapped_column(DateTime, default=lambda: datetime.now(timezone.utc))
-    last_accessed: Mapped[datetime] = mapped_column(DateTime, default=lambda: datetime.now(timezone.utc))
+    uploaded_at: Mapped[datetime] = mapped_column(
+        DateTime, default=lambda: datetime.now(timezone.utc)
+    )
+    last_accessed: Mapped[datetime] = mapped_column(
+        DateTime, default=lambda: datetime.now(timezone.utc)
+    )
     access_count: Mapped[int] = mapped_column(Integer, default=0)
     is_active: Mapped[bool] = mapped_column(Boolean, default=True)
-    
+
     # Foreign keys
-    user_id: Mapped[Optional[str]] = mapped_column(String, ForeignKey("users.id", ondelete="CASCADE"), nullable=True)
-    
+    user_id: Mapped[Optional[str]] = mapped_column(
+        String, ForeignKey("users.id", ondelete="CASCADE"), nullable=True
+    )
+
     # Relationships
     user: Mapped[Optional["DBUser"]] = relationship(
         "DBUser", back_populates="file_metadata", foreign_keys=[user_id]
     )
-    
+
     # Indexes for performance
     __table_args__ = (
         Index("idx_file_metadata_path", "file_path"),
@@ -357,7 +443,7 @@ class DBFileMetadata(Base):
         Index("idx_file_metadata_md5", "md5_hash"),
         Index("idx_file_metadata_user_id", "user_id"),
     )
-    
+
     def to_dict(self) -> dict:
         """Convert to dictionary."""
         return {
@@ -377,21 +463,37 @@ class DBFileMetadata(Base):
 
 class DBUser(Base):
     """Database model for users."""
-    
+
     __tablename__ = "users"
-    
-    id: Mapped[str] = mapped_column(String, primary_key=True, default=lambda: str(uuid.uuid4()))
-    email: Mapped[str] = mapped_column(String(255), nullable=False, unique=True, index=True)
+
+    id: Mapped[str] = mapped_column(
+        String, primary_key=True, default=lambda: str(uuid.uuid4())
+    )
+    email: Mapped[str] = mapped_column(
+        String(255), nullable=False, unique=True, index=True
+    )
     password_hash: Mapped[str] = mapped_column(String(255), nullable=False)
     name: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
-    password_reset_token: Mapped[Optional[str]] = mapped_column(String(255), nullable=True, index=True)
-    password_reset_token_expires: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
+    password_reset_token: Mapped[Optional[str]] = mapped_column(
+        String(255), nullable=True, index=True
+    )
+    password_reset_token_expires: Mapped[Optional[datetime]] = mapped_column(
+        DateTime, nullable=True
+    )
     is_active: Mapped[bool] = mapped_column(Boolean, default=True)
     failed_login_attempts: Mapped[int] = mapped_column(Integer, default=0)
-    account_locked_until: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
-    created_at: Mapped[datetime] = mapped_column(DateTime, default=lambda: datetime.now(timezone.utc))
-    updated_at: Mapped[datetime] = mapped_column(DateTime, default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc))
-    
+    account_locked_until: Mapped[Optional[datetime]] = mapped_column(
+        DateTime, nullable=True
+    )
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime, default=lambda: datetime.now(timezone.utc)
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime,
+        default=lambda: datetime.now(timezone.utc),
+        onupdate=lambda: datetime.now(timezone.utc),
+    )
+
     # Relationships
     applications: Mapped[List["DBJobApplication"]] = relationship(
         "DBJobApplication", back_populates="user", cascade="all, delete-orphan"
@@ -414,14 +516,18 @@ class DBUser(Base):
     file_metadata: Mapped[List["DBFileMetadata"]] = relationship(
         "DBFileMetadata", back_populates="user", cascade="all, delete-orphan"
     )
-    
+
+    push_subscriptions: Mapped[List["DBPushSubscription"]] = relationship(
+        "DBPushSubscription", back_populates="user", cascade="all, delete-orphan"
+    )
+
     # Indexes for performance
     __table_args__ = (
         Index("idx_user_email", "email"),
         Index("idx_user_created_at", "created_at"),
         Index("idx_user_is_active", "is_active"),
     )
-    
+
     def to_model(self) -> UserModel:
         """Convert database model to domain model."""
         return UserModel(
@@ -437,7 +543,7 @@ class DBUser(Base):
             created_at=self.created_at,
             updated_at=self.updated_at,
         )
-    
+
     @classmethod
     def from_model(cls, user: UserModel) -> "DBUser":
         """Create database model from domain model."""
@@ -456,20 +562,30 @@ class DBUser(Base):
 
 class DBUserSession(Base):
     """Database model for user sessions (refresh tokens)."""
-    
+
     __tablename__ = "user_sessions"
-    
-    id: Mapped[str] = mapped_column(String, primary_key=True, default=lambda: str(uuid.uuid4()))
-    user_id: Mapped[str] = mapped_column(String, ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
-    refresh_token: Mapped[str] = mapped_column(String(500), nullable=False, unique=True, index=True)
+
+    id: Mapped[str] = mapped_column(
+        String, primary_key=True, default=lambda: str(uuid.uuid4())
+    )
+    user_id: Mapped[str] = mapped_column(
+        String, ForeignKey("users.id", ondelete="CASCADE"), nullable=False
+    )
+    refresh_token: Mapped[str] = mapped_column(
+        String(500), nullable=False, unique=True, index=True
+    )
     expires_at: Mapped[datetime] = mapped_column(DateTime, nullable=False)
-    created_at: Mapped[datetime] = mapped_column(DateTime, default=lambda: datetime.now(timezone.utc))
-    last_used_at: Mapped[datetime] = mapped_column(DateTime, default=lambda: datetime.now(timezone.utc))
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime, default=lambda: datetime.now(timezone.utc)
+    )
+    last_used_at: Mapped[datetime] = mapped_column(
+        DateTime, default=lambda: datetime.now(timezone.utc)
+    )
     is_active: Mapped[bool] = mapped_column(Boolean, default=True)
-    
+
     # Relationships
     user: Mapped["DBUser"] = relationship("DBUser", back_populates="sessions")
-    
+
     # Indexes for performance
     __table_args__ = (
         Index("idx_session_user_id", "user_id"),
@@ -477,7 +593,7 @@ class DBUserSession(Base):
         Index("idx_session_expires_at", "expires_at"),
         Index("idx_session_is_active", "is_active"),
     )
-    
+
     def to_dict(self) -> dict:
         """Convert to dictionary."""
         return {
@@ -490,28 +606,60 @@ class DBUserSession(Base):
         }
 
 
+class DBPushSubscription(Base):
+    """Database model for Web Push subscriptions."""
+
+    __tablename__ = "push_subscriptions"
+
+    id: Mapped[str] = mapped_column(
+        String, primary_key=True, default=lambda: str(uuid.uuid4())
+    )
+    user_id: Mapped[str] = mapped_column(
+        String, ForeignKey("users.id", ondelete="CASCADE"), nullable=False
+    )
+
+    endpoint: Mapped[str] = mapped_column(String(2000), nullable=False, unique=True)
+    p256dh_key: Mapped[str] = mapped_column(String(512), nullable=False)
+    auth_key: Mapped[str] = mapped_column(String(512), nullable=False)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime, default=lambda: datetime.now(timezone.utc)
+    )
+
+    user: Mapped["DBUser"] = relationship("DBUser", back_populates="push_subscriptions")
+
+    __table_args__ = (
+        Index("idx_push_subscription_user_id", "user_id"),
+        Index("idx_push_subscription_created_at", "created_at"),
+    )
+
+
+
 class DBPerformanceMetric(Base):
     """Database model for performance metrics."""
-    
+
     __tablename__ = "performance_metrics"
-    
-    id: Mapped[str] = mapped_column(String, primary_key=True, default=lambda: str(uuid.uuid4()))
+
+    id: Mapped[str] = mapped_column(
+        String, primary_key=True, default=lambda: str(uuid.uuid4())
+    )
     metric_name: Mapped[str] = mapped_column(String(100), nullable=False, index=True)
     metric_value: Mapped[float] = mapped_column(Float, nullable=False)
     tags: Mapped[Optional[str]] = mapped_column(Text, nullable=True)  # JSON string
     timestamp: Mapped[datetime] = mapped_column(DateTime, nullable=False, index=True)
-    created_at: Mapped[datetime] = mapped_column(DateTime, default=lambda: datetime.now(timezone.utc))
-    
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime, default=lambda: datetime.now(timezone.utc)
+    )
+
     # Indexes for performance
     __table_args__ = (
         Index("idx_metric_name_timestamp", "metric_name", "timestamp"),
         Index("idx_metric_timestamp", "timestamp"),
     )
-    
+
     def to_dict(self) -> dict:
         """Convert to dictionary."""
         import json
-        
+
         return {
             "id": self.id,
             "metric_name": self.metric_name,
@@ -524,25 +672,33 @@ class DBPerformanceMetric(Base):
 
 class DBErrorLog(Base):
     """Database model for error logs."""
-    
+
     __tablename__ = "error_logs"
-    
-    id: Mapped[str] = mapped_column(String, primary_key=True, default=lambda: str(uuid.uuid4()))
+
+    id: Mapped[str] = mapped_column(
+        String, primary_key=True, default=lambda: str(uuid.uuid4())
+    )
     error_type: Mapped[str] = mapped_column(String(100), nullable=False, index=True)
     error_message: Mapped[str] = mapped_column(Text, nullable=False)
     stack_trace: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
-    request_path: Mapped[Optional[str]] = mapped_column(String(500), nullable=True, index=True)
+    request_path: Mapped[Optional[str]] = mapped_column(
+        String(500), nullable=True, index=True
+    )
     http_method: Mapped[Optional[str]] = mapped_column(String(10), nullable=True)
     user_id: Mapped[Optional[str]] = mapped_column(String, nullable=True, index=True)
-    severity: Mapped[str] = mapped_column(String(20), nullable=False, index=True)  # error, warning, critical
-    created_at: Mapped[datetime] = mapped_column(DateTime, default=lambda: datetime.now(timezone.utc), index=True)
-    
+    severity: Mapped[str] = mapped_column(
+        String(20), nullable=False, index=True
+    )  # error, warning, critical
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime, default=lambda: datetime.now(timezone.utc), index=True
+    )
+
     # Indexes for performance
     __table_args__ = (
         Index("idx_error_type_severity", "error_type", "severity"),
         Index("idx_error_created_at", "created_at"),
     )
-    
+
     def to_dict(self) -> dict:
         """Convert to dictionary."""
         return {
@@ -560,24 +716,34 @@ class DBErrorLog(Base):
 
 class DBAlertRule(Base):
     """Database model for alert rules."""
-    
+
     __tablename__ = "alert_rules"
-    
-    id: Mapped[str] = mapped_column(String, primary_key=True, default=lambda: str(uuid.uuid4()))
+
+    id: Mapped[str] = mapped_column(
+        String, primary_key=True, default=lambda: str(uuid.uuid4())
+    )
     rule_name: Mapped[str] = mapped_column(String(255), nullable=False, unique=True)
     metric_name: Mapped[str] = mapped_column(String(100), nullable=False, index=True)
     threshold: Mapped[float] = mapped_column(Float, nullable=False)
-    condition: Mapped[str] = mapped_column(String(20), nullable=False)  # gt, gte, lt, lte, eq
+    condition: Mapped[str] = mapped_column(
+        String(20), nullable=False
+    )  # gt, gte, lt, lte, eq
     enabled: Mapped[bool] = mapped_column(Boolean, default=True, index=True)
-    cooldown_seconds: Mapped[int] = mapped_column(Integer, default=300)  # 5 minutes default
-    created_at: Mapped[datetime] = mapped_column(DateTime, default=lambda: datetime.now(timezone.utc))
-    updated_at: Mapped[datetime] = mapped_column(DateTime, default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc))
-    
-    # Indexes for performance
-    __table_args__ = (
-        Index("idx_alert_rule_metric_enabled", "metric_name", "enabled"),
+    cooldown_seconds: Mapped[int] = mapped_column(
+        Integer, default=300
+    )  # 5 minutes default
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime, default=lambda: datetime.now(timezone.utc)
     )
-    
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime,
+        default=lambda: datetime.now(timezone.utc),
+        onupdate=lambda: datetime.now(timezone.utc),
+    )
+
+    # Indexes for performance
+    __table_args__ = (Index("idx_alert_rule_metric_enabled", "metric_name", "enabled"),)
+
     def to_dict(self) -> dict:
         """Convert to dictionary."""
         return {
@@ -595,28 +761,47 @@ class DBAlertRule(Base):
 
 class DBAlertHistory(Base):
     """Database model for alert history."""
-    
+
     __tablename__ = "alert_history"
-    
-    id: Mapped[str] = mapped_column(String, primary_key=True, default=lambda: str(uuid.uuid4()))
-    alert_rule_id: Mapped[str] = mapped_column(String, ForeignKey("alert_rules.id", ondelete="CASCADE"), nullable=False, index=True)
+
+    id: Mapped[str] = mapped_column(
+        String, primary_key=True, default=lambda: str(uuid.uuid4())
+    )
+    alert_rule_id: Mapped[str] = mapped_column(
+        String,
+        ForeignKey("alert_rules.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
     triggered_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, index=True)
     resolved_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
 
 
 class DBConfig(Base):
     """Database model for application configuration (key-value store)."""
-    
+
     __tablename__ = "configs"
-    
-    id: Mapped[str] = mapped_column(String, primary_key=True, default=lambda: str(uuid.uuid4()))
-    name: Mapped[str] = mapped_column(String(255), nullable=False, unique=True, index=True)
-    key: Mapped[str] = mapped_column(String(255), nullable=False, unique=True, index=True)
+
+    id: Mapped[str] = mapped_column(
+        String, primary_key=True, default=lambda: str(uuid.uuid4())
+    )
+    name: Mapped[str] = mapped_column(
+        String(255), nullable=False, unique=True, index=True
+    )
+    key: Mapped[str] = mapped_column(
+        String(255), nullable=False, unique=True, index=True
+    )
     value: Mapped[str] = mapped_column(Text, nullable=False)
     description: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
-    created_at: Mapped[datetime] = mapped_column(DateTime, default=lambda: datetime.now(timezone.utc))
-    updated_at: Mapped[datetime] = mapped_column(DateTime, default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc))
-    
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime, default=lambda: datetime.now(timezone.utc)
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime,
+        default=lambda: datetime.now(timezone.utc),
+        onupdate=lambda: datetime.now(timezone.utc),
+    )
+
     def to_dict(self) -> dict:
         """Convert to dictionary."""
         return {
@@ -625,6 +810,157 @@ class DBConfig(Base):
             "key": self.key,
             "value": self.value,
             "description": self.description,
+            "created_at": self.created_at.isoformat() if self.created_at else None,
+            "updated_at": self.updated_at.isoformat() if self.updated_at else None,
+        }
+
+
+class AIProviderConfig(Base):
+    """Database model for AI provider configurations."""
+
+    __tablename__ = "ai_provider_configs"
+
+    id: Mapped[str] = mapped_column(
+        String,
+        primary_key=True,
+        default=lambda: f"ai_config_{datetime.now(timezone.utc).strftime('%Y%m%d%H%M%S')}",
+    )
+    provider_name: Mapped[str] = mapped_column(
+        String(50), nullable=False, unique=True
+    )  # gemini, openai, anthropic, etc.
+    is_enabled: Mapped[bool] = mapped_column(Boolean, default=False)
+    priority: Mapped[int] = mapped_column(
+        Integer, default=0
+    )  # Lower number = higher priority
+
+    # API Configuration (encrypted in production)
+    api_key_encrypted: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    api_base_url: Mapped[Optional[str]] = mapped_column(String(500), nullable=True)
+
+    # Model Configuration
+    default_model: Mapped[Optional[str]] = mapped_column(String(100), nullable=True)
+    temperature: Mapped[float] = mapped_column(Float, default=0.7)
+    max_tokens: Mapped[int] = mapped_column(Integer, default=2048)
+    top_p: Mapped[Optional[float]] = mapped_column(Float, nullable=True)
+    top_k: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
+
+    # Feature Flags
+    supports_resume_optimization: Mapped[bool] = mapped_column(Boolean, default=True)
+    supports_cover_letter: Mapped[bool] = mapped_column(Boolean, default=True)
+    supports_interview_prep: Mapped[bool] = mapped_column(Boolean, default=True)
+    supports_career_insights: Mapped[bool] = mapped_column(Boolean, default=True)
+
+    # Usage Tracking
+    requests_today: Mapped[int] = mapped_column(Integer, default=0)
+    max_requests_daily: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
+    cost_today: Mapped[float] = mapped_column(Float, default=0.0)
+    max_cost_daily: Mapped[Optional[float]] = mapped_column(Float, nullable=True)
+
+    # Status
+    last_used_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
+    last_error: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    is_healthy: Mapped[bool] = mapped_column(Boolean, default=True)
+
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime, default=lambda: datetime.now(timezone.utc)
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime,
+        default=lambda: datetime.now(timezone.utc),
+        onupdate=lambda: datetime.now(timezone.utc),
+    )
+
+    # Indexes
+    __table_args__ = (
+        Index("idx_ai_provider_name", "provider_name"),
+        Index("idx_ai_provider_enabled", "is_enabled"),
+        Index("idx_ai_provider_priority", "priority"),
+    )
+
+    def to_dict(self) -> dict:
+        """Convert to dictionary (sanitized - no API keys)."""
+        return {
+            "id": self.id,
+            "provider_name": self.provider_name,
+            "is_enabled": self.is_enabled,
+            "priority": self.priority,
+            "api_base_url": self.api_base_url,
+            "default_model": self.default_model,
+            "temperature": self.temperature,
+            "max_tokens": self.max_tokens,
+            "supports_resume_optimization": self.supports_resume_optimization,
+            "supports_cover_letter": self.supports_cover_letter,
+            "supports_interview_prep": self.supports_interview_prep,
+            "supports_career_insights": self.supports_career_insights,
+            "requests_today": self.requests_today,
+            "max_requests_daily": self.max_requests_daily,
+            "cost_today": self.cost_today,
+            "max_cost_daily": self.max_cost_daily,
+            "last_used_at": self.last_used_at.isoformat()
+            if self.last_used_at
+            else None,
+            "is_healthy": self.is_healthy,
+            "created_at": self.created_at.isoformat() if self.created_at else None,
+            "updated_at": self.updated_at.isoformat() if self.updated_at else None,
+        }
+
+
+class GlobalAISettings(Base):
+    """Global AI settings and defaults."""
+
+    __tablename__ = "ai_global_settings"
+
+    id: Mapped[str] = mapped_column(String, primary_key=True, default="global")
+
+    # Active Provider
+    active_provider: Mapped[str] = mapped_column(String(50), default="gemini")
+
+    # Feature Defaults
+    default_temperature: Mapped[float] = mapped_column(Float, default=0.7)
+    default_max_tokens: Mapped[int] = mapped_column(Integer, default=2048)
+
+    # Behavior
+    auto_retry_on_failure: Mapped[bool] = mapped_column(Boolean, default=True)
+    max_retries: Mapped[int] = mapped_column(Integer, default=3)
+    fallback_to_mock: Mapped[bool] = mapped_column(Boolean, default=True)
+
+    # Rate Limiting
+    rate_limit_requests_per_minute: Mapped[int] = mapped_column(Integer, default=60)
+    rate_limit_tokens_per_minute: Mapped[int] = mapped_column(Integer, default=100000)
+
+    # Logging
+    log_prompts: Mapped[bool] = mapped_column(Boolean, default=False)
+    log_responses: Mapped[bool] = mapped_column(Boolean, default=False)
+
+    # Cache
+    cache_enabled: Mapped[bool] = mapped_column(Boolean, default=True)
+    cache_ttl_seconds: Mapped[int] = mapped_column(Integer, default=3600)  # 1 hour
+
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime, default=lambda: datetime.now(timezone.utc)
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime,
+        default=lambda: datetime.now(timezone.utc),
+        onupdate=lambda: datetime.now(timezone.utc),
+    )
+
+    def to_dict(self) -> dict:
+        """Convert to dictionary."""
+        return {
+            "id": self.id,
+            "active_provider": self.active_provider,
+            "default_temperature": self.default_temperature,
+            "default_max_tokens": self.default_max_tokens,
+            "auto_retry_on_failure": self.auto_retry_on_failure,
+            "max_retries": self.max_retries,
+            "fallback_to_mock": self.fallback_to_mock,
+            "rate_limit_requests_per_minute": self.rate_limit_requests_per_minute,
+            "rate_limit_tokens_per_minute": self.rate_limit_tokens_per_minute,
+            "log_prompts": self.log_prompts,
+            "log_responses": self.log_responses,
+            "cache_enabled": self.cache_enabled,
+            "cache_ttl_seconds": self.cache_ttl_seconds,
             "created_at": self.created_at.isoformat() if self.created_at else None,
             "updated_at": self.updated_at.isoformat() if self.updated_at else None,
         }

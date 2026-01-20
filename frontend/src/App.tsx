@@ -17,6 +17,7 @@ const JobSearch = lazy(() => import('./pages/JobSearch'));
 const AIServices = lazy(() => import('./pages/AIServices'));
 const Analytics = lazy(() => import('./pages/Analytics'));
 const Settings = lazy(() => import('./pages/Settings'));
+const AdminSettings = lazy(() => import('./pages/AdminSettings'));
 const Login = lazy(() => import('./pages/Login'));
 const Register = lazy(() => import('./pages/Register'));
 const PasswordResetRequest = lazy(() => import('./pages/PasswordResetRequest').then(module => ({ default: module.PasswordResetRequest })));
@@ -221,6 +222,11 @@ function AppContent({ notifications, dismissNotification }: { notifications: any
                 <Route path="settings" element={
                   <Suspense fallback={<PageLoader />}>
                     <Settings />
+                  </Suspense>
+                } />
+                <Route path="admin-settings" element={
+                  <Suspense fallback={<PageLoader />}>
+                    <AdminSettings />
                   </Suspense>
                 } />
               </Route>

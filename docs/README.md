@@ -4,6 +4,163 @@ Welcome to the AI Job Application Assistant documentation. This directory contai
 
 ## Documentation Files
 
+### 🤖 [LLM-GUIDE.md](./LLM-GUIDE.md)
+**Quick start guide for LLM agents**
+
+- Quick facts and project overview
+- Critical constraints and rules
+- Decision trees for common scenarios
+- Environment setup checklist
+- Key architectural patterns
+- Common file locations
+- Testing and running commands
+
+**Use this when**: You're an LLM agent starting work on this project.
+
+---
+
+### 🗺️ [08-codebase-map.md](./08-codebase-map.md)
+**Complete file and module reference**
+
+- Backend structure (API, services, database, models)
+- Frontend structure (pages, components, services)
+- All files with descriptions and purposes
+- Import path examples
+- Route mappings
+
+**Use this when**: You need to find a specific file or understand project structure.
+
+---
+
+### ✅ [09-common-tasks.md](./09-common-tasks.md)
+**Step-by-step guides for common tasks**
+
+- Adding a new API endpoint
+- Creating a new database model
+- Adding a new service
+- Creating a new React component
+- Implementing a new AI feature
+- Adding database migrations
+- Writing tests
+
+**Use this when**: You need to implement a new feature or modify existing code.
+
+---
+
+### 🔧 [10-troubleshooting.md](./10-troubleshooting.md)
+**Common issues and solutions**
+
+- Database issues
+- AI service issues
+- File upload issues
+- CORS errors
+- Build and deployment issues
+- Test failures
+- Performance issues
+- Authentication issues
+
+**Use this when**: Something is broken or not working as expected.
+
+---
+
+### 🔌 [11-api-endpoints-detailed.md](./11-api-endpoints-detailed.md)
+**Comprehensive API reference**
+
+- All endpoints with request/response schemas
+- Authentication requirements
+- Validation rules
+- Error codes and handling
+- curl examples
+- Implementation file locations
+
+**Use this when**: You need detailed API endpoint information.
+
+---
+
+### 🗄️ [12-database-operations.md](./12-database-operations.md)
+**Database query patterns and operations**
+
+- Repository pattern examples
+- Common query patterns (CRUD, filtering, pagination)
+- Relationship handling
+- Transaction management
+- Migration workflow
+- Performance optimization
+
+**Use this when**: You need to work with database operations.
+
+---
+
+### ⚙️ [13-service-layer.md](./13-service-layer.md)
+**Service architecture and implementation**
+
+- Service registry architecture
+- All services with interfaces
+- Dependency injection patterns
+- Error handling patterns
+- Fallback strategies
+- Testing services
+
+**Use this when**: You need to understand or modify business logic.
+
+---
+
+### 🎨 [14-frontend-components.md](./14-frontend-components.md)
+**Component catalog and usage**
+
+- All components with props
+- Component hierarchy
+- State management patterns
+- API integration examples
+- Custom hooks
+- Component testing
+
+**Use this when**: You need to work with frontend components.
+
+---
+
+### 🧪 [15-testing-guide.md](./15-testing-guide.md)
+**Testing strategies and examples**
+
+- Backend testing (pytest)
+- Frontend testing (Vitest)
+- Test fixtures and mocking
+- Coverage analysis
+- CI/CD integration
+
+**Use this when**: You need to write or debug tests.
+
+---
+
+### 🚀 [16-deployment-guide.md](./16-deployment-guide.md)
+**Deployment procedures**
+
+- Environment configurations
+- Docker deployment
+- Database migrations
+- Health checks
+- Monitoring and backup
+- Security hardening
+
+**Use this when**: You need to deploy or configure the application.
+
+---
+
+### 📋 [17-code-patterns.md](./17-code-patterns.md)
+**Reusable code patterns**
+
+- Repository pattern
+- Service pattern
+- API endpoint pattern
+- React component pattern
+- Form handling pattern
+- State management pattern
+- Testing patterns
+
+**Use this when**: You need implementation examples for common patterns.
+
+---
+
 ### 📊 [00-project-state.md](./00-project-state.md)
 **Current project state and status**
 
