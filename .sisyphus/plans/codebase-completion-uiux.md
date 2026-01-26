@@ -344,7 +344,7 @@ The plan follows **Momus high-accuracy standards**:
   - **Parallelizable**: YES (with Task 26)
   - **MUST NOT**: Cache sensitive user data
 
-- [ ] **28. Responsive Design Improvements**
+- [x] **28. Responsive Design Improvements**
   - **RED**: Responsive test fails on mobile devices
   - **GREEN**: Update responsive breakpoints in `src/styles/breakpoints.css`
   - **REFACTOR**: Extract responsive utilities to `src/utils/responsive.ts`
