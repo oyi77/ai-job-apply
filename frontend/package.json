@@ -22,7 +22,9 @@
     "test:e2e:headed": "playwright test --headed",
     "bundle:analyze": "npm run build:analyze && npx vite-bundle-analyzer dist/visualizer.html",
     "lighthouse": "npx lighthouse http://localhost:5173 --output=html --output-path=./lighthouse-report.html",
-    "performance:check": "npm run build && npm run lighthouse"
+    "performance:check": "npm run build && npm run lighthouse",
+    "storybook": "storybook dev -p 6006",
+    "build-storybook": "storybook build"
   },
   "dependencies": {
     "@headlessui/react": "^2.2.7",
@@ -55,7 +57,7 @@
     "@typescript-eslint/eslint-plugin": "^8.40.0",
     "@typescript-eslint/parser": "^8.40.0",
     "@vitejs/plugin-react": "^5.1.2",
-    "@vitest/coverage-v8": "^4.0.17",
+    "@vitest/coverage-v8": "^4.0.16",
     "autoprefixer": "^10.4.21",
     "eslint": "^9.33.0",
     "eslint-config-prettier": "^10.1.8",
@@ -75,6 +77,15 @@
     "typescript-eslint": "^8.39.1",
     "vite": "^7.1.2",
     "vite-bundle-analyzer": "^0.7.0",
-    "vitest": "^4.0.17"
+    "vitest": "^4.0.17",
+    "storybook": "^10.1.11",
+    "@storybook/react-vite": "^10.1.11",
+    "@chromatic-com/storybook": "^5.0.0",
+    "@storybook/addon-vitest": "^10.1.11",
+    "@storybook/addon-a11y": "^10.1.11",
+    "@storybook/addon-docs": "^10.1.11",
+    "@storybook/addon-onboarding": "^10.1.11",
+    "eslint-plugin-storybook": "^10.1.11",
+    "@vitest/browser-playwright": "^4.0.16"
   }
 }

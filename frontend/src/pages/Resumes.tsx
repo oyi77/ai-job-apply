@@ -1,21 +1,23 @@
 import React, { useState, useRef } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { 
-  Card, 
-  CardHeader, 
-  CardBody, 
-  Button, 
-  Badge, 
-  Modal, 
+import {
+  Card,
+  CardHeader,
+  CardBody,
+  Button,
+  Badge,
+  Modal,
   Spinner,
   Alert,
   Form,
   FormField,
-  Select
+  Select,
+  ResumeUploadForm
 } from '../components';
 import { useAppStore } from '../stores/appStore';
 import { resumeService, fileService } from '../services/api';
 import type { Resume } from '../types';
+import type { ResumeFormData } from '../schemas';
 import {
   PlusIcon,
   TrashIcon,
@@ -28,7 +30,6 @@ import {
 
 const Resumes: React.FC = () => {
   const [isUploadModalOpen, setIsUploadModalOpen] = useState(false);
-  const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [selectedResume, setSelectedResume] = useState<Resume | null>(null);
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const [isViewModalOpen, setIsViewModalOpen] = useState(false);
@@ -36,7 +37,6 @@ const Resumes: React.FC = () => {
   const [filterStatus, setFilterStatus] = useState<string>('all');
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   
-  const fileInputRef = useRef<HTMLInputElement>(null);
   const queryClient = useQueryClient();
   const { setResumes, addResume, updateResume, deleteResume } = useAppStore();
 
@@ -48,19 +48,15 @@ const Resumes: React.FC = () => {
 
   // Upload resume mutation
   const uploadMutation = useMutation({
-    mutationFn: async (file: File) => {
+    mutationFn: async (data: ResumeFormData) => {
       // Use resume service directly - it handles file upload and processing
-      return resumeService.uploadResume(file);
+      return resumeService.uploadResume(data.file, { title: data.title });
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['resumes'] });
       console.log('Resume uploaded successfully!');
-      // Close modal and reset file selection
+      // Close modal
       setIsUploadModalOpen(false);
-      setSelectedFile(null);
-      if (fileInputRef.current) {
-        fileInputRef.current.value = '';
-      }
     },
     onError: (error) => {
       console.error('Upload error:', error);
@@ -103,30 +99,8 @@ const Resumes: React.FC = () => {
     },
   });
 
-  const handleFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
-    if (file) {
-      // Validate file type
-      const allowedTypes = ['application/pdf', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document', 'text/plain'];
-      if (!allowedTypes.includes(file.type)) {
-        alert('Please select a PDF, DOCX, or TXT file.');
-        return;
-      }
-      
-      // Validate file size (max 10MB)
-      if (file.size > 10 * 1024 * 1024) {
-        alert('File size must be less than 10MB.');
-        return;
-      }
-      
-      setSelectedFile(file);
-    }
-  };
-
-  const handleUpload = async () => {
-    if (selectedFile) {
-      uploadMutation.mutate(selectedFile);
-    }
+  const handleUploadSubmit = (data: ResumeFormData) => {
+    uploadMutation.mutate(data);
   };
 
   const handleDelete = (resumeId: string) => {

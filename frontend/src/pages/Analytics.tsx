@@ -41,30 +41,30 @@ const Analytics: React.FC = () => {
   ];
 
   // Calculate analytics data
-  const statusData = analytics?.success_metrics?.breakdown ? [
-    { label: 'Applied', value: analytics.success_metrics.total_applications || 0, color: '#3B82F6' },
-    { label: 'Interview', value: analytics.success_metrics.breakdown.interview_scheduled || 0, color: '#8B5CF6' },
-    { label: 'Offer', value: analytics.success_metrics.breakdown.offer_received || 0, color: '#10B981' },
-    { label: 'Rejected', value: analytics.success_metrics.breakdown.rejected || 0, color: '#EF4444' },
-    { label: 'Withdrawn', value: analytics.success_metrics.breakdown.withdrawn || 0, color: '#6B7280' },
+  const statusData = (analytics as any)?.success_metrics?.breakdown ? [
+    { label: 'Applied', value: (analytics as any).success_metrics.total_applications || 0, color: '#3B82F6' },
+    { label: 'Interview', value: (analytics as any).success_metrics.breakdown.interview_scheduled || 0, color: '#8B5CF6' },
+    { label: 'Offer', value: (analytics as any).success_metrics.breakdown.offer_received || 0, color: '#10B981' },
+    { label: 'Rejected', value: (analytics as any).success_metrics.breakdown.rejected || 0, color: '#EF4444' },
+    { label: 'Withdrawn', value: (analytics as any).success_metrics.breakdown.withdrawn || 0, color: '#6B7280' },
   ] : [];
 
-  const monthlyData = analytics?.trends?.weekly_trends ? analytics.trends.weekly_trends.map((item: any) => ({
+  const monthlyData = (analytics as any)?.trends?.weekly_trends ? (analytics as any).trends.weekly_trends.map((item: any) => ({
     label: item.week,
     value: item.applications
   })) : [];
 
-  const skillsData = analytics?.skills_gap?.top_required_skills ? analytics.skills_gap.top_required_skills.slice(0, 5).map((skill: any, index: number) => ({
+  const skillsData = (analytics as any)?.skills_gap?.top_required_skills ? (analytics as any).skills_gap.top_required_skills.slice(0, 5).map((skill: any, index: number) => ({
     label: skill.skill,
     value: skill.percentage || 0,
     color: ['#F59E0B', '#3B82F6', '#10B981', '#8B5CF6', '#EF4444'][index % 5]
   })) : [];
 
-  const responseTimeData = analytics?.response_time_metrics ? [
-    { label: 'Avg Response', value: analytics.response_time_metrics.avg_response_time_days || 0, color: '#3B82F6' },
-    { label: 'Avg Interview', value: analytics.response_time_metrics.avg_interview_time_days || 0, color: '#8B5CF6' },
-    { label: 'Fastest', value: analytics.response_time_metrics.fastest_response_days || 0, color: '#10B981' },
-    { label: 'Slowest', value: analytics.response_time_metrics.slowest_response_days || 0, color: '#EF4444' }
+  const responseTimeData = (analytics as any)?.response_time_metrics ? [
+    { label: 'Avg Response', value: (analytics as any).response_time_metrics.avg_response_time_days || 0, color: '#3B82F6' },
+    { label: 'Avg Interview', value: (analytics as any).response_time_metrics.avg_interview_time_days || 0, color: '#8B5CF6' },
+    { label: 'Fastest', value: (analytics as any).response_time_metrics.fastest_response_days || 0, color: '#10B981' },
+    { label: 'Slowest', value: (analytics as any).response_time_metrics.slowest_response_days || 0, color: '#EF4444' }
   ] : [];
 
   const handleExport = async (format: 'pdf' | 'csv' | 'excel', options?: { includeCharts?: boolean }) => {
@@ -180,8 +180,8 @@ const Analytics: React.FC = () => {
               <div className="ml-4">
                 <p className="text-sm font-medium text-gray-500">Avg Response Time</p>
                 <p className="text-2xl font-semibold text-gray-900">
-                  {analytics?.response_time_metrics?.avg_response_time_days 
-                    ? `${analytics.response_time_metrics.avg_response_time_days} days` 
+                  {(analytics as any)?.response_time_metrics?.avg_response_time_days 
+                    ? `${(analytics as any).response_time_metrics.avg_response_time_days} days` 
                     : 'N/A'}
                 </p>
               </div>
@@ -198,8 +198,8 @@ const Analytics: React.FC = () => {
               <div className="ml-4">
                 <p className="text-sm font-medium text-gray-500">Avg Weekly Apps</p>
                 <p className="text-2xl font-semibold text-gray-900">
-                  {analytics?.trends?.avg_applications_per_week 
-                    ? analytics.trends.avg_applications_per_week
+                  {(analytics as any)?.trends?.avg_applications_per_week 
+                    ? (analytics as any).trends.avg_applications_per_week
                     : '0'}
                 </p>
               </div>
@@ -307,13 +307,13 @@ const Analytics: React.FC = () => {
               <div className="flex justify-between items-center">
                 <span className="text-gray-600">Rejections (After Interview)</span>
                 <span className="font-medium text-danger-600">
-                  {analytics?.interview_metrics?.rejections_after_interview || 0}
+                  {(analytics as any)?.interview_metrics?.rejections_after_interview || 0}
                 </span>
               </div>
               <div className="flex justify-between items-center">
                 <span className="text-gray-600">Pending</span>
                 <span className="font-medium text-info-600">
-                  {analytics?.interview_metrics?.pending_interviews || 0}
+                  {(analytics as any)?.interview_metrics?.pending_interviews || 0}
                 </span>
               </div>
             </div>
@@ -332,13 +332,13 @@ const Analytics: React.FC = () => {
             <div>
               <h4 className="font-medium text-gray-900 mb-3">Top Requested Skills</h4>
               <ul className="space-y-2 text-sm text-gray-600">
-                {analytics?.skills_gap?.top_required_skills?.slice(0, 5).map((skill: any, index: number) => (
+                {(analytics as any)?.skills_gap?.top_required_skills?.slice(0, 5).map((skill: any, index: number) => (
                   <li key={index} className="flex items-center">
                     <CheckCircleIcon className="h-4 w-4 text-success-500 mr-2" />
                     {skill.skill} ({skill.percentage}%)
                   </li>
                 ))}
-                {!analytics?.skills_gap?.top_required_skills?.length && (
+                {!(analytics as any)?.skills_gap?.top_required_skills?.length && (
                   <li className="text-gray-500">No sufficient data for skills analysis</li>
                 )}
               </ul>
@@ -346,13 +346,13 @@ const Analytics: React.FC = () => {
             <div>
               <h4 className="font-medium text-gray-900 mb-3">Recommendations</h4>
               <ul className="space-y-2 text-sm text-gray-600">
-                {analytics?.skills_gap?.recommendations?.slice(0, 5).map((rec: string, index: number) => (
+                {(analytics as any)?.skills_gap?.recommendations?.slice(0, 5).map((rec: string, index: number) => (
                   <li key={index} className="flex items-center">
                     <ArrowTrendingUpIcon className="h-4 w-4 text-primary-500 mr-2" />
                     {rec}
                   </li>
                 ))}
-                {!analytics?.skills_gap?.recommendations?.length && (
+                {!(analytics as any)?.skills_gap?.recommendations?.length && (
                   <li className="text-gray-500">No specific recommendations available</li>
                 )}
               </ul>

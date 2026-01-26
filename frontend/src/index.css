@@ -1,4 +1,5 @@
-@import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&display=swap');
+@import "./styles/fonts.css";
+@import "./styles/typography.css";
 
 @tailwind base;
 @tailwind components;
@@ -13,7 +14,7 @@
   }
 
   html {
-    font-family: 'Outfit', system-ui, sans-serif;
+    font-family: var(--font-sans);
     scroll-behavior: smooth;
   }
   
@@ -22,6 +23,9 @@
     background: var(--bg-mesh);
     background-attachment: fixed;
     min-height: 100vh;
+    /* Ensure typography system values are applied to body */
+    font-family: var(--font-sans);
+    line-height: var(--leading-normal);
   }
 
   .dark body {

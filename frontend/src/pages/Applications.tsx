@@ -18,6 +18,8 @@ import { applicationService, exportService } from '../services/api';
 import type { JobApplication } from '../types';
 import { ApplicationStatus } from '../types';
 import { ExportModal } from '../components/ExportModal';
+import { applicationSchema } from '../schemas';
+import { zodResolver } from '@hookform/resolvers/zod';
 import {
   PlusIcon,
   EyeIcon,
@@ -456,7 +458,14 @@ const Applications: React.FC = () => {
         title="Create New Application"
         size="lg"
       >
-        <Form onSubmit={handleCreateApplication}>
+        <Form
+          onSubmit={handleCreateApplication}
+          resolver={zodResolver(applicationSchema)}
+          defaultValues={{
+            status: 'draft',
+            applied_date: new Date().toISOString().split('T')[0]
+          }}
+        >
           <div className="space-y-4">
             <FormField
               name="job_title"

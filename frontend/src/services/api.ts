@@ -671,6 +671,69 @@ export const fileService = {
   },
 };
 
+// Analytics Services
+export interface SuccessRateMetrics {
+  success_rate: number;
+  interview_rate: number;
+  rejection_rate: number;
+  total_applications: number;
+  status_breakdown: Record<string, number>;
+}
+
+export interface ResponseTimeMetrics {
+  average_response_time: number;
+  fastest_response: number;
+  slowest_response: number;
+  response_time_distribution: Record<string, number>;
+}
+
+export interface InterviewPerformanceMetrics {
+  total_interviews: number;
+  interview_to_offer_rate: number;
+  average_rounds: number;
+  performance_by_round: Record<string, number>;
+}
+
+export interface TrendData {
+  weekly_trends: Array<{
+    week: string;
+    applications: number;
+    interviews: number;
+    offers: number;
+  }>;
+  application_patterns: Record<string, number>;
+}
+
+export interface SkillsGapAnalysis {
+  most_requested_skills: Array<{
+    skill: string;
+    frequency: number;
+    trend: string;
+  }>;
+  skill_frequency: Record<string, number>;
+  ai_recommendations?: string[];
+  ai_powered: boolean;
+}
+
+export interface CompanyAnalysis {
+  companies: Array<{
+    company: string;
+    total_applications: number;
+    success_rate: number;
+    average_response_time: number;
+  }>;
+}
+
+export interface AnalyticsDashboard {
+  success_metrics: SuccessRateMetrics;
+  response_time_metrics: ResponseTimeMetrics;
+  interview_metrics: InterviewPerformanceMetrics;
+  trends: TrendData;
+  skills_gap: SkillsGapAnalysis;
+  companies: CompanyAnalysis;
+  ai_powered?: boolean;
+}
+
 // Notification Services
 export interface EmailTemplate {
   id: string;
@@ -733,6 +796,63 @@ export const notificationService = {
   },
 };
 
+// Analytics Services
+export const analyticsService = {
+  // Get comprehensive analytics dashboard
+  getDashboard: async (days = 30): Promise<AnalyticsDashboard> => {
+    const response = await apiClient.get(`/api/v1/analytics/dashboard?days=${days}`);
+    return response.data.data || response.data;
+  },
+
+  // Get success rate metrics
+  getSuccessRate: async (startDate?: string, endDate?: string): Promise<SuccessRateMetrics> => {
+    const params = new URLSearchParams();
+    if (startDate) params.append('start_date', startDate);
+    if (endDate) params.append('end_date', endDate);
+    
+    const response = await apiClient.get(`/api/v1/analytics/metrics/success-rate?${params.toString()}`);
+    return response.data.data || response.data;
+  },
+
+  // Get trend analysis
+  getTrends: async (days = 30): Promise<TrendData> => {
+    const response = await apiClient.get(`/api/v1/analytics/trends?days=${days}`);
+    return response.data.data || response.data;
+  },
+
+  // Get skills gap analysis
+  getSkillsGap: async (): Promise<SkillsGapAnalysis> => {
+    const response = await apiClient.get('/api/v1/analytics/insights/skills-gap');
+    return response.data.data || response.data;
+  },
+
+  // Get company analysis
+  getCompanyAnalysis: async (): Promise<CompanyAnalysis> => {
+    const response = await apiClient.get('/api/v1/analytics/insights/companies');
+    return response.data.data || response.data;
+  },
+
+  // Get response time metrics
+  getResponseTime: async (startDate?: string, endDate?: string): Promise<ResponseTimeMetrics> => {
+    const params = new URLSearchParams();
+    if (startDate) params.append('start_date', startDate);
+    if (endDate) params.append('end_date', endDate);
+    
+    const response = await apiClient.get(`/api/v1/analytics/metrics/response-time?${params.toString()}`);
+    return response.data.data || response.data;
+  },
+
+  // Get interview performance metrics
+  getInterviewPerformance: async (startDate?: string, endDate?: string): Promise<InterviewPerformanceMetrics> => {
+    const params = new URLSearchParams();
+    if (startDate) params.append('start_date', startDate);
+    if (endDate) params.append('end_date', endDate);
+    
+    const response = await apiClient.get(`/api/v1/analytics/metrics/interview-performance?${params.toString()}`);
+    return response.data.data || response.data;
+  },
+};
+
 // Export all services
 export {
   authService,
@@ -743,4 +863,5 @@ export {
   jobSearchService,
   fileService,
   exportService,
+  analyticsService,
 };

@@ -5,6 +5,7 @@ import './i18n'
 import App from './App.tsx'
 import { ErrorBoundary } from './components/ErrorBoundary'
 import { useAppStore } from './stores/appStore'
+import { workerService } from './services/worker'
 
 // Initialize theme on app startup before rendering
 const initializeTheme = () => {
@@ -29,18 +30,8 @@ const initializeTheme = () => {
 // Apply theme immediately on module load
 initializeTheme();
 
-// Register service worker for caching and offline support
-if ('serviceWorker' in navigator && process.env.NODE_ENV === 'production') {
-  window.addEventListener('load', () => {
-    navigator.serviceWorker.register('/sw.js')
-      .then((registration) => {
-        console.log('SW registered: ', registration);
-      })
-      .catch((registrationError) => {
-        console.log('SW registration failed: ', registrationError);
-      });
-  });
-}
+// Initialize service worker for caching and offline support
+workerService.initialize();
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>

@@ -1,0 +1,22 @@
+/* Font Loading Strategy */
+
+/* Inter Font Family - Preconnect and Load */
+/* Note: For best performance, add <link rel="preconnect" href="https://fonts.googleapis.com"> in index.html */
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+
+/* Font Family Definitions */
+:root {
+  /* Primary Sans-Serif Stack */
+  --font-sans: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+  
+  /* Fallback Stacks */
+  --font-serif: ui-serif, Georgia, Cambria, "Times New Roman", Times, serif;
+  --font-mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+}
+
+/* Font Display Optimization */
+@font-face {
+  font-family: 'Inter';
+  font-display: swap;
+  /* Ranges would typically go here if self-hosting, but Google Fonts handles it via the URL */
+}
