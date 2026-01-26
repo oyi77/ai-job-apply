@@ -373,7 +373,7 @@ The plan follows **Momus high-accuracy standards**:
 
 ### **Phase 7: Critical Component Testing** (Tasks 31-32)
 
-- [ ] **31. Core Feature End-to-End Tests**
+- [x] **31. Core Feature End-to-End Tests**
   - **RED**: E2E test fails for critical user flows
   - **GREEN**: Add Playwright tests for login, analytics, settings
   - **REFACTOR**: Extract test utilities to `tests/e2e/utils/`
