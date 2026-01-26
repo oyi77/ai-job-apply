@@ -326,7 +326,7 @@ The plan follows **Momus high-accuracy standards**:
 
 ### **Phase 6: Mobile Experience Optimization** (Tasks 26-30)
 
-- [ ] **26. PWA Manifest Configuration**
+- [x] **26. PWA Manifest Configuration**
   - **RED**: PWA test fails
   - **GREEN**: Create `public/manifest.json` with app metadata
   - **REFACTOR**: Extract PWA utilities to `src/utils/pwa.ts`
@@ -335,7 +335,7 @@ The plan follows **Momus high-accuracy standards**:
   - **Parallelizable**: YES (independent mobile feature)
   - **MUST NOT**: Break existing mobile responsiveness
 
-- [ ] **27. Service Worker for Offline**
+- [x] **27. Service Worker for Offline**
   - **RED**: Offline test fails
   - **GREEN**: Implement `public/sw.js` with caching strategy
   - **REFACTOR**: Extract service worker logic to `src/services/worker.ts`
