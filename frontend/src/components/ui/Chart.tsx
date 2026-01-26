@@ -1,6 +1,6 @@
 import React from 'react';
 
-interface ChartProps {
+export interface ChartProps {
   data: Array<{ label: string; value: number; color?: string }>;
   type?: 'bar' | 'line' | 'pie' | 'doughnut';
   height?: number;

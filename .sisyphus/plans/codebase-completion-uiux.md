@@ -223,7 +223,7 @@ The plan follows **Momus high-accuracy standards**:
   - **Parallelizable**: YES (with Task 13)
   - **MUST NOT**: Process sensitive personal data without consent
 
-- [ ] **15. Frontend Analytics Dashboard**
+- [x] **15. Frontend Analytics Dashboard**
   - **RED**: Dashboard test fails
   - **GREEN**: Replace mock data in `src/pages/Analytics.tsx` with real API calls
   - **REFACTOR**: Extract charts to `src/components/charts/`
