@@ -15,6 +15,7 @@ export default defineConfig({
   test: {
     globals: true,
     environment: 'jsdom',
+    include: ['src/**/*.test.{ts,tsx}'],
     setupFiles: ['./src/test/setup.ts', './src/test-utils/setup.ts'],
     css: true,
     coverage: {
@@ -41,6 +42,14 @@ export default defineConfig({
       clean: true,
     },
     projects: [
+      {
+        extends: true,
+        test: {
+          name: 'unit',
+          include: ['src/**/*.test.{ts,tsx}'],
+          exclude: ['src/**/*.stories.test.{ts,tsx}'],
+        },
+      },
       {
         extends: true,
         plugins: [

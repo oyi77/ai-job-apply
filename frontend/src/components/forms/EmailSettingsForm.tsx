@@ -9,8 +9,8 @@ import {
   Alert,
   Spinner,
   Select,
-} from '../components';
-import { notificationService, NotificationSettings, EmailTemplate } from '../services/api';
+} from '../index';
+import { notificationService, NotificationSettings, EmailTemplate } from '../../services/api';
 import { EnvelopeIcon, PaperAirplaneIcon, CheckCircleIcon } from '@heroicons/react/24/outline';
 
 interface EmailSettingsFormProps {

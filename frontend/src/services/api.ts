@@ -852,16 +852,3 @@ export const analyticsService = {
     return response.data.data || response.data;
   },
 };
-
-// Export all services
-export {
-  authService,
-  applicationService,
-  resumeService,
-  coverLetterService,
-  aiService,
-  jobSearchService,
-  fileService,
-  exportService,
-  analyticsService,
-};
