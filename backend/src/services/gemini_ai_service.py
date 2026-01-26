@@ -5,9 +5,6 @@ import json
 from typing import List, Dict, Any, Optional
 from datetime import datetime, timezone
 
-from google import genai
-from google.genai import types
-
 from src.core.ai_service import AIService
 from src.models.resume import (
     ResumeOptimizationRequest,
@@ -16,6 +13,7 @@ from src.models.resume import (
 )
 from src.models.cover_letter import CoverLetterRequest, CoverLetter
 from src.models.career_insights import CareerInsightsRequest, CareerInsightsResponse
+from src.services.gemini_client import GeminiClient
 from src.config import config
 from loguru import logger
 
@@ -126,6 +124,14 @@ class GeminiAIService(AIService):
                 # Reinitialize client if key changed
                 self._initialize_client()
 
+                # Update client configuration
+                if self.client:
+                    self.client.configure(
+                        model_name=self.model_name,
+                        temperature=self.temperature,
+                        max_tokens=self.max_tokens,
+                    )
+
                 self.logger.info(f"Refreshed Gemini config: model={self.model_name}")
 
                 # Update last used timestamp
@@ -174,7 +180,7 @@ class GeminiAIService(AIService):
         """Initialize the Gemini client."""
         try:
             if self.api_key:
-                self.client = genai.Client(api_key=self.api_key)
+                self.client = GeminiClient(api_key=self.api_key)
                 self.logger.info(
                     f"Gemini AI service initialized with model: {self.model_name}"
                 )
@@ -186,10 +192,6 @@ class GeminiAIService(AIService):
         except Exception as e:
             self.logger.error(f"Failed to initialize Gemini AI service: {e}")
             self.client = None
-
-    async def is_available(self) -> bool:
-        """Check if the AI service is available."""
-        return self.client is not None and bool(self.api_key)
 
     async def optimize_resume(
         self, request: ResumeOptimizationRequest
@@ -560,6 +562,38 @@ Please provide a JSON response with the following structure:
             ],
         }
 
+    async def analyze_skills_gap(
+        self, job_descriptions: List[Dict[str, str]]
+    ) -> Dict[str, Any]:
+        """Analyze skills gap based on job descriptions using Gemini AI.
+
+        Args:
+            job_descriptions: List of job descriptions with company, title, and description
+
+        Returns:
+            Dictionary with skills analysis including top skills, categories, and recommendations
+        """
+        try:
+            self.logger.info("Analyzing skills gap using Gemini AI")
+
+            if not await self.is_available():
+                return self._mock_skills_gap_analysis()
+
+            # Build the analysis prompt
+            prompt = self._build_skills_analysis_prompt(job_descriptions)
+
+            # Generate response using Gemini
+            response = await self._generate_content(prompt)
+
+            if response:
+                return self._parse_skills_gap_response(response)
+            else:
+                return self._mock_skills_gap_analysis()
+
+        except Exception as e:
+            self.logger.error(f"Error analyzing skills gap: {e}", exc_info=True)
+            return self._mock_skills_gap_analysis()
+
     async def is_available(self) -> bool:
         """Check if the Gemini AI service is available."""
         return self.client is not None and self.api_key is not None
@@ -570,16 +604,7 @@ Please provide a JSON response with the following structure:
             if not self.client:
                 return None
 
-            response = await self.client.aio.models.generate_content(
-                model=self.model_name,
-                contents=prompt,
-                config=types.GenerateContentConfig(
-                    temperature=self.temperature,
-                    max_output_tokens=self.max_tokens,
-                ),
-            )
-
-            return response.text if response and response.text else None
+            return await self.client.generate_content(prompt)
 
         except Exception as e:
             self.logger.error(
@@ -725,33 +750,86 @@ Please provide a JSON response with the following structure:
         history_summary = json.dumps(request.application_history, indent=2)
 
         return f"""
-        You are an expert career counselor. Analyze the candidate's profile and provide strategic career advice.
+         You are an expert career counselor. Analyze the candidate's profile and provide strategic career advice.
 
-        Skills: {", ".join(request.skills)}
-        Experience Level: {request.experience_level or "Not specified"}
-        Career Goals: {request.career_goals or "Not specified"}
-        Application History: {history_summary}
+         Skills: {", ".join(request.skills)}
+         Experience Level: {request.experience_level or "Not specified"}
+         Career Goals: {request.career_goals or "Not specified"}
+         Application History: {history_summary}
 
-        Please provide a JSON response with the following structure:
+         Please provide a JSON response with the following structure:
+         {{
+             "market_analysis": "Detailed analysis of the current job market for this profile...",
+             "salary_insights": {{
+                 "estimated_range": "$X - $Y",
+                 "market_trend": "Growing/Stable/Declining",
+                 "location_factor": "High/Medium/Low impact"
+             }},
+             "recommended_roles": ["Role 1", "Role 2", "Role 3"],
+             "skill_gaps": ["Skill 1", "Skill 2"],
+             "strategic_advice": ["Advice 1", "Advice 2", "Advice 3"],
+             "confidence_score": 0.85
+         }}
+
+         Focus on:
+         - Identifying patterns in application history
+         - Matching skills to high-demand roles
+         - Providing actionable steps for career growth
+         - Realistic salary expectations
+         """
+
+    def _build_skills_analysis_prompt(
+        self, job_descriptions: List[Dict[str, str]]
+    ) -> str:
+        """Build prompt for AI skills analysis."""
+        jobs_summary = json.dumps(job_descriptions, indent=2)
+
+        return f"""
+You are an expert career analyst. Analyze the following job descriptions and provide a comprehensive skills gap analysis.
+
+Job Descriptions:
+{jobs_summary}
+
+Please provide a JSON response with the following structure:
+{{
+    "top_skills": [
         {{
-            "market_analysis": "Detailed analysis of the current job market for this profile...",
-            "salary_insights": {{
-                "estimated_range": "$X - $Y",
-                "market_trend": "Growing/Stable/Declining",
-                "location_factor": "High/Medium/Low impact"
-            }},
-            "recommended_roles": ["Role 1", "Role 2", "Role 3"],
-            "skill_gaps": ["Skill 1", "Skill 2"],
-            "strategic_advice": ["Advice 1", "Advice 2", "Advice 3"],
-            "confidence_score": 0.85
+            "skill": "Python",
+            "count": 15,
+            "percentage": 75.0,
+            "category": "Programming Language",
+            "importance": "critical"
         }}
+    ],
+    "skill_categories": {{
+        "programming_languages": ["Python", "JavaScript"],
+        "frameworks": ["React", "Node.js"],
+        "tools": ["Docker", "Git"],
+        "cloud": ["AWS", "Azure"],
+        "soft_skills": ["Communication", "Leadership"]
+    }},
+    "emerging_skills": [
+        {{
+            "skill": "AI/ML",
+            "trend": "growing",
+            "relevance": "high"
+        }}
+    ],
+    "recommendations": [
+        "Focus on strengthening Python skills as it appears in 75% of positions",
+        "Consider learning cloud platforms (AWS/Azure) to increase competitiveness",
+        "Develop expertise in containerization (Docker/Kubernetes)"
+    ],
+    "confidence_score": 0.90
+}}
 
-        Focus on:
-        - Identifying patterns in application history
-        - Matching skills to high-demand roles
-        - Providing actionable steps for career growth
-        - Realistic salary expectations
-        """
+Focus on:
+1. Identifying the most frequently requested skills across all positions
+2. Categorizing skills by type (technical, soft skills, tools, etc.)
+3. Identifying emerging trends in skill requirements
+4. Providing actionable recommendations for skill development
+5. Calculating accurate percentages and importance levels
+"""
 
     def _parse_resume_optimization_response(self, response: str) -> Dict[str, Any]:
         """Parse the resume optimization response from Gemini."""
@@ -844,6 +922,24 @@ Please provide a JSON response with the following structure:
                 strategic_advice=["Update resume", "Network more"],
                 confidence_score=0.5,
             )
+
+    def _parse_skills_gap_response(self, response: str) -> Dict[str, Any]:
+        """Parse the skills gap analysis response from Gemini."""
+        try:
+            data = json.loads(response)
+            return {
+                "top_required_skills": data.get("top_skills", []),
+                "skill_categories": data.get("skill_categories", {}),
+                "emerging_skills": data.get("emerging_skills", []),
+                "recommendations": data.get("recommendations", []),
+                "ai_powered": True,
+                "confidence_score": data.get("confidence_score", 0.85),
+            }
+        except json.JSONDecodeError:
+            self.logger.warning(
+                "Failed to parse skills gap response as JSON. Using fallback."
+            )
+            return self._mock_skills_gap_analysis()
 
     def _extract_skills_from_text(self, text: str) -> List[str]:
         """Extract skills from text response."""
@@ -1008,3 +1104,53 @@ Best regards,
             ],
             confidence_score=0.85,
         )
+
+    def _mock_skills_gap_analysis(self) -> Dict[str, Any]:
+        """Mock skills gap analysis response."""
+        return {
+            "top_required_skills": [
+                {
+                    "skill": "Python",
+                    "count": 15,
+                    "percentage": 75.0,
+                    "category": "Programming Language",
+                    "importance": "critical",
+                },
+                {
+                    "skill": "JavaScript",
+                    "count": 12,
+                    "percentage": 60.0,
+                    "category": "Programming Language",
+                    "importance": "high",
+                },
+                {
+                    "skill": "React",
+                    "count": 10,
+                    "percentage": 50.0,
+                    "category": "Framework",
+                    "importance": "high",
+                },
+            ],
+            "skill_categories": {
+                "programming_languages": ["Python", "JavaScript", "TypeScript"],
+                "frameworks": ["React", "Node.js", "Django"],
+                "tools": ["Docker", "Git", "AWS"],
+                "cloud": ["AWS", "Azure"],
+                "soft_skills": ["Communication", "Leadership"],
+            },
+            "emerging_skills": [
+                {"skill": "AI/ML", "trend": "growing", "relevance": "high"},
+                {
+                    "skill": "Cloud Architecture",
+                    "trend": "growing",
+                    "relevance": "high",
+                },
+            ],
+            "recommendations": [
+                "Focus on strengthening Python skills as it appears in 75% of positions",
+                "Consider learning cloud platforms (AWS/Azure) to increase competitiveness",
+                "Develop expertise in containerization (Docker/Kubernetes)",
+            ],
+            "ai_powered": False,
+            "confidence_score": 0.75,
+        }
