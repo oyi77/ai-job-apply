@@ -362,7 +362,7 @@ The plan follows **Momus high-accuracy standards**:
   - **Parallelizable**: YES (with Task 28)
   - **MUST NOT**: Conflict with existing desktop interactions
 
-- [ ] **30. Performance Optimization**
+- [x] **30. Performance Optimization**
   - **RED**: Mobile performance test fails (>3s load time)
   - **GREEN**: Optimize assets, lazy load components, implement code splitting
   - **REFACTOR**: Extract optimization logic to `src/utils/performance.ts`
