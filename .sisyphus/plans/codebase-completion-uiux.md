@@ -353,7 +353,7 @@ The plan follows **Momus high-accuracy standards**:
   - **Parallelizable**: YES (with Tasks 26-27)
   - **MUST NOT**: Use fixed pixels for mobile layouts
 
-- [ ] **29. Touch Interactions**
+- [x] **29. Touch Interactions**
   - **RED**: Touch interaction test fails
   - **GREEN**: Add touch gestures to mobile interactions
   - **REFACTOR**: Extract gesture logic to `src/hooks/useGestures.ts`
