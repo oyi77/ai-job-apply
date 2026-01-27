@@ -5,7 +5,7 @@ from typing import Optional, Dict, Any, List
 from pydantic import BaseModel, Field
 from datetime import datetime
 
-from src.api.v1.dependencies import get_current_user
+from src.api.dependencies import get_current_user
 from src.utils.logger import get_logger
 
 router = APIRouter(prefix="/scheduler", tags=["Job Application Reminders"])

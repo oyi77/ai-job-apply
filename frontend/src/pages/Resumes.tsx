@@ -12,7 +12,6 @@ import {
   Form,
   FormField,
   Select,
-  ResumeUploadForm
 } from '../components';
 import { useAppStore } from '../stores/appStore';
 import { resumeService, fileService } from '../services/api';
@@ -36,7 +35,9 @@ const Resumes: React.FC = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [filterStatus, setFilterStatus] = useState<string>('all');
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
   
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const queryClient = useQueryClient();
   const { setResumes, addResume, updateResume, deleteResume } = useAppStore();
 
@@ -132,6 +133,23 @@ const Resumes: React.FC = () => {
     if (window.confirm(`Are you sure you want to delete ${selectedIds.length} resumes?`)) {
       bulkDeleteMutation.mutate(selectedIds);
     }
+  };
+
+  const handleFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (file) {
+      setSelectedFile(file);
+    }
+  };
+
+  const handleUpload = () => {
+    if (!selectedFile) return;
+    const formData: ResumeFormData = {
+      file: selectedFile,
+      title: selectedFile.name.replace(/\.[^/.]+$/, ''),
+    };
+    handleUploadSubmit(formData);
+    setSelectedFile(null);
   };
 
   const getFileTypeIcon = (fileType: string) => {

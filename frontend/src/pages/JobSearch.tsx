@@ -285,6 +285,7 @@ const JobSearch: React.FC = () => {
                 {searchResults.data.map((job) => job && (
                   <div
                     key={job.id || `job-${Math.random()}`}
+                    data-testid="job-card"
                     className="border border-gray-200 rounded-lg p-4 hover:bg-gray-50 transition-colors cursor-pointer"
                     onClick={() => handleJobClick(job)}
                   >

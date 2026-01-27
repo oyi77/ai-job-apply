@@ -51,7 +51,7 @@ export default defineConfig({
   webServer: [
     // Backend server
     {
-      command: 'cd ../backend && venv/bin/python3 -m uvicorn src.api.app:app --host 0.0.0.0 --port 8000',
+       command: 'cd ../backend && python -m uvicorn src.api.app:app --host 0.0.0.0 --port 8000',
       url: `${BACKEND_URL}/health`,
       reuseExistingServer: !process.env.CI,
       timeout: 120 * 1000,
@@ -59,6 +59,7 @@ export default defineConfig({
         ...process.env,
         DATABASE_URL: process.env.TEST_DATABASE_URL || 'sqlite+aiosqlite:///./test.db',
         ENVIRONMENT: 'test',
+        RATE_LIMIT_ENABLED: 'false',
       },
     },
     // Frontend server
