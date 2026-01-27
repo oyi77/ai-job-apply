@@ -382,7 +382,7 @@ The plan follows **Momus high-accuracy standards**:
   - **Parallelizable**: YES (independent testing phase)
   - **MUST NOT**: Skip testing any user-facing feature
 
-- [ ] **32. Integration Test Coverage**
+- [x] **32. Integration Test Coverage**
   - **RED**: Integration test coverage < 80%
   - **GREEN**: Add comprehensive integration tests
   - **REFACTOR**: Extract test data to `tests/fixtures/`
