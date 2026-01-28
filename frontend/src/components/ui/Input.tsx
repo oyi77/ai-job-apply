@@ -40,26 +40,21 @@ const Input = forwardRef<HTMLInputElement | HTMLTextAreaElement, InputProps>(({
 
   const classes = `${baseClasses} ${stateClasses} ${disabledClasses} ${sizeClasses[size]} ${className}`;
 
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
-    if (onChange) {
-      // Support both patterns:
-      // 1. Controlled mode: onChange(value: string)
-      // 2. React Hook Form: onChange(event)
-      const handler = onChange as any;
-      if (handler.length === 1 && typeof handler === 'function') {
-        // Check if it's expecting a string (controlled mode)
-        try {
-          handler(e.target.value);
-        } catch {
-          // If that fails, try passing the event (React Hook Form)
-          handler(e);
-        }
-      } else {
-        // Default to event pattern (React Hook Form)
-        handler(e);
-      }
-    }
-  };
+   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+     if (onChange) {
+       // Check if onChange expects a string (controlled component) or event (React Hook Form)
+       if (typeof onChange === 'function') {
+         // Try to determine if it expects a string or event
+         // If value prop is provided, it's a controlled component expecting string
+         if (value !== undefined) {
+           (onChange as any)(e.target.value);
+         } else {
+           // Otherwise pass the event for React Hook Form compatibility
+           (onChange as any)(e);
+         }
+       }
+     }
+   };
 
   if (as === 'textarea') {
     return (
@@ -77,18 +72,18 @@ const Input = forwardRef<HTMLInputElement | HTMLTextAreaElement, InputProps>(({
             </div>
           )}
           <textarea
-            id={inputId}
-            name={name}
-            value={value || ''}
-            onChange={handleChange as any}
-            onBlur={onBlur as any}
-            placeholder={placeholder}
-            required={required}
-            disabled={disabled}
-            rows={rows}
-            className={`${classes} ${icon ? 'pl-10' : ''} ${rightIcon ? 'pr-10' : ''}`}
-            ref={ref as React.Ref<HTMLTextAreaElement>}
-          />
+             id={inputId}
+             name={name}
+             {...(value !== undefined && { value: value || '' })}
+             onChange={handleChange as any}
+             onBlur={onBlur as any}
+             placeholder={placeholder}
+             required={required}
+             disabled={disabled}
+             rows={rows}
+             className={`${classes} ${icon ? 'pl-10' : ''} ${rightIcon ? 'pr-10' : ''}`}
+             ref={ref as React.Ref<HTMLTextAreaElement>}
+           />
           {rightIcon && (
             <div className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400">
               {rightIcon}
@@ -117,19 +112,19 @@ const Input = forwardRef<HTMLInputElement | HTMLTextAreaElement, InputProps>(({
           </div>
         )}
         <input
-          id={inputId}
-          name={name}
-          type={type}
-          value={value || ''}
-          onChange={handleChange as any}
-          onBlur={onBlur as any}
-          placeholder={placeholder}
-          required={required}
-          disabled={disabled}
-          className={`${classes} ${icon ? 'pl-10' : ''} ${rightIcon ? 'pr-10' : ''}`}
-          ref={ref as React.Ref<HTMLInputElement>}
-          {...(props as React.InputHTMLAttributes<HTMLInputElement>)}
-        />
+           id={inputId}
+           name={name}
+           type={type}
+           {...(value !== undefined && { value: value || '' })}
+           onChange={handleChange as any}
+           onBlur={onBlur as any}
+           placeholder={placeholder}
+           required={required}
+           disabled={disabled}
+           className={`${classes} ${icon ? 'pl-10' : ''} ${rightIcon ? 'pr-10' : ''}`}
+           ref={ref as React.Ref<HTMLInputElement>}
+           {...(props as React.InputHTMLAttributes<HTMLInputElement>)}
+         />
         {rightIcon && (
           <div className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400">
             {rightIcon}

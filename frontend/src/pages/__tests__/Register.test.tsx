@@ -1,5 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen, fireEvent, waitFor } from '@testing-library/react';
+import { render, screen, waitFor } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import { BrowserRouter } from 'react-router-dom';
 import Register from '../Register';
 import { useAppStore } from '../../stores/appStore';
@@ -63,135 +64,156 @@ describe('Register', () => {
     expect(loginLink).toHaveAttribute('href', '/login');
   });
 
-  it('handles form submission with valid data', async () => {
-    const mockTokens = {
-      access_token: 'test-access-token',
-      refresh_token: 'test-refresh-token',
-      token_type: 'bearer',
-      expires_in: 1800,
-    };
+   it('handles form submission with valid data', async () => {
+     const user = userEvent.setup({ delay: null });
+     const mockTokens = {
+       access_token: 'test-access-token',
+       refresh_token: 'test-refresh-token',
+       token_type: 'bearer',
+       expires_in: 1800,
+     };
 
-    const mockProfile = {
-      id: 'test-user-id',
-      email: 'newuser@example.com',
-      name: 'New User',
-      is_active: true,
-      created_at: '2024-01-01T00:00:00',
-      updated_at: '2024-01-01T00:00:00',
-    };
+     const mockProfile = {
+       id: 'test-user-id',
+       email: 'newuser@example.com',
+       name: 'New User',
+       is_active: true,
+       created_at: '2024-01-01T00:00:00',
+       updated_at: '2024-01-01T00:00:00',
+     };
 
-    (authService.register as any).mockResolvedValue(mockTokens);
-    (authService.getProfile as any).mockResolvedValue(mockProfile);
+     (authService.register as any).mockResolvedValue(mockTokens);
+     (authService.getProfile as any).mockResolvedValue(mockProfile);
 
-    renderRegister();
+     renderRegister();
 
-    const nameInput = screen.getByLabelText(/full name/i);
-    const emailInput = screen.getByLabelText(/email address/i);
-    const passwordInput = screen.getByLabelText(/^password/i);
-    const confirmPasswordInput = screen.getByLabelText(/confirm password/i);
-    const submitButton = screen.getByRole('button', { name: /create account/i });
+     const nameInput = screen.getByLabelText(/full name/i) as HTMLInputElement;
+     const emailInput = screen.getByLabelText(/email address/i) as HTMLInputElement;
+     const passwordInput = screen.getByLabelText(/^password/i) as HTMLInputElement;
+     const confirmPasswordInput = screen.getByLabelText(/confirm password/i) as HTMLInputElement;
+     const submitButton = screen.getByRole('button', { name: /create account/i });
 
-    fireEvent.change(nameInput, { target: { value: 'New User' } });
-    fireEvent.change(emailInput, { target: { value: 'newuser@example.com' } });
-    fireEvent.change(passwordInput, { target: { value: 'Password123' } });
-    fireEvent.change(confirmPasswordInput, { target: { value: 'Password123' } });
-    fireEvent.submit(screen.getByRole('form'));
+     await user.type(nameInput, 'New User');
+     await user.type(emailInput, 'newuser@example.com');
+     await user.type(passwordInput, 'Password123');
+     await user.type(confirmPasswordInput, 'Password123');
+     await user.click(submitButton);
 
-    await waitFor(() => {
-      expect(authService.register).toHaveBeenCalledWith({
-        email: 'newuser@example.com',
-        password: 'Password123',
-        name: 'New User',
-      });
-    });
+     await waitFor(() => {
+       expect(authService.register).toHaveBeenCalledWith({
+         email: 'newuser@example.com',
+         password: 'Password123',
+         name: 'New User',
+       });
+     }, { timeout: 5000 });
 
-    await waitFor(() => {
-      expect(authService.getProfile).toHaveBeenCalled();
-    });
+     await waitFor(() => {
+       expect(authService.getProfile).toHaveBeenCalled();
+     }, { timeout: 5000 });
 
-    await waitFor(() => {
-      expect(mockSetUser).toHaveBeenCalled();
-      expect(mockSetAuthenticated).toHaveBeenCalledWith(true);
-      expect(mockNavigate).toHaveBeenCalled();
-    });
-  });
+     await waitFor(() => {
+       expect(mockSetUser).toHaveBeenCalled();
+       expect(mockSetAuthenticated).toHaveBeenCalledWith(true);
+       expect(mockNavigate).toHaveBeenCalled();
+     }, { timeout: 5000 });
+   });
 
-  it('validates password match', async () => {
-    renderRegister();
+   it('validates password match', async () => {
+     const user = userEvent.setup({ delay: null });
+     renderRegister();
 
-    const passwordInput = screen.getByLabelText(/^password/i);
-    const confirmPasswordInput = screen.getByLabelText(/confirm password/i);
-    const submitButton = screen.getByRole('button', { name: /create account/i });
+     const emailInput = screen.getByLabelText(/email address/i) as HTMLInputElement;
+     const passwordInput = screen.getByLabelText(/^password/i) as HTMLInputElement;
+     const confirmPasswordInput = screen.getByLabelText(/confirm password/i) as HTMLInputElement;
+     const submitButton = screen.getByRole('button', { name: /create account/i });
 
-    fireEvent.change(passwordInput, { target: { value: 'Password123' } });
-    fireEvent.change(confirmPasswordInput, { target: { value: 'DifferentPassword123' } });
-    fireEvent.submit(screen.getByRole('form'));
+     await user.type(emailInput, 'test@example.com');
+     await user.type(passwordInput, 'Password123');
+     await user.type(confirmPasswordInput, 'DifferentPassword123');
+     await user.click(submitButton);
 
-    expect(await screen.findByText(/passwords do not match/i)).toBeInTheDocument();
+     // Wait for the error message to appear
+     await waitFor(() => {
+       expect(screen.getByText('Passwords do not match')).toBeInTheDocument();
+     }, { timeout: 3000 });
 
-    expect(authService.register).not.toHaveBeenCalled();
-  });
+     expect(authService.register).not.toHaveBeenCalled();
+   });
 
-  it('validates password length', async () => {
-    renderRegister();
+   it('validates password length', async () => {
+     const user = userEvent.setup({ delay: null });
+     renderRegister();
 
-    const passwordInput = screen.getByLabelText(/^password/i);
-    const confirmPasswordInput = screen.getByLabelText(/confirm password/i);
-    const submitButton = screen.getByRole('button', { name: /create account/i });
+     const emailInput = screen.getByLabelText(/email address/i) as HTMLInputElement;
+     const passwordInput = screen.getByLabelText(/^password/i) as HTMLInputElement;
+     const confirmPasswordInput = screen.getByLabelText(/confirm password/i) as HTMLInputElement;
+     const submitButton = screen.getByRole('button', { name: /create account/i });
 
-    fireEvent.change(passwordInput, { target: { value: 'Short1' } });
-    fireEvent.change(confirmPasswordInput, { target: { value: 'Short1' } });
-    fireEvent.submit(screen.getByRole('form'));
+     await user.type(emailInput, 'test@example.com');
+     await user.type(passwordInput, 'Short1');
+     await user.type(confirmPasswordInput, 'Short1');
+     await user.click(submitButton);
 
-    expect(await screen.findByText(/password must be at least 8 characters/i)).toBeInTheDocument();
+     // Wait for the error message to appear
+     await waitFor(() => {
+       expect(screen.getByText('Password must be at least 8 characters long')).toBeInTheDocument();
+     }, { timeout: 3000 });
 
-    expect(authService.register).not.toHaveBeenCalled();
-  });
+     expect(authService.register).not.toHaveBeenCalled();
+   });
 
-  it('displays error message on registration failure', async () => {
-    const errorMessage = 'Email already registered';
-    (authService.register as any).mockRejectedValue({
-      response: {
-        data: {
-          detail: errorMessage,
-        },
-      },
-    });
+   it('displays error message on registration failure', async () => {
+     const user = userEvent.setup({ delay: null });
+     const errorMessage = 'Email already registered';
+     (authService.register as any).mockRejectedValue({
+       response: {
+         data: {
+           detail: errorMessage,
+         },
+       },
+     });
 
-    renderRegister();
+     renderRegister();
 
-    const emailInput = screen.getByLabelText(/email address/i);
-    const passwordInput = screen.getByLabelText(/^password/i);
-    const confirmPasswordInput = screen.getByLabelText(/confirm password/i);
-    const submitButton = screen.getByRole('button', { name: /create account/i });
+     const emailInput = screen.getByLabelText(/email address/i) as HTMLInputElement;
+     const passwordInput = screen.getByLabelText(/^password/i) as HTMLInputElement;
+     const confirmPasswordInput = screen.getByLabelText(/confirm password/i) as HTMLInputElement;
+     const submitButton = screen.getByRole('button', { name: /create account/i });
 
-    fireEvent.change(emailInput, { target: { value: 'existing@example.com' } });
-    fireEvent.change(passwordInput, { target: { value: 'Password123' } });
-    fireEvent.change(confirmPasswordInput, { target: { value: 'Password123' } });
-    fireEvent.submit(screen.getByRole('form'));
+     await user.type(emailInput, 'existing@example.com');
+     await user.type(passwordInput, 'Password123');
+     await user.type(confirmPasswordInput, 'Password123');
+     await user.click(submitButton);
 
-    expect(await screen.findByText(errorMessage)).toBeInTheDocument();
-  });
+     expect(await screen.findByText(errorMessage)).toBeInTheDocument();
+   });
 
-  it('clears field errors when user starts typing', async () => {
-    renderRegister();
+   it('clears field errors when user starts typing', async () => {
+     const user = userEvent.setup({ delay: null });
+     renderRegister();
 
-    const passwordInput = screen.getByLabelText(/^password/i);
-    const confirmPasswordInput = screen.getByLabelText(/confirm password/i);
-    const submitButton = screen.getByRole('button', { name: /create account/i });
+     const emailInput = screen.getByLabelText(/email address/i) as HTMLInputElement;
+     const passwordInput = screen.getByLabelText(/^password/i) as HTMLInputElement;
+     const confirmPasswordInput = screen.getByLabelText(/confirm password/i) as HTMLInputElement;
+     const submitButton = screen.getByRole('button', { name: /create account/i });
 
-    // Trigger validation error
-    fireEvent.change(passwordInput, { target: { value: 'Password123' } });
-    fireEvent.change(confirmPasswordInput, { target: { value: 'DifferentPassword123' } });
-    fireEvent.submit(screen.getByRole('form'));
+     // Trigger validation error
+     await user.type(emailInput, 'test@example.com');
+     await user.type(passwordInput, 'Password123');
+     await user.type(confirmPasswordInput, 'DifferentPassword123');
+     await user.click(submitButton);
 
-    expect(await screen.findByText(/passwords do not match/i)).toBeInTheDocument();
+     // Wait for error to appear
+     await waitFor(() => {
+       expect(screen.getByText('Passwords do not match')).toBeInTheDocument();
+     }, { timeout: 3000 });
 
-    // Fix the password - error should clear
-    fireEvent.change(confirmPasswordInput, { target: { value: 'Password123' } });
+     // Fix the password - error should clear
+     await user.clear(confirmPasswordInput);
+     await user.type(confirmPasswordInput, 'Password123');
 
-    await waitFor(() => {
-      expect(screen.queryByText(/passwords do not match/i)).not.toBeInTheDocument();
-    });
-  });
+     await waitFor(() => {
+       expect(screen.queryByText('Passwords do not match')).not.toBeInTheDocument();
+     }, { timeout: 3000 });
+   });
 });

@@ -7,7 +7,10 @@ import { useAppStore } from '../../stores/appStore';
 
 // Mock dependencies
 vi.mock('../../stores/appStore');
-global.fetch = vi.fn();
+
+// Create a mock fetch function
+const mockFetch = vi.fn();
+global.fetch = mockFetch as any;
 
 const renderComponent = () => {
      renderWithProvider(
@@ -20,6 +23,7 @@ const renderComponent = () => {
  describe('PasswordResetRequest', () => {
      beforeEach(() => {
          vi.clearAllMocks();
+         mockFetch.mockClear();
          // Mock useAppStore for AuthProvider
          (useAppStore as any).mockImplementation((selector: any) => {
              const store = {
@@ -35,19 +39,19 @@ const renderComponent = () => {
 
      it('renders email input and submit button', () => {
          renderComponent();
-         expect(screen.getByLabelText(/email/i)).toBeInTheDocument();
+         expect(screen.getByPlaceholderText(/name@example.com/i)).toBeInTheDocument();
          expect(screen.getByRole('button', { name: /send reset link/i })).toBeInTheDocument();
      });
 
      it('handles successful submission', async () => {
-         (global.fetch as any).mockResolvedValueOnce({
+         mockFetch.mockResolvedValueOnce({
              ok: true,
              json: async () => ({ message: 'Email sent' }),
-         });
+         } as Response);
 
          renderComponent();
 
-         fireEvent.change(screen.getByLabelText(/email/i), { target: { value: 'test@example.com' } });
+         fireEvent.change(screen.getByPlaceholderText(/name@example.com/i), { target: { value: 'test@example.com' } });
          fireEvent.click(screen.getByRole('button', { name: /send reset link/i }));
 
          await waitFor(() => {
@@ -56,13 +60,13 @@ const renderComponent = () => {
      });
 
      it('handles API error', async () => {
-         (global.fetch as any).mockResolvedValueOnce({
+         mockFetch.mockResolvedValueOnce({
              ok: false,
-         });
+         } as Response);
 
          renderComponent();
 
-         fireEvent.change(screen.getByLabelText(/email/i), { target: { value: 'test@example.com' } });
+         fireEvent.change(screen.getByPlaceholderText(/name@example.com/i), { target: { value: 'test@example.com' } });
          fireEvent.click(screen.getByRole('button', { name: /send reset link/i }));
 
          await waitFor(() => {
