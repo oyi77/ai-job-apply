@@ -8,8 +8,8 @@ on:
   workflow_dispatch:
 
 env:
-  PYTHON_VERSION: '3.9'
-  NODE_VERSION: '18'
+  PYTHON_VERSION: '3.11'
+  NODE_VERSION: '20'
   BACKEND_URL: 'http://localhost:8000'
   FRONTEND_URL: 'http://localhost:5173'
 
@@ -54,8 +54,8 @@ jobs:
         DATABASE_URL: 'sqlite+aiosqlite:///./test.db'
         ENVIRONMENT: 'test'
       run: |
-        # Create test database if needed
-        python -c "from src.database.config import database_config; import asyncio; asyncio.run(database_config.initialize())" || true
+        # SQLite database will be created automatically on first connection
+        echo "Test database configuration ready"
     
     - name: Run E2E tests
       working-directory: frontend

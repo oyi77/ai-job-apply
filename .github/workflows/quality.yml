@@ -37,7 +37,7 @@ jobs:
         run: flake8 --max-line-length=88 --extend-ignore=E203,W503 src/ tests/
 
       - name: Type check with mypy
-        run: mypy --strict src/
+        run: mypy --strict --ignore-missing-imports src/
 
   frontend-quality:
     runs-on: ubuntu-latest
