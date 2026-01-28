@@ -13,7 +13,8 @@ test.describe('Application Management', () => {
 
     // Check if applications page is loaded
     await expect(page).toHaveURL(/.*applications/);
-    await expect(page.getByRole('heading', { name: /applications/i })).toBeVisible();
+    // Use level: 1 to target page title specifically (avoid matching all headings)
+    await expect(page.getByRole('heading', { name: /applications/i, level: 1 })).toBeVisible();
     
     // Check for applications list or empty state
     const applicationCards = page
@@ -38,8 +39,8 @@ test.describe('Application Management', () => {
     if (await createButton.isVisible()) {
       await createButton.click();
       await page.waitForTimeout(1000);
-      // Should navigate to create form or open modal
-      const form = page.locator('form').or(page.getByTestId('application-form'));
+      // Should navigate to create form or open modal (scope to dialog or use testid)
+      const form = page.getByTestId('application-form').or(page.getByRole('dialog').locator('form'));
       expect(await form.count()).toBeGreaterThan(0);
     }
   });
@@ -57,25 +58,26 @@ test.describe('Application Management', () => {
       await createButton.click();
       await page.waitForTimeout(1000);
 
-      // Fill application form
+      // Fill application form (scope to dialog to avoid collisions)
       const testApp = testApplications[0];
+      const dialog = page.getByRole('dialog');
 
-      const jobTitleInput = page
+      const jobTitleInput = dialog
         .getByLabel(/job title|position/i)
-        .or(page.getByPlaceholder(/job title|position/i));
+        .or(dialog.getByPlaceholder(/job title|position/i));
       if (await jobTitleInput.isVisible().catch(() => false)) {
         await jobTitleInput.fill(testApp.jobTitle);
       }
 
-      const companyInput = page
+      const companyInput = dialog
         .getByLabel(/company/i)
-        .or(page.getByPlaceholder(/company/i));
+        .or(dialog.getByPlaceholder(/company/i));
       if (await companyInput.isVisible().catch(() => false)) {
         await companyInput.fill(testApp.company);
       }
 
-      // Submit form
-      const submitButton = page.getByRole('button', { name: /save|create/i });
+      // Submit form (scoped to dialog)
+      const submitButton = dialog.getByRole('button', { name: /save|create/i });
       if (await submitButton.isVisible().catch(() => false)) {
         await submitButton.click();
         await waitForToast(page, 'success');
@@ -99,7 +101,8 @@ test.describe('Application Management', () => {
       await card.click();
       await page.waitForTimeout(1000);
 
-      const detailHeading = page.getByRole('heading').or(page.getByTestId('application-detail'));
+      // Use level: 1 for page title or testid to avoid matching all headings
+      const detailHeading = page.getByRole('heading', { level: 1 }).or(page.getByTestId('application-detail'));
       if ((await detailHeading.count()) > 0) {
         expect(page.url()).toMatch(/application/);
       }
@@ -124,11 +127,12 @@ test.describe('Application Management', () => {
     await page.goto('/applications');
     await waitForLoadingToComplete(page);
 
-    // Find first application and try to update status
-    const statusSelect = page
+    // Find first application and try to update status (scope to first card to avoid collisions)
+    const firstCard = page.locator('[data-testid="application-card"]').or(page.locator('.application-card')).first();
+    const statusSelect = firstCard
       .getByLabel(/status/i)
-      .or(page.locator('select[name="status"]'))
-      .or(page.getByTestId('status-select'));
+      .or(firstCard.locator('select[name="status"]'))
+      .or(firstCard.getByTestId('status-select'));
 
     if (await statusSelect.isVisible().catch(() => false)) {
       await statusSelect.selectOption('interview');

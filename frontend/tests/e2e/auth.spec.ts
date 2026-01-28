@@ -46,8 +46,8 @@ test.describe('Authentication Flow', () => {
     // Wait for validation errors
     await page.waitForTimeout(500);
     
-    // Check for validation messages
-    await expect(page.getByRole('alert')).toBeVisible();
+    // Check for validation messages (use .first() to avoid strict-mode collision)
+    await expect(page.getByRole('alert').first()).toBeVisible();
   });
 
   test('should show error on invalid credentials', async ({ page }) => {
@@ -63,7 +63,8 @@ test.describe('Authentication Flow', () => {
     const submitButton = page.getByRole('button', { name: 'Sign in' });
     await submitButton.click();
     
-    const alert = page.getByRole('alert');
+    // Use .first() to avoid strict-mode collision with multiple alerts
+    const alert = page.getByRole('alert').first();
     await expect(alert).toBeVisible();
     await expect(alert).toContainText(/invalid|incorrect|error/i);
   });
@@ -80,8 +81,8 @@ test.describe('Authentication Flow', () => {
       const currentUrl = page.url();
       expect(currentUrl).not.toMatch(/login/);
     } catch (error) {
-      // If login fails, check that error is displayed
-      const hasError = await page.locator('[role="alert"], .error, text=error').count();
+      // If login fails, check that error is displayed (use .or() instead of mixed-engine selector)
+      const hasError = await page.getByRole('alert').or(page.locator('.error')).or(page.getByText('error')).count();
       expect(hasError > 0).toBeTruthy();
     }
   });
@@ -131,7 +132,7 @@ test.describe('Authentication Flow', () => {
       // Should redirect or show success message
       const isRedirected = !page.url().includes('register');
       if (!isRedirected) {
-        await expect(page.getByRole('alert')).toBeVisible();
+        await expect(page.getByRole('alert').first()).toBeVisible();
       }
     }
   });
