@@ -63,7 +63,7 @@ test.describe('Complete User Journey', () => {
 
       // Submit registration form
       console.log('Clicking submit button...');
-      const submitButton = page.locator('button[type="submit"], button:has-text("Register"), button:has-text("Sign Up")').first();
+      const submitButton = page.getByRole('button', { name: /register|sign up/i });
       await expect(submitButton).toBeVisible();
       await submitButton.click();
 
@@ -73,10 +73,11 @@ test.describe('Complete User Journey', () => {
 
       // Should redirect away from register page or show success
       const currentUrl = page.url();
-      const hasSuccess = await page.locator('text=success, text=registered, [role="alert"]').count();
+      const isRedirected = !currentUrl.includes('register');
+      const alert = page.getByRole('alert');
       
       // Log error details if registration fails
-      if (hasSuccess === 0 && currentUrl.includes('register')) {
+      if (!isRedirected && !(await alert.isVisible().catch(() => false))) {
         console.error('Registration validation failed - still on register page');
         
         // Check for alert role and log its content
@@ -97,15 +98,15 @@ test.describe('Complete User Journey', () => {
           console.error('Error elements:', errorTexts);
         }
         
-        const errorMessages = await page.locator('text=/error|failed|invalid/i').allTextContents();
+        const errorMessages = await page.getByText(/error|failed|invalid/i).allTextContents();
         console.error('Error messages:', errorMessages);
         console.error('Current URL:', currentUrl);
         console.error('Page title:', await page.title());
       } else {
         console.log('Registration successful - redirected or success message shown');
       }
-      
-      expect(hasSuccess > 0 || !currentUrl.includes('register')).toBeTruthy();
+
+      expect(isRedirected || (await alert.isVisible().catch(() => false))).toBeTruthy();
     });
 
     // ========== STEP 2: Upload resume ==========
@@ -116,44 +117,31 @@ test.describe('Complete User Journey', () => {
       await expect(page).toHaveURL(/.*resumes/);
 
       // Find upload button
-      const uploadSelectors = [
-        'button:has-text("Upload Resume")',
-        'button:has-text("Upload")',
-        'button:has-text("Add Resume")',
-        'input[type="file"]',
-        '[data-testid="upload-resume"]',
-      ];
+      const uploadButton = page
+        .getByRole('button', { name: /upload resume|upload|add resume/i })
+        .or(page.getByTestId('upload-resume'));
+      const fileInput = page.locator('input[type="file"]');
 
       let uploadFound = false;
-      for (const selector of uploadSelectors) {
-        const element = page.locator(selector).first();
-        if (await element.isVisible().catch(() => false)) {
-          uploadFound = true;
-          
-          if (await element.evaluate((el) => el.tagName === 'INPUT')) {
-            // Direct file input
-            const fileInput = element;
-            await fileInput.setInputFiles({
-              name: testResumes[0].fileName,
-              mimeType: 'application/pdf',
-              buffer: Buffer.from(testResumes[0].content),
-            });
-          } else {
-            // Button that opens file dialog
-            await element.click();
-            await page.waitForTimeout(500);
-            
-            // Try to find file input in modal/form
-            const fileInput = page.locator('input[type="file"]').first();
-            if (await fileInput.isVisible().catch(() => false)) {
-              await fileInput.setInputFiles({
-                name: testResumes[0].fileName,
-                mimeType: 'application/pdf',
-                buffer: Buffer.from(testResumes[0].content),
-              });
-            }
-          }
-          break;
+      if (await fileInput.isVisible().catch(() => false)) {
+        uploadFound = true;
+        await fileInput.setInputFiles({
+          name: testResumes[0].fileName,
+          mimeType: 'application/pdf',
+          buffer: Buffer.from(testResumes[0].content),
+        });
+      } else if (await uploadButton.isVisible().catch(() => false)) {
+        uploadFound = true;
+        await uploadButton.click();
+        await page.waitForTimeout(500);
+
+        const modalInput = page.locator('input[type="file"]').first();
+        if (await modalInput.isVisible().catch(() => false)) {
+          await modalInput.setInputFiles({
+            name: testResumes[0].fileName,
+            mimeType: 'application/pdf',
+            buffer: Buffer.from(testResumes[0].content),
+          });
         }
       }
 
@@ -185,18 +173,22 @@ test.describe('Complete User Journey', () => {
          await fillFieldWithRetry(page, 'input[placeholder*="Search"], input[placeholder*="Job"], input[name="query"], input[name="search"]', 'React');
 
         // Find and click search button
-        const searchButton = page.locator('button:has-text("Search"), button[type="submit"], button[aria-label*="Search"]').first();
+        const searchButton = page.getByRole('button', { name: /search/i });
         if (await searchButton.isVisible()) {
           await searchButton.click();
           await waitForLoadingToComplete(page);
 
             // Verify search results are displayed
-            const hasResults = await page.locator('[data-testid="job-card"], .job-card, .job-item').or(page.locator('text=No results')).count();
-           if (hasResults === 0) {
+            const jobCards = page
+              .locator('[data-testid="job-card"]')
+              .or(page.locator('.job-card'))
+              .or(page.locator('.job-item'));
+            const emptyState = page.getByText(/no results/i);
+           if ((await jobCards.count()) === 0 && !(await emptyState.isVisible().catch(() => false))) {
              const pageContent = await page.locator('body').textContent();
              console.error('No job search results found. Page content:', pageContent?.substring(0, 500));
            }
-           expect(hasResults > 0).toBeTruthy();
+           expect((await jobCards.count()) > 0 || (await emptyState.isVisible().catch(() => false))).toBeTruthy();
         }
       }
     });
@@ -225,57 +217,47 @@ test.describe('Complete User Journey', () => {
        if (jobFound) {
          // Look for apply button on job details page
          // Prefer modal button using getByRole for better specificity
-         const applySelectors = [
-           // Modal button (highest priority)
-           () => page.getByRole('button', { name: /Apply Now/i }),
-           // Fallback selectors
-           () => page.locator('button:has-text("Apply Now")'),
-           () => page.locator('button:has-text("Apply")'),
-           () => page.locator('a:has-text("Apply")'),
-           () => page.locator('[data-testid="apply-button"]'),
-         ];
+          const applyButton = page
+            .getByRole('button', { name: /apply now|apply/i })
+            .or(page.getByRole('link', { name: /apply/i }))
+            .or(page.getByTestId('apply-button'))
+            .first();
 
-         for (const selectorFn of applySelectors) {
-           const element = selectorFn().first();
-           if (await element.isVisible().catch(() => false)) {
-             await element.click();
-             await page.waitForTimeout(1000);
+          if (await applyButton.isVisible().catch(() => false)) {
+            await applyButton.click();
+            await page.waitForTimeout(1000);
 
-              // Verify application was created
-              const hasSuccess = await page.locator('text=applied|success|application created|[role="alert"]').count();
-              if (hasSuccess === 0) {
-                const alerts = await page.locator('[role="alert"]').allTextContents();
-                const pageText = await page.locator('body').textContent();
-                console.error('Application creation failed. Alert content:', alerts);
-                console.error('Page text (first 500 chars):', pageText?.substring(0, 500));
-              }
-              expect(hasSuccess > 0).toBeTruthy();
-              break;
-           }
-         }
-       }
-     });
+            const successAlert = page.getByRole('alert');
+            const successText = page.getByText(/applied|success|application created/i);
+            if (!(await successAlert.isVisible().catch(() => false)) && !(await successText.isVisible().catch(() => false))) {
+              const alerts = await page.locator('[role="alert"]').allTextContents();
+              const pageText = await page.locator('body').textContent();
+              console.error('Application creation failed. Alert content:', alerts);
+              console.error('Page text (first 500 chars):', pageText?.substring(0, 500));
+            }
+            expect(
+              (await successAlert.isVisible().catch(() => false)) ||
+                (await successText.isVisible().catch(() => false))
+            ).toBeTruthy();
+          }
+        }
+      });
 
     // ========== STEP 5: Navigate to "AI Services" ==========
     await test.step('Navigate to AI Services', async () => {
       // Look for AI Services link/button in navigation
-      const aiServiceSelectors = [
-        'a:has-text("AI Services")',
-        'a:has-text("AI")',
-        'button:has-text("AI Services")',
-        '[data-testid="ai-services"]',
-        'a[href*="ai-services"]',
-      ];
+      const aiServicesLink = page
+        .getByRole('link', { name: /ai services/i })
+        .or(page.getByRole('button', { name: /ai services/i }))
+        .or(page.getByTestId('ai-services'))
+        .or(page.locator('a[href*="ai-services"]'))
+        .first();
 
       let aiServicesFound = false;
-      for (const selector of aiServiceSelectors) {
-        const element = page.locator(selector).first();
-        if (await element.isVisible().catch(() => false)) {
-          aiServicesFound = true;
-          await element.click();
-          await page.waitForTimeout(1000);
-          break;
-        }
+      if (await aiServicesLink.isVisible().catch(() => false)) {
+        aiServicesFound = true;
+        await aiServicesLink.click();
+        await page.waitForTimeout(1000);
       }
 
       // If not found in navigation, try direct navigation
@@ -287,50 +269,44 @@ test.describe('Complete User Journey', () => {
       await expect(page).toHaveURL(/.*ai-services/);
 
        // Verify AI services page is displayed
-       const hasAIServices = await page.locator('text=Resume Optimization, text=Cover Letter, text=Job Match, text=AI').count();
-       if (hasAIServices === 0) {
+       const optimizeButton = page.getByRole('button', { name: /optimize resume/i });
+       if (!(await optimizeButton.isVisible().catch(() => false))) {
          const pageContent = await page.locator('body').textContent();
          console.error('AI Services page not properly loaded. Page content:', pageContent?.substring(0, 500));
        }
-       expect(hasAIServices > 0).toBeTruthy();
+       await expect(optimizeButton).toBeVisible();
     });
 
     // ========== STEP 6: Generate a cover letter for that job ==========
     await test.step('Generate a cover letter for the job', async () => {
       // Look for cover letter generation option
-      const coverLetterSelectors = [
-        'button:has-text("Generate Cover Letter")',
-        'button:has-text("Cover Letter")',
-        'a:has-text("Cover Letter")',
-        'a:has-text("Generate")',
-        '[data-testid="generate-cover-letter"]',
-      ];
+      const coverLetterButton = page
+        .getByRole('button', { name: /generate cover letter/i })
+        .or(page.getByRole('link', { name: /cover letter/i }))
+        .or(page.getByTestId('generate-cover-letter'))
+        .first();
 
       let coverLetterFound = false;
-      for (const selector of coverLetterSelectors) {
-        const element = page.locator(selector).first();
-        if (await element.isVisible().catch(() => false)) {
-          coverLetterFound = true;
-          await element.click();
-          await page.waitForTimeout(1000);
-          break;
-        }
+      if (await coverLetterButton.isVisible().catch(() => false)) {
+        coverLetterFound = true;
+        await coverLetterButton.click();
+        await page.waitForTimeout(1000);
       }
 
        if (coverLetterFound) {
          // Fill cover letter form if visible
-         const jobTitleInput = page.locator('input[name="jobTitle"], input[placeholder*="Job Title"]').first();
+         const jobTitleInput = page.getByLabel('Job Title').or(page.getByPlaceholder(/job title/i));
          if (await jobTitleInput.isVisible().catch(() => false)) {
-           await fillFieldWithRetry(page, 'input[name="jobTitle"], input[placeholder*="Job Title"]', 'Python Developer');
+           await jobTitleInput.fill('Python Developer');
          }
 
-         const companyInput = page.locator('input[name="company"], input[placeholder*="Company"]').first();
+         const companyInput = page.getByLabel('Company').or(page.getByPlaceholder(/company/i));
          if (await companyInput.isVisible().catch(() => false)) {
-           await fillFieldWithRetry(page, 'input[name="company"], input[placeholder*="Company"]', 'Tech Corp');
+           await companyInput.fill('Tech Corp');
          }
 
          // Submit cover letter generation
-         const submitButton = page.locator('button[type="submit"], button:has-text("Generate")').first();
+         const submitButton = page.getByRole('button', { name: /generate/i });
          if (await submitButton.isVisible()) {
            await submitButton.click();
            
@@ -338,11 +314,11 @@ test.describe('Complete User Journey', () => {
            await page.waitForTimeout(3000);
            
            // Check for success or generated content
-           const hasGenerated = await page.locator('text=generated|success|cover letter|[role="alert"]').count();
-           const errorAlerts = await page.locator('[role="alert"]:has-text(/error|failed/i)').count();
+           const hasGenerated = await page.getByText(/generated|success|cover letter/i).count();
+           const errorAlerts = await page.getByRole('alert').filter({ hasText: /error|failed/i }).count();
            
            if (errorAlerts > 0) {
-             const errorContent = await page.locator('[role="alert"]:has-text(/error|failed/i)').allTextContents();
+             const errorContent = await page.getByRole('alert').filter({ hasText: /error|failed/i }).allTextContents();
              console.error('Cover letter generation error:', errorContent);
            }
            

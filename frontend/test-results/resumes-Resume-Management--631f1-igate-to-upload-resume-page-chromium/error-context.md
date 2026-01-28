@@ -1,0 +1,89 @@
+# Page snapshot
+
+```yaml
+- generic [ref=e4]:
+  - generic [ref=e6]:
+    - generic [ref=e7]:
+      - generic [ref=e9]: AI
+      - generic [ref=e10]: Job Apply
+    - navigation "Main navigation" [ref=e11]:
+      - link "Dashboard (Alt+1)" [ref=e12] [cursor=pointer]:
+        - /url: /
+        - img [ref=e13]
+        - text: Dashboard
+      - link "Applications (Alt+2)" [ref=e15] [cursor=pointer]:
+        - /url: /applications
+        - img [ref=e16]
+        - text: Applications
+      - link "Resumes (Alt+3)" [ref=e18] [cursor=pointer]:
+        - /url: /resumes
+        - img [ref=e19]
+        - text: Resumes
+      - link "Cover Letters (Alt+4)" [ref=e21] [cursor=pointer]:
+        - /url: /cover-letters
+        - img [ref=e22]
+        - text: Cover Letters
+      - link "Job Search (Alt+5)" [ref=e24] [cursor=pointer]:
+        - /url: /job-search
+        - img [ref=e25]
+        - text: Job Search
+      - link "AI Services (Alt+6)" [ref=e27] [cursor=pointer]:
+        - /url: /ai-services
+        - img [ref=e28]
+        - text: AI Services
+      - link "Analytics (Alt+7)" [ref=e30] [cursor=pointer]:
+        - /url: /analytics
+        - img [ref=e31]
+        - text: Analytics
+      - link "Settings (Alt+8)" [ref=e33] [cursor=pointer]:
+        - /url: /settings
+        - img [ref=e34]
+        - text: Settings
+      - link "Admin Settings (Alt+9)" [ref=e37] [cursor=pointer]:
+        - /url: /admin-settings
+        - img [ref=e38]
+        - text: Admin Settings
+  - generic [ref=e40]:
+    - banner [ref=e41]:
+      - generic [ref=e42]:
+        - generic [ref=e43]:
+          - img [ref=e45]
+          - heading "AI Job Assists" [level=1] [ref=e47]
+        - generic [ref=e48]:
+          - generic [ref=e49]:
+            - generic [ref=e50]:
+              - button "Light" [ref=e51] [cursor=pointer]:
+                - img [ref=e52]
+                - generic [ref=e54]: Light
+              - button "Dark" [ref=e55] [cursor=pointer]:
+                - img [ref=e56]
+                - generic [ref=e58]: Dark
+              - button "System" [ref=e59] [cursor=pointer]:
+                - img [ref=e60]
+                - generic [ref=e62]: System
+            - button "Open notifications" [ref=e64] [cursor=pointer]:
+              - img [ref=e65]
+          - button "Test User Pro Member" [ref=e68] [cursor=pointer]:
+            - img [ref=e70]
+            - generic [ref=e72]:
+              - paragraph [ref=e73]: Test User
+              - paragraph [ref=e74]: Pro Member
+    - main [ref=e75]:
+      - generic [ref=e77]:
+        - generic [ref=e78]:
+          - generic [ref=e79]:
+            - heading "Resumes" [level=1] [ref=e80]
+            - paragraph [ref=e81]: Manage your resumes and professional documents.
+          - button "Upload Resume" [ref=e82] [cursor=pointer]:
+            - img [ref=e83]
+            - text: Upload Resume
+        - generic [ref=e85]:
+          - generic [ref=e87]:
+            - checkbox [ref=e88]
+            - heading "Your Resumes" [level=3] [ref=e89]
+          - generic [ref=e91]:
+            - img [ref=e92]
+            - heading "No resumes yet" [level=3] [ref=e94]
+            - paragraph [ref=e95]: Get started by uploading your first resume.
+            - button "Upload Resume" [ref=e96] [cursor=pointer]
+```

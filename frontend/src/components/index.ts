@@ -15,6 +15,7 @@ export { default as Tooltip } from './ui/Tooltip';
 export { default as Breadcrumb } from './ui/Breadcrumb';
 export { default as Pagination } from './ui/Pagination';
 export { default as Search } from './ui/Search';
+export { default as Toggle } from './ui/Toggle';
 
 // Form components
 export { default as Form } from './forms/Form';

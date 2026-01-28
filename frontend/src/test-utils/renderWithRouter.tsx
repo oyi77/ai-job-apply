@@ -1,7 +1,6 @@
 import { render, RenderOptions } from '@testing-library/react';
 import { BrowserRouter } from 'react-router-dom';
 import { AuthProvider } from '../contexts/AuthContext';
-import { NotificationProvider } from '../components/ui/Notification';
 
 interface WrapperProps {
   children: React.ReactNode;
@@ -11,9 +10,7 @@ export function Wrapper({ children }: WrapperProps) {
   return (
     <BrowserRouter>
       <AuthProvider>
-        <NotificationProvider>
-          {children}
-        </NotificationProvider>
+        {children}
       </AuthProvider>
     </BrowserRouter>
   );

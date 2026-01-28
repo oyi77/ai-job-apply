@@ -71,6 +71,7 @@ const NotificationItem: React.FC<NotificationProps> = ({ notification, onDismiss
           }}
           className="ml-4 flex-shrink-0 text-gray-400 hover:text-gray-600"
           aria-label="Dismiss notification"
+          data-testid={`notification-dismiss-${notification.id}`}
         >
           <XMarkIcon className="h-5 w-5" />
         </button>
@@ -184,6 +185,8 @@ export const NotificationDropdown: React.FC<NotificationDropdownProps> = ({
       <button
         onClick={() => setIsOpen(!isOpen)}
         className="relative p-2 text-gray-400 hover:text-gray-500"
+        aria-label="Open notifications"
+        data-testid="notification-dropdown-trigger"
       >
         <InformationCircleIcon className="h-6 w-6" />
         {unreadCount > 0 && (
@@ -233,6 +236,8 @@ export const NotificationDropdown: React.FC<NotificationDropdownProps> = ({
                     <button
                       onClick={() => onDelete(notif.id)}
                       className="text-gray-400 hover:text-gray-600 p-1"
+                      aria-label="Delete notification"
+                      data-testid={`notification-item-delete-${notif.id}`}
                     >
                       <XMarkIcon className="h-4 w-4" />
                     </button>

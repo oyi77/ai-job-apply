@@ -109,3 +109,6 @@ coverage/
 frontend/coverage/
 node_modules/
 frontend/node_modules/
+
+# Playwright auth state
+frontend/playwright/.auth/

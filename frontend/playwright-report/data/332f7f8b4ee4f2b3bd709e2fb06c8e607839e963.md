@@ -1,0 +1,662 @@
+# Page snapshot
+
+```yaml
+- generic [ref=e1]:
+  - generic [ref=e4]:
+    - generic [ref=e6]:
+      - generic [ref=e7]:
+        - generic [ref=e9]: AI
+        - generic [ref=e10]: Job Apply
+      - navigation "Main navigation" [ref=e11]:
+        - link "Dashboard (Alt+1)" [ref=e12] [cursor=pointer]:
+          - /url: /
+          - img [ref=e13]
+          - text: Dashboard
+        - link "Applications (Alt+2)" [ref=e15] [cursor=pointer]:
+          - /url: /applications
+          - img [ref=e16]
+          - text: Applications
+        - link "Resumes (Alt+3)" [ref=e18] [cursor=pointer]:
+          - /url: /resumes
+          - img [ref=e19]
+          - text: Resumes
+        - link "Cover Letters (Alt+4)" [ref=e21] [cursor=pointer]:
+          - /url: /cover-letters
+          - img [ref=e22]
+          - text: Cover Letters
+        - link "Job Search (Alt+5)" [ref=e24] [cursor=pointer]:
+          - /url: /job-search
+          - img [ref=e25]
+          - text: Job Search
+        - link "AI Services (Alt+6)" [ref=e27] [cursor=pointer]:
+          - /url: /ai-services
+          - img [ref=e28]
+          - text: AI Services
+        - link "Analytics (Alt+7)" [ref=e30] [cursor=pointer]:
+          - /url: /analytics
+          - img [ref=e31]
+          - text: Analytics
+        - link "Settings (Alt+8)" [ref=e33] [cursor=pointer]:
+          - /url: /settings
+          - img [ref=e34]
+          - text: Settings
+        - link "Admin Settings (Alt+9)" [ref=e37] [cursor=pointer]:
+          - /url: /admin-settings
+          - img [ref=e38]
+          - text: Admin Settings
+    - generic [ref=e40]:
+      - banner [ref=e41]:
+        - generic [ref=e42]:
+          - generic [ref=e43]:
+            - img [ref=e45]
+            - heading "AI Job Assists" [level=1] [ref=e47]
+          - generic [ref=e48]:
+            - generic [ref=e49]:
+              - generic [ref=e50]:
+                - button "Light" [ref=e51] [cursor=pointer]:
+                  - img [ref=e52]
+                  - generic [ref=e54]: Light
+                - button "Dark" [ref=e55] [cursor=pointer]:
+                  - img [ref=e56]
+                  - generic [ref=e58]: Dark
+                - button "System" [ref=e59] [cursor=pointer]:
+                  - img [ref=e60]
+                  - generic [ref=e62]: System
+              - button "Open notifications" [ref=e64] [cursor=pointer]:
+                - img [ref=e65]
+            - button "Updated User Pro Member" [ref=e68] [cursor=pointer]:
+              - img [ref=e70]
+              - generic [ref=e72]:
+                - paragraph [ref=e73]: Updated User
+                - paragraph [ref=e74]: Pro Member
+      - main [ref=e75]:
+        - generic [ref=e77]:
+          - generic [ref=e78]:
+            - heading "Job Search" [level=1] [ref=e79]
+            - paragraph [ref=e80]: Search and discover job opportunities across multiple platforms.
+          - generic [ref=e81]:
+            - heading "Search Jobs" [level=3] [ref=e83]
+            - generic [ref=e85]:
+              - generic [ref=e86]:
+                - generic [ref=e87]:
+                  - generic [ref=e88]: Job Title or Keywords
+                  - generic [ref=e89]:
+                    - img [ref=e90]
+                    - textbox "e.g., Software Engineer, React Developer" [ref=e94]: Python Developer
+                - generic [ref=e95]:
+                  - generic [ref=e96]: Location
+                  - generic [ref=e97]:
+                    - img [ref=e98]
+                    - textbox "e.g., San Francisco, CA or Remote" [ref=e103]: Remote
+              - generic [ref=e104]:
+                - generic [ref=e105]:
+                  - generic [ref=e106]: Job Type
+                  - button "Job Type" [ref=e108]:
+                    - generic [ref=e109]: Select job type
+                    - generic:
+                      - img
+                - generic [ref=e110]:
+                  - generic [ref=e111]: Experience Level
+                  - button "Experience Level" [ref=e113]:
+                    - generic [ref=e114]: Select experience level
+                    - generic:
+                      - img
+                - generic [ref=e115]:
+                  - generic [ref=e116]:
+                    - generic [ref=e117]: Sort By
+                    - button "Sort By" [ref=e119]:
+                      - generic [ref=e120]: Relevance
+                      - generic:
+                        - img
+                  - button [ref=e121] [cursor=pointer]:
+                    - img [ref=e122]
+              - button "Search Jobs" [ref=e125] [cursor=pointer]:
+                - img [ref=e126]
+                - text: Search Jobs
+          - generic [ref=e128]:
+            - generic [ref=e130]:
+              - heading "Search Results (15 jobs found)" [level=3] [ref=e131]
+              - generic [ref=e132]:
+                - img [ref=e133]
+                - generic [ref=e135]: Filtered and sorted
+            - generic [ref=e137]:
+              - generic [ref=e139] [cursor=pointer]:
+                - generic [ref=e140]:
+                  - generic [ref=e141]:
+                    - heading "Entry Python Developer" [level=4] [ref=e142]
+                    - generic [ref=e143]: Remote
+                  - generic [ref=e144]:
+                    - generic [ref=e145]:
+                      - img [ref=e146]
+                      - generic [ref=e148]: TechCorp Inc.
+                    - generic [ref=e149]:
+                      - img [ref=e150]
+                      - generic [ref=e153]: Remote
+                    - generic [ref=e154]:
+                      - img [ref=e155]
+                      - generic [ref=e157]: Recently
+                  - generic [ref=e158]:
+                    - img [ref=e159]
+                    - generic [ref=e161]: $50,000 - $75,000
+                  - paragraph [ref=e162]: We are seeking a Entry Python Developer to join our team at TechCorp Inc.. This position requires expertise in Python Developer and related technologies. The ideal candidate will have entry level experience and be passionate about building innovative solutions. This is an excellent opportunity to work on exciting projects and grow your career in a dynamic environment.
+                  - generic [ref=e163]:
+                    - generic [ref=e164]: Python
+                    - generic [ref=e165]: JavaScript
+                    - generic [ref=e166]: React
+                    - generic [ref=e167]: Node.js
+                    - generic [ref=e168]: PostgreSQL
+                - generic [ref=e169]:
+                  - button [ref=e170]:
+                    - img [ref=e171]
+                  - button "Apply" [ref=e173]:
+                    - img [ref=e174]
+                    - text: Apply
+              - generic [ref=e177] [cursor=pointer]:
+                - generic [ref=e178]:
+                  - generic [ref=e179]:
+                    - heading "Entry Software Engineer" [level=4] [ref=e180]
+                    - generic [ref=e181]: Remote
+                  - generic [ref=e182]:
+                    - generic [ref=e183]:
+                      - img [ref=e184]
+                      - generic [ref=e186]: Innovation Labs
+                    - generic [ref=e187]:
+                      - img [ref=e188]
+                      - generic [ref=e191]: Remote
+                    - generic [ref=e192]:
+                      - img [ref=e193]
+                      - generic [ref=e195]: Recently
+                  - generic [ref=e196]:
+                    - img [ref=e197]
+                    - generic [ref=e199]: $50,000 - $75,000
+                  - paragraph [ref=e200]: We are seeking a Entry Software Engineer to join our team at Innovation Labs. This position requires expertise in Python Developer and related technologies. The ideal candidate will have entry level experience and be passionate about building innovative solutions. This is an excellent opportunity to work on exciting projects and grow your career in a dynamic environment.
+                  - generic [ref=e201]:
+                    - generic [ref=e202]: Java
+                    - generic [ref=e203]: Spring Boot
+                    - generic [ref=e204]: Microservices
+                    - generic [ref=e205]: Docker
+                    - generic [ref=e206]: AWS
+                - generic [ref=e207]:
+                  - button [ref=e208]:
+                    - img [ref=e209]
+                  - button "Apply" [ref=e211]:
+                    - img [ref=e212]
+                    - text: Apply
+              - generic [ref=e215] [cursor=pointer]:
+                - generic [ref=e216]:
+                  - generic [ref=e217]:
+                    - heading "Full Stack Entry Developer" [level=4] [ref=e218]
+                    - generic [ref=e219]: Remote
+                  - generic [ref=e220]:
+                    - generic [ref=e221]:
+                      - img [ref=e222]
+                      - generic [ref=e224]: StartupXYZ
+                    - generic [ref=e225]:
+                      - img [ref=e226]
+                      - generic [ref=e229]: Remote
+                    - generic [ref=e230]:
+                      - img [ref=e231]
+                      - generic [ref=e233]: Recently
+                  - generic [ref=e234]:
+                    - img [ref=e235]
+                    - generic [ref=e237]: $50,000 - $75,000
+                  - paragraph [ref=e238]: We are seeking a Full Stack Entry Developer to join our team at StartupXYZ. This position requires expertise in Python Developer and related technologies. The ideal candidate will have entry level experience and be passionate about building innovative solutions. This is an excellent opportunity to work on exciting projects and grow your career in a dynamic environment.
+                  - generic [ref=e239]:
+                    - generic [ref=e240]: Machine Learning
+                    - generic [ref=e241]: Python
+                    - generic [ref=e242]: TensorFlow
+                    - generic [ref=e243]: Data Analysis
+                    - generic [ref=e244]: Statistics
+                - generic [ref=e245]:
+                  - button [ref=e246]:
+                    - img [ref=e247]
+                  - button "Apply" [ref=e249]:
+                    - img [ref=e250]
+                    - text: Apply
+              - generic [ref=e253] [cursor=pointer]:
+                - generic [ref=e254]:
+                  - generic [ref=e255]:
+                    - heading "Entry Backend Engineer" [level=4] [ref=e256]
+                    - generic [ref=e257]: Remote
+                  - generic [ref=e258]:
+                    - generic [ref=e259]:
+                      - img [ref=e260]
+                      - generic [ref=e262]: BigTech Company
+                    - generic [ref=e263]:
+                      - img [ref=e264]
+                      - generic [ref=e267]: Remote
+                    - generic [ref=e268]:
+                      - img [ref=e269]
+                      - generic [ref=e271]: Recently
+                  - generic [ref=e272]:
+                    - img [ref=e273]
+                    - generic [ref=e275]: $50,000 - $75,000
+                  - paragraph [ref=e276]: We are seeking a Entry Backend Engineer to join our team at BigTech Company. This position requires expertise in Python Developer and related technologies. The ideal candidate will have entry level experience and be passionate about building innovative solutions. This is an excellent opportunity to work on exciting projects and grow your career in a dynamic environment.
+                  - generic [ref=e277]:
+                    - generic [ref=e278]: UI/UX Design
+                    - generic [ref=e279]: Figma
+                    - generic [ref=e280]: Adobe Creative Suite
+                    - generic [ref=e281]: Prototyping
+                    - generic [ref=e282]: User Research
+                - generic [ref=e283]:
+                  - button [ref=e284]:
+                    - img [ref=e285]
+                  - button "Apply" [ref=e287]:
+                    - img [ref=e288]
+                    - text: Apply
+              - generic [ref=e291] [cursor=pointer]:
+                - generic [ref=e292]:
+                  - generic [ref=e293]:
+                    - heading "Senior Software Engineer" [level=4] [ref=e294]
+                    - generic [ref=e295]: Remote
+                  - generic [ref=e296]:
+                    - generic [ref=e297]:
+                      - img [ref=e298]
+                      - generic [ref=e300]: Digital Solutions
+                    - generic [ref=e301]:
+                      - img [ref=e302]
+                      - generic [ref=e305]: Remote
+                    - generic [ref=e306]:
+                      - img [ref=e307]
+                      - generic [ref=e309]: Recently
+                  - generic [ref=e310]:
+                    - img [ref=e311]
+                    - generic [ref=e313]: $50,000 - $75,000
+                  - paragraph [ref=e314]: We are seeking a Senior Software Engineer to join our team at Digital Solutions. This position requires expertise in Python Developer and related technologies. The ideal candidate will have entry level experience and be passionate about building innovative solutions. This is an excellent opportunity to work on exciting projects and grow your career in a dynamic environment.
+                  - generic [ref=e315]:
+                    - generic [ref=e316]: DevOps
+                    - generic [ref=e317]: Kubernetes
+                    - generic [ref=e318]: Jenkins
+                    - generic [ref=e319]: Terraform
+                    - generic [ref=e320]: Monitoring
+                - generic [ref=e321]:
+                  - button [ref=e322]:
+                    - img [ref=e323]
+                  - button "Apply" [ref=e325]:
+                    - img [ref=e326]
+                    - text: Apply
+              - generic [ref=e329] [cursor=pointer]:
+                - generic [ref=e330]:
+                  - generic [ref=e331]:
+                    - heading "Full Stack Developer" [level=4] [ref=e332]
+                    - generic [ref=e333]: Remote
+                  - generic [ref=e334]:
+                    - generic [ref=e335]:
+                      - img [ref=e336]
+                      - generic [ref=e338]: Cloud Systems
+                    - generic [ref=e339]:
+                      - img [ref=e340]
+                      - generic [ref=e343]: Remote
+                    - generic [ref=e344]:
+                      - img [ref=e345]
+                      - generic [ref=e347]: Recently
+                  - generic [ref=e348]:
+                    - img [ref=e349]
+                    - generic [ref=e351]: $50,000 - $75,000
+                  - paragraph [ref=e352]: We are seeking a Full Stack Developer to join our team at Cloud Systems. This position requires expertise in Python Developer and related technologies. The ideal candidate will have entry level experience and be passionate about building innovative solutions. This is an excellent opportunity to work on exciting projects and grow your career in a dynamic environment.
+                  - generic [ref=e353]:
+                    - generic [ref=e354]: Python
+                    - generic [ref=e355]: JavaScript
+                    - generic [ref=e356]: React
+                    - generic [ref=e357]: Node.js
+                    - generic [ref=e358]: PostgreSQL
+                - generic [ref=e359]:
+                  - button [ref=e360]:
+                    - img [ref=e361]
+                  - button "Apply" [ref=e363]:
+                    - img [ref=e364]
+                    - text: Apply
+              - generic [ref=e367] [cursor=pointer]:
+                - generic [ref=e368]:
+                  - generic [ref=e369]:
+                    - heading "Python Developer" [level=4] [ref=e370]
+                    - generic [ref=e371]: Remote
+                  - generic [ref=e372]:
+                    - generic [ref=e373]:
+                      - img [ref=e374]
+                      - generic [ref=e376]: Data Analytics Corp
+                    - generic [ref=e377]:
+                      - img [ref=e378]
+                      - generic [ref=e381]: Remote
+                    - generic [ref=e382]:
+                      - img [ref=e383]
+                      - generic [ref=e385]: Recently
+                  - generic [ref=e386]:
+                    - img [ref=e387]
+                    - generic [ref=e389]: $50,000 - $75,000
+                  - paragraph [ref=e390]: We are seeking a Python Developer to join our team at Data Analytics Corp. This position requires expertise in Python Developer and related technologies. The ideal candidate will have entry level experience and be passionate about building innovative solutions. This is an excellent opportunity to work on exciting projects and grow your career in a dynamic environment.
+                  - generic [ref=e391]:
+                    - generic [ref=e392]: Java
+                    - generic [ref=e393]: Spring Boot
+                    - generic [ref=e394]: Microservices
+                    - generic [ref=e395]: Docker
+                    - generic [ref=e396]: AWS
+                - generic [ref=e397]:
+                  - button [ref=e398]:
+                    - img [ref=e399]
+                  - button "Apply" [ref=e401]:
+                    - img [ref=e402]
+                    - text: Apply
+              - generic [ref=e405] [cursor=pointer]:
+                - generic [ref=e406]:
+                  - generic [ref=e407]:
+                    - heading "React Developer" [level=4] [ref=e408]
+                    - generic [ref=e409]: Remote
+                  - generic [ref=e410]:
+                    - generic [ref=e411]:
+                      - img [ref=e412]
+                      - generic [ref=e414]: AI Innovations
+                    - generic [ref=e415]:
+                      - img [ref=e416]
+                      - generic [ref=e419]: Remote
+                    - generic [ref=e420]:
+                      - img [ref=e421]
+                      - generic [ref=e423]: Recently
+                  - generic [ref=e424]:
+                    - img [ref=e425]
+                    - generic [ref=e427]: $50,000 - $75,000
+                  - paragraph [ref=e428]: We are seeking a React Developer to join our team at AI Innovations. This position requires expertise in Python Developer and related technologies. The ideal candidate will have entry level experience and be passionate about building innovative solutions. This is an excellent opportunity to work on exciting projects and grow your career in a dynamic environment.
+                  - generic [ref=e429]:
+                    - generic [ref=e430]: Machine Learning
+                    - generic [ref=e431]: Python
+                    - generic [ref=e432]: TensorFlow
+                    - generic [ref=e433]: Data Analysis
+                    - generic [ref=e434]: Statistics
+                - generic [ref=e435]:
+                  - button [ref=e436]:
+                    - img [ref=e437]
+                  - button "Apply" [ref=e439]:
+                    - img [ref=e440]
+                    - text: Apply
+              - generic [ref=e443] [cursor=pointer]:
+                - generic [ref=e444]:
+                  - generic [ref=e445]:
+                    - heading "DevOps Engineer" [level=4] [ref=e446]
+                    - generic [ref=e447]: Remote
+                  - generic [ref=e448]:
+                    - generic [ref=e449]:
+                      - img [ref=e450]
+                      - generic [ref=e452]: Web Solutions
+                    - generic [ref=e453]:
+                      - img [ref=e454]
+                      - generic [ref=e457]: Remote
+                    - generic [ref=e458]:
+                      - img [ref=e459]
+                      - generic [ref=e461]: Recently
+                  - generic [ref=e462]:
+                    - img [ref=e463]
+                    - generic [ref=e465]: $50,000 - $75,000
+                  - paragraph [ref=e466]: We are seeking a DevOps Engineer to join our team at Web Solutions. This position requires expertise in Python Developer and related technologies. The ideal candidate will have entry level experience and be passionate about building innovative solutions. This is an excellent opportunity to work on exciting projects and grow your career in a dynamic environment.
+                  - generic [ref=e467]:
+                    - generic [ref=e468]: UI/UX Design
+                    - generic [ref=e469]: Figma
+                    - generic [ref=e470]: Adobe Creative Suite
+                    - generic [ref=e471]: Prototyping
+                    - generic [ref=e472]: User Research
+                - generic [ref=e473]:
+                  - button [ref=e474]:
+                    - img [ref=e475]
+                  - button "Apply" [ref=e477]:
+                    - img [ref=e478]
+                    - text: Apply
+              - generic [ref=e481] [cursor=pointer]:
+                - generic [ref=e482]:
+                  - generic [ref=e483]:
+                    - heading "Data Scientist" [level=4] [ref=e484]
+                    - generic [ref=e485]: Remote
+                  - generic [ref=e486]:
+                    - generic [ref=e487]:
+                      - img [ref=e488]
+                      - generic [ref=e490]: Mobile Apps Inc.
+                    - generic [ref=e491]:
+                      - img [ref=e492]
+                      - generic [ref=e495]: Remote
+                    - generic [ref=e496]:
+                      - img [ref=e497]
+                      - generic [ref=e499]: Recently
+                  - generic [ref=e500]:
+                    - img [ref=e501]
+                    - generic [ref=e503]: $50,000 - $75,000
+                  - paragraph [ref=e504]: We are seeking a Data Scientist to join our team at Mobile Apps Inc.. This position requires expertise in Python Developer and related technologies. The ideal candidate will have entry level experience and be passionate about building innovative solutions. This is an excellent opportunity to work on exciting projects and grow your career in a dynamic environment.
+                  - generic [ref=e505]:
+                    - generic [ref=e506]: DevOps
+                    - generic [ref=e507]: Kubernetes
+                    - generic [ref=e508]: Jenkins
+                    - generic [ref=e509]: Terraform
+                    - generic [ref=e510]: Monitoring
+                - generic [ref=e511]:
+                  - button [ref=e512]:
+                    - img [ref=e513]
+                  - button "Apply" [ref=e515]:
+                    - img [ref=e516]
+                    - text: Apply
+              - generic [ref=e519] [cursor=pointer]:
+                - generic [ref=e520]:
+                  - generic [ref=e521]:
+                    - heading "Product Manager" [level=4] [ref=e522]
+                    - generic [ref=e523]: Remote
+                  - generic [ref=e524]:
+                    - generic [ref=e525]:
+                      - img [ref=e526]
+                      - generic [ref=e528]: Enterprise Software
+                    - generic [ref=e529]:
+                      - img [ref=e530]
+                      - generic [ref=e533]: Remote
+                    - generic [ref=e534]:
+                      - img [ref=e535]
+                      - generic [ref=e537]: Recently
+                  - generic [ref=e538]:
+                    - img [ref=e539]
+                    - generic [ref=e541]: $50,000 - $75,000
+                  - paragraph [ref=e542]: We are seeking a Product Manager to join our team at Enterprise Software. This position requires expertise in Python Developer and related technologies. The ideal candidate will have entry level experience and be passionate about building innovative solutions. This is an excellent opportunity to work on exciting projects and grow your career in a dynamic environment.
+                  - generic [ref=e543]:
+                    - generic [ref=e544]: Python
+                    - generic [ref=e545]: JavaScript
+                    - generic [ref=e546]: React
+                    - generic [ref=e547]: Node.js
+                    - generic [ref=e548]: PostgreSQL
+                - generic [ref=e549]:
+                  - button [ref=e550]:
+                    - img [ref=e551]
+                  - button "Apply" [ref=e553]:
+                    - img [ref=e554]
+                    - text: Apply
+              - generic [ref=e557] [cursor=pointer]:
+                - generic [ref=e558]:
+                  - generic [ref=e559]:
+                    - heading "UX Designer" [level=4] [ref=e560]
+                    - generic [ref=e561]: Remote
+                  - generic [ref=e562]:
+                    - generic [ref=e563]:
+                      - img [ref=e564]
+                      - generic [ref=e566]: Startup Hub
+                    - generic [ref=e567]:
+                      - img [ref=e568]
+                      - generic [ref=e571]: Remote
+                    - generic [ref=e572]:
+                      - img [ref=e573]
+                      - generic [ref=e575]: Recently
+                  - generic [ref=e576]:
+                    - img [ref=e577]
+                    - generic [ref=e579]: $50,000 - $75,000
+                  - paragraph [ref=e580]: We are seeking a UX Designer to join our team at Startup Hub. This position requires expertise in Python Developer and related technologies. The ideal candidate will have entry level experience and be passionate about building innovative solutions. This is an excellent opportunity to work on exciting projects and grow your career in a dynamic environment.
+                  - generic [ref=e581]:
+                    - generic [ref=e582]: Java
+                    - generic [ref=e583]: Spring Boot
+                    - generic [ref=e584]: Microservices
+                    - generic [ref=e585]: Docker
+                    - generic [ref=e586]: AWS
+                - generic [ref=e587]:
+                  - button [ref=e588]:
+                    - img [ref=e589]
+                  - button "Apply" [ref=e591]:
+                    - img [ref=e592]
+                    - text: Apply
+              - generic [ref=e595] [cursor=pointer]:
+                - generic [ref=e596]:
+                  - generic [ref=e597]:
+                    - heading "QA Engineer" [level=4] [ref=e598]
+                    - generic [ref=e599]: Remote
+                  - generic [ref=e600]:
+                    - generic [ref=e601]:
+                      - img [ref=e602]
+                      - generic [ref=e604]: Tech Startup
+                    - generic [ref=e605]:
+                      - img [ref=e606]
+                      - generic [ref=e609]: Remote
+                    - generic [ref=e610]:
+                      - img [ref=e611]
+                      - generic [ref=e613]: Recently
+                  - generic [ref=e614]:
+                    - img [ref=e615]
+                    - generic [ref=e617]: $50,000 - $75,000
+                  - paragraph [ref=e618]: We are seeking a QA Engineer to join our team at Tech Startup. This position requires expertise in Python Developer and related technologies. The ideal candidate will have entry level experience and be passionate about building innovative solutions. This is an excellent opportunity to work on exciting projects and grow your career in a dynamic environment.
+                  - generic [ref=e619]:
+                    - generic [ref=e620]: Machine Learning
+                    - generic [ref=e621]: Python
+                    - generic [ref=e622]: TensorFlow
+                    - generic [ref=e623]: Data Analysis
+                    - generic [ref=e624]: Statistics
+                - generic [ref=e625]:
+                  - button [ref=e626]:
+                    - img [ref=e627]
+                  - button "Apply" [ref=e629]:
+                    - img [ref=e630]
+                    - text: Apply
+              - generic [ref=e633] [cursor=pointer]:
+                - generic [ref=e634]:
+                  - generic [ref=e635]:
+                    - heading "System Administrator" [level=4] [ref=e636]
+                    - generic [ref=e637]: Remote
+                  - generic [ref=e638]:
+                    - generic [ref=e639]:
+                      - img [ref=e640]
+                      - generic [ref=e642]: Digital Agency
+                    - generic [ref=e643]:
+                      - img [ref=e644]
+                      - generic [ref=e647]: Remote
+                    - generic [ref=e648]:
+                      - img [ref=e649]
+                      - generic [ref=e651]: Recently
+                  - generic [ref=e652]:
+                    - img [ref=e653]
+                    - generic [ref=e655]: $50,000 - $75,000
+                  - paragraph [ref=e656]: We are seeking a System Administrator to join our team at Digital Agency. This position requires expertise in Python Developer and related technologies. The ideal candidate will have entry level experience and be passionate about building innovative solutions. This is an excellent opportunity to work on exciting projects and grow your career in a dynamic environment.
+                  - generic [ref=e657]:
+                    - generic [ref=e658]: UI/UX Design
+                    - generic [ref=e659]: Figma
+                    - generic [ref=e660]: Adobe Creative Suite
+                    - generic [ref=e661]: Prototyping
+                    - generic [ref=e662]: User Research
+                - generic [ref=e663]:
+                  - button [ref=e664]:
+                    - img [ref=e665]
+                  - button "Apply" [ref=e667]:
+                    - img [ref=e668]
+                    - text: Apply
+              - generic [ref=e671] [cursor=pointer]:
+                - generic [ref=e672]:
+                  - generic [ref=e673]:
+                    - heading "Cloud Engineer" [level=4] [ref=e674]
+                    - generic [ref=e675]: Remote
+                  - generic [ref=e676]:
+                    - generic [ref=e677]:
+                      - img [ref=e678]
+                      - generic [ref=e680]: Software Corp
+                    - generic [ref=e681]:
+                      - img [ref=e682]
+                      - generic [ref=e685]: Remote
+                    - generic [ref=e686]:
+                      - img [ref=e687]
+                      - generic [ref=e689]: Recently
+                  - generic [ref=e690]:
+                    - img [ref=e691]
+                    - generic [ref=e693]: $50,000 - $75,000
+                  - paragraph [ref=e694]: We are seeking a Cloud Engineer to join our team at Software Corp. This position requires expertise in Python Developer and related technologies. The ideal candidate will have entry level experience and be passionate about building innovative solutions. This is an excellent opportunity to work on exciting projects and grow your career in a dynamic environment.
+                  - generic [ref=e695]:
+                    - generic [ref=e696]: DevOps
+                    - generic [ref=e697]: Kubernetes
+                    - generic [ref=e698]: Jenkins
+                    - generic [ref=e699]: Terraform
+                    - generic [ref=e700]: Monitoring
+                - generic [ref=e701]:
+                  - button [ref=e702]:
+                    - img [ref=e703]
+                  - button "Apply" [ref=e705]:
+                    - img [ref=e706]
+                    - text: Apply
+  - generic:
+    - generic [ref=e711]:
+      - generic [ref=e712]:
+        - heading [level=3] [ref=e713]: Job Details
+        - button [ref=e714] [cursor=pointer]:
+          - img [ref=e715]
+      - generic [ref=e718]:
+        - generic [ref=e720]:
+          - generic [ref=e721]:
+            - heading [level=3] [ref=e722]: Entry Python Developer
+            - paragraph [ref=e723]: TechCorp Inc.
+            - generic [ref=e724]:
+              - generic [ref=e725]:
+                - img [ref=e726]
+                - generic [ref=e729]: Remote
+              - generic [ref=e730]:
+                - img [ref=e731]
+                - generic [ref=e733]: Posted Recently
+          - generic [ref=e735]: Remote
+        - generic [ref=e736]:
+          - generic [ref=e737]:
+            - heading [level=4] [ref=e738]: Salary
+            - generic [ref=e739]:
+              - img [ref=e740]
+              - generic [ref=e742]: $50,000 - $75,000
+          - generic [ref=e743]:
+            - heading [level=4] [ref=e744]: Job Description
+            - generic [ref=e745]: We are seeking a Entry Python Developer to join our team at TechCorp Inc.. This position requires expertise in Python Developer and related technologies. The ideal candidate will have entry level experience and be passionate about building innovative solutions. This is an excellent opportunity to work on exciting projects and grow your career in a dynamic environment.
+          - generic [ref=e746]:
+            - heading [level=4] [ref=e747]: Requirements
+            - list [ref=e748]:
+              - listitem [ref=e749]:
+                - generic [ref=e751]: 5+ years of software development experience
+              - listitem [ref=e752]:
+                - generic [ref=e754]: Bachelor's degree in Computer Science
+              - listitem [ref=e755]:
+                - generic [ref=e757]: Experience with modern web technologies
+          - generic [ref=e758]:
+            - heading [level=4] [ref=e759]: Required Skills
+            - generic [ref=e760]:
+              - generic [ref=e761]: Python
+              - generic [ref=e762]: JavaScript
+              - generic [ref=e763]: React
+              - generic [ref=e764]: Node.js
+              - generic [ref=e765]: PostgreSQL
+        - generic [ref=e766]:
+          - button [ref=e767] [cursor=pointer]: Close
+          - button [ref=e768] [cursor=pointer]:
+            - img [ref=e769]
+            - text: Apply Now
+    - generic:
+      - generic:
+        - dialog "Create Application" [active]:
+          - generic [ref=e774]:
+            - generic [ref=e775]:
+              - heading "Create Application" [level=3] [ref=e776]
+              - button "Close" [ref=e777] [cursor=pointer]:
+                - img [ref=e778]
+            - generic [ref=e781]:
+              - generic [ref=e782]:
+                - generic [ref=e783]:
+                  - heading "Job Details" [level=4] [ref=e784]
+                  - paragraph [ref=e785]:
+                    - strong [ref=e786]: Entry Python Developer
+                    - text: at
+                    - strong [ref=e787]: TechCorp Inc.
+                  - paragraph [ref=e788]: Remote
+                - generic [ref=e790]:
+                  - generic [ref=e791]: Application Notes
+                  - textbox "Application Notes" [ref=e793]:
+                    - /placeholder: Add any notes about this application...
+              - generic [ref=e794]:
+                - button "Cancel" [ref=e795] [cursor=pointer]
+                - button "Create Application" [ref=e796] [cursor=pointer]
+```

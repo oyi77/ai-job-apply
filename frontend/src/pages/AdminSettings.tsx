@@ -1,5 +1,4 @@
-import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import React, { useState } from 'react';
 import { 
   Settings, 
   Brain, 
@@ -24,12 +23,12 @@ import {
   CardBody, 
   CardFooter 
 } from '../components/ui/Card';
-import { Button } from '../components/ui/Button';
-import { Input } from '../components/ui/Input';
-import { Alert } from '../components/ui/Alert';
-import { Badge } from '../components/ui/Badge';
-import { Spinner } from '../components/ui/Spinner';
-import { apiService } from '../services/api';
+import Button from '../components/ui/Button';
+import Input from '../components/ui/Input';
+import Alert from '../components/ui/Alert';
+import Badge from '../components/ui/Badge';
+import Spinner from '../components/ui/Spinner';
+import { jobSearchService } from '../services/api';
 
 interface AIProvider {
   id: string;
@@ -37,6 +36,7 @@ interface AIProvider {
   is_enabled: boolean;
   priority: number;
   api_base_url?: string;
+  api_key?: string;
   default_model?: string;
   temperature: number;
   max_tokens: number;
@@ -65,7 +65,6 @@ interface GlobalAISettings {
 }
 
 export function AdminSettings() {
-  const navigate = useNavigate();
   const queryClient = useQueryClient();
   const [editingProvider, setEditingProvider] = useState<string | null>(null);
   const [showAddProvider, setShowAddProvider] = useState(false);
@@ -74,7 +73,7 @@ export function AdminSettings() {
   // Fetch providers
   const { data: providers, isLoading: loadingProviders } = useQuery({
     queryKey: ['ai-providers'],
-    queryFn: () => apiService.jobSearchService.getJobSources().catch(() => []),
+    queryFn: () => jobSearchService.getJobSources().catch(() => []),
   });
 
   // Fetch AI config directly
@@ -198,10 +197,10 @@ export function AdminSettings() {
         <Alert
           type={testResult.status === 'success' ? 'success' : testResult.status === 'error' ? 'error' : 'warning'}
           title={testResult.status === 'success' ? 'Test Passed' : testResult.status === 'error' ? 'Test Failed' : 'Warning'}
-          onClose={() => setTestResult(null)}
-        >
-          {testResult.message}
-        </Alert>
+          message={testResult.message}
+          dismissible
+          onDismiss={() => setTestResult(null)}
+        />
       )}
 
       {/* AI Providers Grid */}
@@ -213,6 +212,7 @@ export function AdminSettings() {
             onUpdate={(updates) => updateProviderMutation.mutate({ name: provider.provider_name, updates })}
             onTest={() => testProviderMutation.mutate(provider.provider_name)}
             isUpdating={updateProviderMutation.isPending}
+            isTesting={testProviderMutation.isPending}
           />
         ))}
       </div>
@@ -257,12 +257,14 @@ function ProviderCard({
   provider, 
   onUpdate, 
   onTest,
-  isUpdating 
+  isUpdating,
+  isTesting
 }: { 
   provider: AIProvider;
   onUpdate: (updates: Partial<AIProvider>) => void;
   onTest: () => void;
   isUpdating: boolean;
+  isTesting: boolean;
 }) {
   const [isEditing, setIsEditing] = useState(false);
   const [formData, setFormData] = useState({
@@ -352,35 +354,39 @@ function ProviderCard({
         {isEditing && (
           <div className="space-y-4 pt-4 border-t">
             <Input
+              name="api_key"
               label="API Key"
               type="password"
               value={formData.api_key}
-              onChange={(e) => setFormData({ ...formData, api_key: e.target.value })}
+              onChange={(value: string) => setFormData({ ...formData, api_key: value })}
               placeholder="Enter new API key to update"
             />
             <div className="grid grid-cols-2 gap-4">
               <Input
+                name="temperature"
                 label="Temperature"
                 type="number"
                 step="0.1"
                 min="0"
                 max="2"
-                value={formData.temperature}
-                onChange={(e) => setFormData({ ...formData, temperature: parseFloat(e.target.value) })}
+                value={formData.temperature.toString()}
+                onChange={(value: string) => setFormData({ ...formData, temperature: parseFloat(value) || 0 })}
               />
               <Input
+                name="max_tokens"
                 label="Max Tokens"
                 type="number"
                 min="1"
                 max="8192"
-                value={formData.max_tokens}
-                onChange={(e) => setFormData({ ...formData, max_tokens: parseInt(e.target.value) })}
+                value={formData.max_tokens.toString()}
+                onChange={(value: string) => setFormData({ ...formData, max_tokens: parseInt(value) || 0 })}
               />
             </div>
             <Input
+              name="default_model"
               label="Default Model"
               value={formData.default_model}
-              onChange={(e) => setFormData({ ...formData, default_model: e.target.value })}
+              onChange={(value: string) => setFormData({ ...formData, default_model: value })}
               placeholder="e.g., gemini-1.5-flash"
             />
           </div>
@@ -407,7 +413,7 @@ function ProviderCard({
           )}
         </div>
         <div className="flex space-x-2">
-          <Button size="sm" variant="ghost" onClick={onTest} disabled={testProviderMutation.isPending}>
+          <Button size="sm" variant="ghost" onClick={onTest} disabled={isTesting}>
             <TestTube className="w-4 h-4 mr-1" />
             Test
           </Button>
@@ -454,34 +460,38 @@ function GlobalSettingsCard({
       <CardBody>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
           <Input
+            name="active_provider"
             label="Active Provider"
             value={formData.active_provider}
-            onChange={(e) => setFormData({ ...formData, active_provider: e.target.value })}
+            onChange={(value: string) => setFormData({ ...formData, active_provider: value })}
             placeholder="e.g., gemini"
           />
           <Input
+            name="default_temperature"
             label="Default Temperature"
             type="number"
             step="0.1"
             min="0"
             max="2"
-            value={formData.default_temperature}
-            onChange={(e) => setFormData({ ...formData, default_temperature: parseFloat(e.target.value) })}
+            value={formData.default_temperature.toString()}
+            onChange={(value: string) => setFormData({ ...formData, default_temperature: parseFloat(value) || 0 })}
           />
           <Input
+            name="max_retries"
             label="Max Retries"
             type="number"
             min="0"
             max="10"
-            value={formData.max_retries}
-            onChange={(e) => setFormData({ ...formData, max_retries: parseInt(e.target.value) })}
+            value={formData.max_retries.toString()}
+            onChange={(value: string) => setFormData({ ...formData, max_retries: parseInt(value) || 0 })}
           />
           <Input
+            name="rate_limit"
             label="Rate Limit (req/min)"
             type="number"
             min="1"
-            value={formData.rate_limit_requests_per_minute}
-            onChange={(e) => setFormData({ ...formData, rate_limit_requests_per_minute: parseInt(e.target.value) })}
+            value={formData.rate_limit_requests_per_minute.toString()}
+            onChange={(value: string) => setFormData({ ...formData, rate_limit_requests_per_minute: parseInt(value) || 1 })}
           />
         </div>
 
@@ -490,7 +500,7 @@ function GlobalSettingsCard({
             <input
               type="checkbox"
               checked={formData.auto_retry_on_failure}
-              onChange={(e) => setFormData({ ...formData, auto_retry_on_failure: e.target.checked })}
+              onChange={(e: React.ChangeEvent<HTMLInputElement>) => setFormData({ ...formData, auto_retry_on_failure: e.target.checked })}
               className="rounded border-gray-300 text-primary-600 focus:ring-primary-500"
             />
             <span className="text-sm">Auto Retry</span>
@@ -499,7 +509,7 @@ function GlobalSettingsCard({
             <input
               type="checkbox"
               checked={formData.fallback_to_mock}
-              onChange={(e) => setFormData({ ...formData, fallback_to_mock: e.target.checked })}
+              onChange={(e: React.ChangeEvent<HTMLInputElement>) => setFormData({ ...formData, fallback_to_mock: e.target.checked })}
               className="rounded border-gray-300 text-primary-600 focus:ring-primary-500"
             />
             <span className="text-sm">Fallback to Mock</span>
@@ -508,17 +518,18 @@ function GlobalSettingsCard({
             <input
               type="checkbox"
               checked={formData.cache_enabled}
-              onChange={(e) => setFormData({ ...formData, cache_enabled: e.target.checked })}
+              onChange={(e: React.ChangeEvent<HTMLInputElement>) => setFormData({ ...formData, cache_enabled: e.target.checked })}
               className="rounded border-gray-300 text-primary-600 focus:ring-primary-500"
             />
             <span className="text-sm">Enable Cache</span>
           </label>
           <Input
+            name="cache_ttl"
             label="Cache TTL (seconds)"
             type="number"
             min="0"
-            value={formData.cache_ttl_seconds}
-            onChange={(e) => setFormData({ ...formData, cache_ttl_seconds: parseInt(e.target.value) })}
+            value={formData.cache_ttl_seconds.toString()}
+            onChange={(value: string) => setFormData({ ...formData, cache_ttl_seconds: parseInt(value) || 0 })}
           />
         </div>
       </CardBody>
@@ -571,53 +582,59 @@ function AddProviderModal({
         <form onSubmit={handleSubmit} className="p-6 space-y-6">
           <div className="grid grid-cols-2 gap-4">
             <Input
+              name="provider_name"
               label="Provider Name"
               required
               value={formData.provider_name}
-              onChange={(e) => setFormData({ ...formData, provider_name: e.target.value })}
+              onChange={(value: string) => setFormData({ ...formData, provider_name: value })}
               placeholder="e.g., openai, anthropic, gemini"
             />
             <Input
+              name="default_model"
               label="Default Model"
               value={formData.default_model}
-              onChange={(e) => setFormData({ ...formData, default_model: e.target.value })}
+              onChange={(value: string) => setFormData({ ...formData, default_model: value })}
               placeholder="e.g., gpt-4, claude-3"
             />
           </div>
 
           <Input
+            name="api_key"
             label="API Key"
             type="password"
             required
             value={formData.api_key}
-            onChange={(e) => setFormData({ ...formData, api_key: e.target.value })}
+            onChange={(value: string) => setFormData({ ...formData, api_key: value })}
             placeholder="Enter API key"
           />
 
           <Input
+            name="api_base_url"
             label="API Base URL"
             value={formData.api_base_url}
-            onChange={(e) => setFormData({ ...formData, api_base_url: e.target.value })}
+            onChange={(value: string) => setFormData({ ...formData, api_base_url: value })}
             placeholder="e.g., https://api.openai.com/v1"
           />
 
           <div className="grid grid-cols-2 gap-4">
             <Input
+              name="temperature"
               label="Temperature"
               type="number"
               step="0.1"
               min="0"
               max="2"
-              value={formData.temperature}
-              onChange={(e) => setFormData({ ...formData, temperature: parseFloat(e.target.value) })}
+              value={formData.temperature.toString()}
+              onChange={(value: string) => setFormData({ ...formData, temperature: parseFloat(value) || 0 })}
             />
             <Input
+              name="max_tokens"
               label="Max Tokens"
               type="number"
               min="1"
               max="8192"
-              value={formData.max_tokens}
-              onChange={(e) => setFormData({ ...formData, max_tokens: parseInt(e.target.value) })}
+              value={formData.max_tokens.toString()}
+              onChange={(value: string) => setFormData({ ...formData, max_tokens: parseInt(value) || 0 })}
             />
           </div>
 
@@ -628,7 +645,7 @@ function AddProviderModal({
                 <input
                   type="checkbox"
                   checked={formData.supports_resume_optimization}
-                  onChange={(e) => setFormData({ ...formData, supports_resume_optimization: e.target.checked })}
+                  onChange={(e: React.ChangeEvent<HTMLInputElement>) => setFormData({ ...formData, supports_resume_optimization: e.target.checked })}
                   className="rounded border-gray-300 text-primary-600 focus:ring-primary-500"
                 />
                 <span className="text-sm">Resume Optimization</span>
@@ -637,7 +654,7 @@ function AddProviderModal({
                 <input
                   type="checkbox"
                   checked={formData.supports_cover_letter}
-                  onChange={(e) => setFormData({ ...formData, supports_cover_letter: e.target.checked })}
+                  onChange={(e: React.ChangeEvent<HTMLInputElement>) => setFormData({ ...formData, supports_cover_letter: e.target.checked })}
                   className="rounded border-gray-300 text-primary-600 focus:ring-primary-500"
                 />
                 <span className="text-sm">Cover Letter</span>
@@ -646,7 +663,7 @@ function AddProviderModal({
                 <input
                   type="checkbox"
                   checked={formData.supports_interview_prep}
-                  onChange={(e) => setFormData({ ...formData, supports_interview_prep: e.target.checked })}
+                  onChange={(e: React.ChangeEvent<HTMLInputElement>) => setFormData({ ...formData, supports_interview_prep: e.target.checked })}
                   className="rounded border-gray-300 text-primary-600 focus:ring-primary-500"
                 />
                 <span className="text-sm">Interview Prep</span>
@@ -655,7 +672,7 @@ function AddProviderModal({
                 <input
                   type="checkbox"
                   checked={formData.supports_career_insights}
-                  onChange={(e) => setFormData({ ...formData, supports_career_insights: e.target.checked })}
+                  onChange={(e: React.ChangeEvent<HTMLInputElement>) => setFormData({ ...formData, supports_career_insights: e.target.checked })}
                   className="rounded border-gray-300 text-primary-600 focus:ring-primary-500"
                 />
                 <span className="text-sm">Career Insights</span>

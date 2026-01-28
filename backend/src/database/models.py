@@ -1,6 +1,5 @@
 """Database models for the AI Job Application Assistant."""
 
-
 from datetime import datetime, timezone
 from typing import Optional, List
 from sqlalchemy import (
@@ -521,6 +520,13 @@ class DBUser(Base):
         "DBPushSubscription", back_populates="user", cascade="all, delete-orphan"
     )
 
+    auto_apply_config: Mapped[Optional["DBAutoApplyConfig"]] = relationship(
+        "DBAutoApplyConfig",
+        back_populates="user",
+        cascade="all, delete-orphan",
+        uselist=False,
+    )
+
     # Indexes for performance
     __table_args__ = (
         Index("idx_user_email", "email"),
@@ -631,7 +637,6 @@ class DBPushSubscription(Base):
         Index("idx_push_subscription_user_id", "user_id"),
         Index("idx_push_subscription_created_at", "created_at"),
     )
-
 
 
 class DBPerformanceMetric(Base):
@@ -963,4 +968,48 @@ class GlobalAISettings(Base):
             "cache_ttl_seconds": self.cache_ttl_seconds,
             "created_at": self.created_at.isoformat() if self.created_at else None,
             "updated_at": self.updated_at.isoformat() if self.updated_at else None,
+        }
+
+
+class DBAutoApplyConfig(Base):
+    """Database model for Auto-Apply configuration."""
+
+    __tablename__ = "auto_apply_configs"
+
+    id: Mapped[str] = mapped_column(
+        String, primary_key=True, default=lambda: str(uuid.uuid4())
+    )
+    user_id: Mapped[str] = mapped_column(
+        String, ForeignKey("users.id", ondelete="CASCADE"), nullable=False, unique=True
+    )
+    keywords: Mapped[str] = mapped_column(Text, nullable=False)  # JSON list string
+    locations: Mapped[str] = mapped_column(Text, nullable=False)  # JSON list string
+    min_salary: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
+    daily_limit: Mapped[int] = mapped_column(Integer, default=5)
+    is_active: Mapped[bool] = mapped_column(Boolean, default=False)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime, default=lambda: datetime.now(timezone.utc)
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime,
+        default=lambda: datetime.now(timezone.utc),
+        onupdate=lambda: datetime.now(timezone.utc),
+    )
+
+    # Relationships
+    user: Mapped["DBUser"] = relationship("DBUser", back_populates="auto_apply_config")
+
+    def to_dict(self) -> dict:
+        import json
+
+        return {
+            "id": self.id,
+            "user_id": self.user_id,
+            "keywords": json.loads(self.keywords) if self.keywords else [],
+            "locations": json.loads(self.locations) if self.locations else [],
+            "min_salary": self.min_salary,
+            "daily_limit": self.daily_limit,
+            "is_active": self.is_active,
+            "created_at": self.created_at.isoformat(),
+            "updated_at": self.updated_at.isoformat(),
         }

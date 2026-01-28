@@ -1,0 +1,155 @@
+# Page snapshot
+
+```yaml
+- generic [ref=e1]:
+  - generic [ref=e4]:
+    - generic [ref=e6]:
+      - generic [ref=e7]:
+        - generic [ref=e9]: AI
+        - generic [ref=e10]: Job Apply
+      - navigation "Main navigation" [ref=e11]:
+        - link "Dashboard (Alt+1)" [ref=e12]:
+          - /url: /
+          - img [ref=e13]
+          - text: Dashboard
+        - link "Applications (Alt+2)" [ref=e15]:
+          - /url: /applications
+          - img [ref=e16]
+          - text: Applications
+        - link "Resumes (Alt+3)" [ref=e18]:
+          - /url: /resumes
+          - img [ref=e19]
+          - text: Resumes
+        - link "Cover Letters (Alt+4)" [ref=e21]:
+          - /url: /cover-letters
+          - img [ref=e22]
+          - text: Cover Letters
+        - link "Job Search (Alt+5)" [ref=e24]:
+          - /url: /job-search
+          - img [ref=e25]
+          - text: Job Search
+        - link "AI Services (Alt+6)" [ref=e27]:
+          - /url: /ai-services
+          - img [ref=e28]
+          - text: AI Services
+        - link "Analytics (Alt+7)" [ref=e30]:
+          - /url: /analytics
+          - img [ref=e31]
+          - text: Analytics
+        - link "Settings (Alt+8)" [ref=e33]:
+          - /url: /settings
+          - img [ref=e34]
+          - text: Settings
+        - link "Admin Settings (Alt+9)" [ref=e37]:
+          - /url: /admin-settings
+          - img [ref=e38]
+          - text: Admin Settings
+    - generic [ref=e40]:
+      - banner [ref=e41]:
+        - generic [ref=e42]:
+          - generic [ref=e43]:
+            - img [ref=e45]
+            - heading "AI Job Assists" [level=1] [ref=e47]
+          - generic [ref=e48]:
+            - generic [ref=e49]:
+              - generic [ref=e50]:
+                - button "Light" [ref=e51] [cursor=pointer]:
+                  - img [ref=e52]
+                  - generic [ref=e54]: Light
+                - button "Dark" [ref=e55] [cursor=pointer]:
+                  - img [ref=e56]
+                  - generic [ref=e58]: Dark
+                - button "System" [ref=e59] [cursor=pointer]:
+                  - img [ref=e60]
+                  - generic [ref=e62]: System
+              - button "Open notifications" [ref=e64] [cursor=pointer]:
+                - img [ref=e65]
+            - button "Updated User Pro Member" [ref=e68] [cursor=pointer]:
+              - img [ref=e70]
+              - generic [ref=e72]:
+                - paragraph [ref=e73]: Updated User
+                - paragraph [ref=e74]: Pro Member
+      - main [ref=e75]:
+        - generic [ref=e77]:
+          - generic [ref=e78]:
+            - generic [ref=e79]:
+              - heading "Cover Letters" [level=1] [ref=e80]
+              - paragraph [ref=e81]: Manage and generate personalized cover letters for your job applications
+            - generic [ref=e82]:
+              - button "Generate with AI" [ref=e83] [cursor=pointer]:
+                - img [ref=e84]
+                - text: Generate with AI
+              - button "Create New" [ref=e86] [cursor=pointer]:
+                - img [ref=e87]
+                - text: Create New
+          - generic [ref=e89]:
+            - generic [ref=e92]:
+              - img [ref=e94]
+              - generic [ref=e96]:
+                - paragraph [ref=e97]: Total Cover Letters
+                - paragraph [ref=e98]: "0"
+            - generic [ref=e101]:
+              - img [ref=e103]
+              - generic [ref=e105]:
+                - paragraph [ref=e106]: Final Versions
+                - paragraph [ref=e107]: "0"
+            - generic [ref=e110]:
+              - img [ref=e112]
+              - generic [ref=e114]:
+                - paragraph [ref=e115]: Drafts
+                - paragraph [ref=e116]: "0"
+            - generic [ref=e119]:
+              - img [ref=e121]
+              - generic [ref=e123]:
+                - paragraph [ref=e124]: Sent
+                - paragraph [ref=e125]: "0"
+          - generic [ref=e128]:
+            - generic [ref=e131]:
+              - generic:
+                - img
+              - textbox "Search cover letters..." [ref=e132]
+            - button "Select an option" [ref=e136]:
+              - generic [ref=e137]: Select an option
+              - generic:
+                - img
+          - generic [ref=e138]:
+            - generic [ref=e140]:
+              - checkbox [ref=e141]
+              - heading "Cover Letters" [level=3] [ref=e142]
+            - generic [ref=e144]:
+              - img [ref=e145]
+              - paragraph [ref=e147]: No cover letters found
+              - button "Create your first cover letter" [ref=e148] [cursor=pointer]
+  - generic:
+    - generic:
+      - generic:
+        - dialog "Create New Cover Letter" [active]:
+          - generic [ref=e152]:
+            - generic [ref=e153]:
+              - heading "Create New Cover Letter" [level=3] [ref=e154]
+              - button "Close" [ref=e155] [cursor=pointer]:
+                - img [ref=e156]
+            - generic [ref=e159]:
+              - generic [ref=e160]:
+                - generic [ref=e162]:
+                  - generic [ref=e163]: Job Title*
+                  - textbox "Job Title*" [ref=e165]:
+                    - /placeholder: e.g., Senior Software Engineer
+                - generic [ref=e167]:
+                  - generic [ref=e168]: Company*
+                  - textbox "Company*" [ref=e170]:
+                    - /placeholder: e.g., Tech Corp
+                - generic [ref=e172]:
+                  - generic [ref=e173]: Content*
+                  - textbox "Content*" [ref=e175]:
+                    - /placeholder: Write your cover letter content here...
+                - generic [ref=e176]:
+                  - generic [ref=e177]: Status *
+                  - button "Draft" [ref=e180]:
+                    - generic [ref=e181]: Draft
+                    - generic:
+                      - img
+              - generic [ref=e182]:
+                - button "Cancel" [ref=e183] [cursor=pointer]
+                - button "Create Cover Letter" [ref=e184] [cursor=pointer]
+```

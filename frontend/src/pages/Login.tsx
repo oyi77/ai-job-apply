@@ -63,7 +63,6 @@ const Login: React.FC = () => {
           <CardBody className="p-6">
             <form className="space-y-6" onSubmit={handleSubmit(onSubmit)}>
               <Input
-                name="email"
                 label="Email address"
                 type="email"
                 placeholder="Enter your email"
@@ -72,7 +71,6 @@ const Login: React.FC = () => {
               />
 
               <Input
-                name="password"
                 label="Password"
                 type="password"
                 placeholder="Enter your password"

@@ -46,7 +46,7 @@ const FormField: React.FC<FormFieldProps> = ({
         error={error}
         required={required}
         disabled={disabled}
-        onChange={(val) => {
+        onChange={(val: string) => {
           onChange({ target: { name, value: val } } as any);
         }}
       />

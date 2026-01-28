@@ -5,139 +5,293 @@ from datetime import datetime, timezone
 import json
 
 from src.core.ai_service import AIService
-from src.models.resume import ResumeOptimizationRequest, ResumeOptimizationResponse, Resume
+from src.models.resume import (
+    ResumeOptimizationRequest,
+    ResumeOptimizationResponse,
+    Resume,
+)
 from src.models.cover_letter import CoverLetterRequest, CoverLetter
 from src.models.career_insights import CareerInsightsRequest, CareerInsightsResponse
 from src.config import config
 from src.services.ai_provider_manager import AIProviderManager
 from src.services.gemini_ai_service import GeminiAIService
+from src.services.g4f_ai_service import G4FAIService
 from loguru import logger
 
 
 class UnifiedAIService(AIService):
     """Unified AI service that supports multiple providers with intelligent fallback.
-    
+
     Priority order:
     1. Modern providers (Cursor, OpenRouter, OpenAI) via AIProviderManager
     2. Gemini (legacy, but still supported)
     3. Mock responses if all fail
     """
-    
+
     def __init__(self):
         """Initialize the unified AI service."""
         self.logger = logger.bind(module="UnifiedAIService")
         self.provider_manager = AIProviderManager()
         self.gemini_service = GeminiAIService()
+        self.g4f_service = G4FAIService()
         self._initialized = False
         self._use_modern_providers = False
-    
+        self._use_g4f = False
+        self._use_gemini = False
+        self._ai_provider = config.ai_provider
+
     async def initialize(self) -> bool:
-        """Initialize the AI service with all available providers."""
+        """Initialize the AI service with all available providers.
+
+        Priority order based on config.ai_provider:
+        - 'g4f': G4F first, then Gemini, then modern providers, then mock
+        - 'gemini': Gemini first, then modern providers, then G4F, then mock
+        - 'auto': Modern providers first, then Gemini, then G4F, then mock
+        """
         try:
-            # Try to initialize modern providers first
-            if config.ai_providers:
-                success = await self.provider_manager.initialize(config.ai_providers)
-                if success and await self.provider_manager.is_any_available():
-                    self._use_modern_providers = True
+            self.logger.info(
+                f"Initializing unified AI service with provider: {self._ai_provider}"
+            )
+
+            if self._ai_provider == "g4f":
+                # Prioritize G4F
+                if await self.g4f_service.is_available():
+                    self._use_g4f = True
                     self._initialized = True
-                    self.logger.info("Unified AI service initialized with modern providers")
+                    self.logger.info(
+                        "Unified AI service initialized with G4F (primary)"
+                    )
                     return True
-            
-            # Fall back to Gemini if modern providers not available
-            if await self.gemini_service.is_available():
-                self._use_modern_providers = False
-                self._initialized = True
-                self.logger.info("Unified AI service initialized with Gemini fallback")
-                return True
-            
+
+                # Fall back to Gemini
+                if await self.gemini_service.is_available():
+                    self._use_gemini = True
+                    self._initialized = True
+                    self.logger.info(
+                        "Unified AI service initialized with Gemini (G4F fallback)"
+                    )
+                    return True
+
+                # Fall back to modern providers
+                if config.ai_providers:
+                    success = await self.provider_manager.initialize(
+                        config.ai_providers
+                    )
+                    if success and await self.provider_manager.is_any_available():
+                        self._use_modern_providers = True
+                        self._initialized = True
+                        self.logger.info(
+                            "Unified AI service initialized with modern providers (G4F fallback)"
+                        )
+                        return True
+
+            elif self._ai_provider == "gemini":
+                # Prioritize Gemini
+                if await self.gemini_service.is_available():
+                    self._use_gemini = True
+                    self._initialized = True
+                    self.logger.info(
+                        "Unified AI service initialized with Gemini (primary)"
+                    )
+                    return True
+
+                # Fall back to modern providers
+                if config.ai_providers:
+                    success = await self.provider_manager.initialize(
+                        config.ai_providers
+                    )
+                    if success and await self.provider_manager.is_any_available():
+                        self._use_modern_providers = True
+                        self._initialized = True
+                        self.logger.info(
+                            "Unified AI service initialized with modern providers (Gemini fallback)"
+                        )
+                        return True
+
+                # Fall back to G4F
+                if await self.g4f_service.is_available():
+                    self._use_g4f = True
+                    self._initialized = True
+                    self.logger.info(
+                        "Unified AI service initialized with G4F (Gemini fallback)"
+                    )
+                    return True
+
+            else:  # 'auto' or default
+                # Try modern providers first
+                if config.ai_providers:
+                    success = await self.provider_manager.initialize(
+                        config.ai_providers
+                    )
+                    if success and await self.provider_manager.is_any_available():
+                        self._use_modern_providers = True
+                        self._initialized = True
+                        self.logger.info(
+                            "Unified AI service initialized with modern providers (auto)"
+                        )
+                        return True
+
+                # Fall back to Gemini
+                if await self.gemini_service.is_available():
+                    self._use_gemini = True
+                    self._initialized = True
+                    self.logger.info(
+                        "Unified AI service initialized with Gemini (auto fallback)"
+                    )
+                    return True
+
+                # Fall back to G4F
+                if await self.g4f_service.is_available():
+                    self._use_g4f = True
+                    self._initialized = True
+                    self.logger.info(
+                        "Unified AI service initialized with G4F (auto fallback)"
+                    )
+                    return True
+
             # No providers available, but service can still work with mocks
             self._initialized = True
             self.logger.warning("No AI providers available, running in mock mode")
             return False
-                
+
         except Exception as e:
             self.logger.error(f"Failed to initialize unified AI service: {e}")
             self._initialized = True  # Still allow service to work with mocks
             return False
-    
+
     async def is_available(self) -> bool:
         """Check if any AI provider is available."""
         if not self._initialized:
             return False
-        
+
         if self._use_modern_providers:
             return await self.provider_manager.is_any_available()
-        else:
+        elif self._use_gemini:
             return await self.gemini_service.is_available()
-    
+        elif self._use_g4f:
+            return await self.g4f_service.is_available()
+        else:
+            return False
+
     async def get_provider_status(self) -> Dict[str, bool]:
         """Get status of all AI providers."""
         status = {}
-        
+
         if self._use_modern_providers:
             status.update(await self.provider_manager.get_provider_status())
-        
+
         status["gemini"] = await self.gemini_service.is_available()
-        
+        status["g4f"] = await self.g4f_service.is_available()
+        status["active_provider"] = (
+            "modern_providers"
+            if self._use_modern_providers
+            else "gemini"
+            if self._use_gemini
+            else "g4f"
+            if self._use_g4f
+            else "mock"
+        )
+
         return status
-    
-    async def optimize_resume(self, request: ResumeOptimizationRequest) -> ResumeOptimizationResponse:
+
+    async def optimize_resume(
+        self, request: ResumeOptimizationRequest
+    ) -> ResumeOptimizationResponse:
         """Optimize resume for a specific job."""
         try:
-            self.logger.info(f"Optimizing resume for {request.target_role} at {request.company_name}")
-            
-            # Try modern providers first
-            if self._use_modern_providers and await self.provider_manager.is_any_available():
+            self.logger.info(
+                f"Optimizing resume for {request.target_role} at {request.company_name}"
+            )
+
+            # Try primary provider
+            if (
+                self._use_modern_providers
+                and await self.provider_manager.is_any_available()
+            ):
                 try:
-                    # Build prompt for resume optimization
+                    self.logger.debug("Using modern provider for resume optimization")
                     prompt = self._build_resume_optimization_prompt(request)
                     ai_response = await self.provider_manager.generate_text(prompt)
-                    
-                    # Parse response
-                    optimization_data = self._parse_resume_optimization_response(ai_response.content)
-                    
+                    optimization_data = self._parse_resume_optimization_response(
+                        ai_response.content
+                    )
+
                     original_resume = Resume(
                         name="Current Resume",
                         file_path=f"./resumes/{request.resume_id}.pdf",
-                        file_type="pdf"
+                        file_type="pdf",
                     )
-                    
+
                     return ResumeOptimizationResponse(
                         original_resume=original_resume,
-                        optimized_content=optimization_data.get("optimized_content", ""),
+                        optimized_content=optimization_data.get(
+                            "optimized_content", ""
+                        ),
                         suggestions=optimization_data.get("suggestions", []),
                         skill_gaps=optimization_data.get("skill_gaps", []),
                         improvements=optimization_data.get("improvements", []),
                         confidence_score=optimization_data.get("confidence_score", 0.8),
                         ats_score=optimization_data.get("ats_score"),
                         ats_checks=optimization_data.get("ats_checks"),
-                        ats_recommendations=optimization_data.get("ats_recommendations")
+                        ats_recommendations=optimization_data.get(
+                            "ats_recommendations"
+                        ),
                     )
                 except Exception as e:
                     self.logger.warning(f"Modern provider failed, falling back: {e}")
-            
+
             # Fall back to Gemini
+            if self._use_gemini and await self.gemini_service.is_available():
+                try:
+                    self.logger.debug("Using Gemini for resume optimization (fallback)")
+                    return await self.gemini_service.optimize_resume(request)
+                except Exception as e:
+                    self.logger.warning(f"Gemini failed, falling back: {e}")
+
+            # Fall back to G4F
+            if self._use_g4f and await self.g4f_service.is_available():
+                try:
+                    self.logger.debug("Using G4F for resume optimization (fallback)")
+                    return await self.g4f_service.optimize_resume(request)
+                except Exception as e:
+                    self.logger.warning(f"G4F failed, falling back to mock: {e}")
+
+            # Try any available provider as last resort
             if await self.gemini_service.is_available():
+                self.logger.debug("Using Gemini as last resort for resume optimization")
                 return await self.gemini_service.optimize_resume(request)
-            
+
+            if await self.g4f_service.is_available():
+                self.logger.debug("Using G4F as last resort for resume optimization")
+                return await self.g4f_service.optimize_resume(request)
+
             # Fall back to mock
+            self.logger.debug("No providers available, using mock response")
             return self._mock_resume_optimization(request)
-                
+
         except Exception as e:
             self.logger.error(f"Error optimizing resume: {e}", exc_info=True)
             return self._mock_resume_optimization(request)
-    
+
     async def generate_cover_letter(self, request: CoverLetterRequest) -> CoverLetter:
         """Generate a personalized cover letter."""
         try:
-            self.logger.info(f"Generating cover letter for {request.job_title} at {request.company_name}")
-            
-            # Try modern providers first
-            if self._use_modern_providers and await self.provider_manager.is_any_available():
+            self.logger.info(
+                f"Generating cover letter for {request.job_title} at {request.company_name}"
+            )
+
+            # Try primary provider
+            if (
+                self._use_modern_providers
+                and await self.provider_manager.is_any_available()
+            ):
                 try:
+                    self.logger.debug(
+                        "Using modern provider for cover letter generation"
+                    )
                     prompt = self._build_cover_letter_prompt(request)
                     ai_response = await self.provider_manager.generate_text(prompt)
-                    
+
                     return CoverLetter(
                         job_title=request.job_title,
                         company_name=request.company_name,
@@ -145,58 +299,130 @@ class UnifiedAIService(AIService):
                         tone=request.tone or "professional",
                         word_count=len(ai_response.content.split()),
                         file_path=f"./cover_letters/{request.job_title}_{request.company_name}.txt",
-                        generated_at=datetime.now(timezone.utc)
+                        generated_at=datetime.now(timezone.utc),
                     )
                 except Exception as e:
                     self.logger.warning(f"Modern provider failed, falling back: {e}")
-            
+
             # Fall back to Gemini
+            if self._use_gemini and await self.gemini_service.is_available():
+                try:
+                    self.logger.debug(
+                        "Using Gemini for cover letter generation (fallback)"
+                    )
+                    return await self.gemini_service.generate_cover_letter(request)
+                except Exception as e:
+                    self.logger.warning(f"Gemini failed, falling back: {e}")
+
+            # Fall back to G4F
+            if self._use_g4f and await self.g4f_service.is_available():
+                try:
+                    self.logger.debug(
+                        "Using G4F for cover letter generation (fallback)"
+                    )
+                    return await self.g4f_service.generate_cover_letter(request)
+                except Exception as e:
+                    self.logger.warning(f"G4F failed, falling back to mock: {e}")
+
+            # Try any available provider as last resort
             if await self.gemini_service.is_available():
+                self.logger.debug(
+                    "Using Gemini as last resort for cover letter generation"
+                )
                 return await self.gemini_service.generate_cover_letter(request)
-            
+
+            if await self.g4f_service.is_available():
+                self.logger.debug(
+                    "Using G4F as last resort for cover letter generation"
+                )
+                return await self.g4f_service.generate_cover_letter(request)
+
             # Fall back to mock
+            self.logger.debug("No providers available, using mock response")
             return self._mock_cover_letter_generation(request)
-                
+
         except Exception as e:
             self.logger.error(f"Error generating cover letter: {e}", exc_info=True)
             return self._mock_cover_letter_generation(request)
-    
-    async def analyze_job_match(self, resume_content: str, job_description: str) -> Dict[str, Any]:
+
+    async def analyze_job_match(
+        self, resume_content: str, job_description: str
+    ) -> Dict[str, Any]:
         """Analyze how well a resume matches a job description."""
         try:
             self.logger.info("Analyzing job-resume match")
-            
-            # Try modern providers first
-            if self._use_modern_providers and await self.provider_manager.is_any_available():
+
+            # Try primary provider
+            if (
+                self._use_modern_providers
+                and await self.provider_manager.is_any_available()
+            ):
                 try:
-                    prompt = self._build_job_match_prompt(resume_content, job_description)
+                    self.logger.debug("Using modern provider for job match analysis")
+                    prompt = self._build_job_match_prompt(
+                        resume_content, job_description
+                    )
                     ai_response = await self.provider_manager.generate_text(prompt)
                     return self._parse_job_match_response(ai_response.content)
                 except Exception as e:
                     self.logger.warning(f"Modern provider failed, falling back: {e}")
-            
+
             # Fall back to Gemini
+            if self._use_gemini and await self.gemini_service.is_available():
+                try:
+                    self.logger.debug("Using Gemini for job match analysis (fallback)")
+                    return await self.gemini_service.analyze_job_match(
+                        resume_content, job_description
+                    )
+                except Exception as e:
+                    self.logger.warning(f"Gemini failed, falling back: {e}")
+
+            # Fall back to G4F
+            if self._use_g4f and await self.g4f_service.is_available():
+                try:
+                    self.logger.debug("Using G4F for job match analysis (fallback)")
+                    return await self.g4f_service.analyze_job_match(
+                        resume_content, job_description
+                    )
+                except Exception as e:
+                    self.logger.warning(f"G4F failed, falling back to mock: {e}")
+
+            # Try any available provider as last resort
             if await self.gemini_service.is_available():
-                return await self.gemini_service.analyze_job_match(resume_content, job_description)
-            
+                self.logger.debug("Using Gemini as last resort for job match analysis")
+                return await self.gemini_service.analyze_job_match(
+                    resume_content, job_description
+                )
+
+            if await self.g4f_service.is_available():
+                self.logger.debug("Using G4F as last resort for job match analysis")
+                return await self.g4f_service.analyze_job_match(
+                    resume_content, job_description
+                )
+
             # Fall back to mock
+            self.logger.debug("No providers available, using mock response")
             return self._mock_job_match_analysis()
-                
+
         except Exception as e:
             self.logger.error(f"Error analyzing job match: {e}", exc_info=True)
             return self._mock_job_match_analysis()
-    
+
     async def extract_resume_skills(self, resume_content: str) -> List[str]:
         """Extract skills from resume content."""
         try:
             self.logger.info("Extracting skills from resume")
-            
-            # Try modern providers first
-            if self._use_modern_providers and await self.provider_manager.is_any_available():
+
+            # Try primary provider
+            if (
+                self._use_modern_providers
+                and await self.provider_manager.is_any_available()
+            ):
                 try:
+                    self.logger.debug("Using modern provider for skills extraction")
                     prompt = f"Extract all technical and professional skills from the following resume content. Return only a JSON array of skill names:\n\n{resume_content}"
                     ai_response = await self.provider_manager.generate_text(prompt)
-                    
+
                     # Try to parse as JSON
                     try:
                         skills = json.loads(ai_response.content)
@@ -204,33 +430,69 @@ class UnifiedAIService(AIService):
                             return skills
                     except:
                         # If not JSON, split by lines
-                        skills = [s.strip() for s in ai_response.content.split('\n') if s.strip()]
+                        skills = [
+                            s.strip()
+                            for s in ai_response.content.split("\n")
+                            if s.strip()
+                        ]
                         return skills[:20]  # Limit to 20 skills
                 except Exception as e:
                     self.logger.warning(f"Modern provider failed, falling back: {e}")
-            
+
             # Fall back to Gemini
+            if self._use_gemini and await self.gemini_service.is_available():
+                try:
+                    self.logger.debug("Using Gemini for skills extraction (fallback)")
+                    return await self.gemini_service.extract_resume_skills(
+                        resume_content
+                    )
+                except Exception as e:
+                    self.logger.warning(f"Gemini failed, falling back: {e}")
+
+            # Fall back to G4F
+            if self._use_g4f and await self.g4f_service.is_available():
+                try:
+                    self.logger.debug("Using G4F for skills extraction (fallback)")
+                    return await self.g4f_service.extract_resume_skills(resume_content)
+                except Exception as e:
+                    self.logger.warning(f"G4F failed, falling back to mock: {e}")
+
+            # Try any available provider as last resort
             if await self.gemini_service.is_available():
+                self.logger.debug("Using Gemini as last resort for skills extraction")
                 return await self.gemini_service.extract_resume_skills(resume_content)
-            
+
+            if await self.g4f_service.is_available():
+                self.logger.debug("Using G4F as last resort for skills extraction")
+                return await self.g4f_service.extract_resume_skills(resume_content)
+
             # Fall back to mock
+            self.logger.debug("No providers available, using mock response")
             return self._mock_skills_extraction()
-                
+
         except Exception as e:
             self.logger.error(f"Error extracting skills: {e}", exc_info=True)
             return self._mock_skills_extraction()
-    
-    async def suggest_resume_improvements(self, resume_content: str, job_description: str) -> List[str]:
+
+    async def suggest_resume_improvements(
+        self, resume_content: str, job_description: str
+    ) -> List[str]:
         """Suggest improvements for a resume based on job description."""
         try:
             self.logger.info("Generating resume improvement suggestions")
-            
-            # Try modern providers first
-            if self._use_modern_providers and await self.provider_manager.is_any_available():
+
+            # Try primary provider
+            if (
+                self._use_modern_providers
+                and await self.provider_manager.is_any_available()
+            ):
                 try:
+                    self.logger.debug(
+                        "Using modern provider for improvement suggestions"
+                    )
                     prompt = f"Analyze this resume and job description, then provide specific improvement suggestions. Return a JSON array of improvement suggestions:\n\nResume:\n{resume_content}\n\nJob Description:\n{job_description}"
                     ai_response = await self.provider_manager.generate_text(prompt)
-                    
+
                     # Try to parse as JSON
                     try:
                         improvements = json.loads(ai_response.content)
@@ -238,23 +500,67 @@ class UnifiedAIService(AIService):
                             return improvements
                     except:
                         # If not JSON, split by lines
-                        improvements = [s.strip() for s in ai_response.content.split('\n') if s.strip() and s.strip().startswith('-')]
+                        improvements = [
+                            s.strip()
+                            for s in ai_response.content.split("\n")
+                            if s.strip() and s.strip().startswith("-")
+                        ]
                         return improvements[:10]  # Limit to 10 improvements
                 except Exception as e:
                     self.logger.warning(f"Modern provider failed, falling back: {e}")
-            
+
             # Fall back to Gemini
+            if self._use_gemini and await self.gemini_service.is_available():
+                try:
+                    self.logger.debug(
+                        "Using Gemini for improvement suggestions (fallback)"
+                    )
+                    return await self.gemini_service.suggest_resume_improvements(
+                        resume_content, job_description
+                    )
+                except Exception as e:
+                    self.logger.warning(f"Gemini failed, falling back: {e}")
+
+            # Fall back to G4F
+            if self._use_g4f and await self.g4f_service.is_available():
+                try:
+                    self.logger.debug(
+                        "Using G4F for improvement suggestions (fallback)"
+                    )
+                    return await self.g4f_service.suggest_resume_improvements(
+                        resume_content, job_description
+                    )
+                except Exception as e:
+                    self.logger.warning(f"G4F failed, falling back to mock: {e}")
+
+            # Try any available provider as last resort
             if await self.gemini_service.is_available():
-                return await self.gemini_service.suggest_resume_improvements(resume_content, job_description)
-            
+                self.logger.debug(
+                    "Using Gemini as last resort for improvement suggestions"
+                )
+                return await self.gemini_service.suggest_resume_improvements(
+                    resume_content, job_description
+                )
+
+            if await self.g4f_service.is_available():
+                self.logger.debug(
+                    "Using G4F as last resort for improvement suggestions"
+                )
+                return await self.g4f_service.suggest_resume_improvements(
+                    resume_content, job_description
+                )
+
             # Fall back to mock
+            self.logger.debug("No providers available, using mock response")
             return self._mock_improvements()
-                
+
         except Exception as e:
             self.logger.error(f"Error suggesting improvements: {e}", exc_info=True)
             return self._mock_improvements()
-    
-    def _build_resume_optimization_prompt(self, request: ResumeOptimizationRequest) -> str:
+
+    def _build_resume_optimization_prompt(
+        self, request: ResumeOptimizationRequest
+    ) -> str:
         """Build prompt for ATS-optimized resume optimization."""
         return f"""You are an expert ATS (Applicant Tracking System) resume optimizer. 
 Optimize this resume for maximum ATS compatibility and job match.
@@ -263,7 +569,7 @@ Job Title: {request.target_role}
 Company: {request.company_name}
 Job Description: {request.job_description}
 
-Resume Content: {request.resume_content[:3000] if request.resume_content else 'Not provided'}
+Resume Content: {request.resume_content[:3000] if request.resume_content else "Not provided"}
 
 Provide a JSON response with:
 {{
@@ -293,21 +599,21 @@ ATS Optimization Focus:
 3. STRUCTURE: Standard headers (Work Experience, Education, Skills)
 4. CONTENT: Quantifiable achievements, action verbs, relevant experience
 5. COMPATIBILITY: Ensure resume will parse correctly in ATS systems"""
-    
+
     def _build_cover_letter_prompt(self, request: CoverLetterRequest) -> str:
         """Build prompt for cover letter generation."""
         return f"""Write a professional cover letter for:
 
 Job Title: {request.job_title}
 Company: {request.company_name}
-Tone: {request.tone or 'professional'}
+Tone: {request.tone or "professional"}
 
-Resume Summary: {request.resume_content[:500] if request.resume_content else 'Not provided'}
+Resume Summary: {request.resume_content[:500] if request.resume_content else "Not provided"}
 
 Job Description: {request.job_description}
 
 Write a compelling, personalized cover letter that highlights relevant experience and demonstrates enthusiasm for the role."""
-    
+
     def _build_job_match_prompt(self, resume_content: str, job_description: str) -> str:
         """Build prompt for job match analysis."""
         return f"""Analyze how well this resume matches the job description:
@@ -321,7 +627,7 @@ Provide a JSON response with:
 - strengths (array)
 - weaknesses (array)
 - recommendations (array)"""
-    
+
     def _parse_resume_optimization_response(self, content: str) -> Dict[str, Any]:
         """Parse AI response for resume optimization."""
         try:
@@ -335,7 +641,7 @@ Provide a JSON response with:
                 "confidence_score": data.get("confidence_score", 0.8),
                 "ats_score": data.get("ats_score"),
                 "ats_checks": data.get("ats_checks"),
-                "ats_recommendations": data.get("ats_recommendations", [])
+                "ats_recommendations": data.get("ats_recommendations", []),
             }
         except:
             # Fallback parsing
@@ -350,15 +656,15 @@ Provide a JSON response with:
                     "keyword_match": 0.65,
                     "formatting": 0.70,
                     "section_structure": 0.75,
-                    "contact_info": 0.80
+                    "contact_info": 0.80,
                 },
                 "ats_recommendations": [
                     "Use standard section headers",
                     "Include job description keywords",
-                    "Simplify formatting"
-                ]
+                    "Simplify formatting",
+                ],
             }
-    
+
     def _parse_job_match_response(self, content: str) -> Dict[str, Any]:
         """Parse AI response for job match analysis."""
         try:
@@ -367,33 +673,35 @@ Provide a JSON response with:
                 "match_percentage": data.get("match_percentage", 70),
                 "strengths": data.get("strengths", []),
                 "weaknesses": data.get("weaknesses", []),
-                "recommendations": data.get("recommendations", [])
+                "recommendations": data.get("recommendations", []),
             }
         except:
             return {
                 "match_percentage": 70,
                 "strengths": ["Relevant experience"],
                 "weaknesses": ["Some skill gaps"],
-                "recommendations": ["Continue learning"]
+                "recommendations": ["Continue learning"],
             }
-    
-    def _mock_resume_optimization(self, request: ResumeOptimizationRequest) -> ResumeOptimizationResponse:
+
+    def _mock_resume_optimization(
+        self, request: ResumeOptimizationRequest
+    ) -> ResumeOptimizationResponse:
         """Mock resume optimization response."""
         original_resume = Resume(
             name="Current Resume",
             file_path=f"./resumes/{request.resume_id}.pdf",
-            file_type="pdf"
+            file_type="pdf",
         )
-        
+
         return ResumeOptimizationResponse(
             original_resume=original_resume,
             optimized_content="Mock optimized content - please configure an AI provider",
             suggestions=["Configure an AI provider for real optimization"],
             skill_gaps=[],
             improvements=[],
-            confidence_score=0.5
+            confidence_score=0.5,
         )
-    
+
     def _mock_cover_letter_generation(self, request: CoverLetterRequest) -> CoverLetter:
         """Mock cover letter generation response."""
         return CoverLetter(
@@ -403,68 +711,116 @@ Provide a JSON response with:
             tone=request.tone or "professional",
             word_count=150,
             file_path=f"./cover_letters/{request.job_title}_{request.company_name}.txt",
-            generated_at=datetime.now(timezone.utc)
+            generated_at=datetime.now(timezone.utc),
         )
-    
+
     def _mock_job_match_analysis(self) -> Dict[str, Any]:
         """Mock job match analysis response."""
         return {
             "match_percentage": 60,
             "strengths": ["Some relevant experience"],
             "weaknesses": ["Some skill gaps"],
-            "recommendations": ["Continue learning relevant skills"]
+            "recommendations": ["Continue learning relevant skills"],
         }
-    
+
     def _mock_skills_extraction(self) -> List[str]:
         """Mock skills extraction response."""
         return ["Python", "JavaScript", "Problem Solving"]
-    
+
     def _mock_improvements(self) -> List[str]:
         """Mock improvements response."""
         return ["Add more specific achievements", "Improve formatting"]
-    
-    async def prepare_interview(self, job_description: str, resume_content: str, company_name: Optional[str] = None, job_title: Optional[str] = None) -> Dict[str, Any]:
+
+    async def prepare_interview(
+        self,
+        job_description: str,
+        resume_content: str,
+        company_name: Optional[str] = None,
+        job_title: Optional[str] = None,
+    ) -> Dict[str, Any]:
         """Prepare interview questions and tips based on job description and resume."""
         try:
-            self.logger.info(f"Preparing interview questions for {job_title} at {company_name}")
-            
+            self.logger.info(
+                f"Preparing interview questions for {job_title} at {company_name}"
+            )
+
             # Build prompt for interview preparation
-            prompt = self._build_interview_prep_prompt(job_description, resume_content, company_name, job_title)
-            
-            # Try modern providers first
-            if self._use_modern_providers and await self.provider_manager.is_any_available():
+            prompt = self._build_interview_prep_prompt(
+                job_description, resume_content, company_name, job_title
+            )
+
+            # Try primary provider
+            if (
+                self._use_modern_providers
+                and await self.provider_manager.is_any_available()
+            ):
                 try:
+                    self.logger.debug("Using modern provider for interview preparation")
                     ai_response = await self.provider_manager.generate_text(prompt)
                     return self._parse_interview_prep_response(ai_response.content)
                 except Exception as e:
-                    self.logger.warning(f"Modern provider failed for interview prep, falling back: {e}")
-            
+                    self.logger.warning(
+                        f"Modern provider failed for interview prep, falling back: {e}"
+                    )
+
             # Fall back to Gemini
-            if await self.gemini_service.is_available():
+            if self._use_gemini and await self.gemini_service.is_available():
                 try:
+                    self.logger.debug(
+                        "Using Gemini for interview preparation (fallback)"
+                    )
                     return await self.gemini_service.prepare_interview(
-                        job_description,
-                        resume_content,
-                        company_name,
-                        job_title
+                        job_description, resume_content, company_name, job_title
                     )
                 except Exception as e:
                     self.logger.warning(f"Gemini failed for interview prep: {e}")
-            
+
+            # Fall back to G4F
+            if self._use_g4f and await self.g4f_service.is_available():
+                try:
+                    self.logger.debug("Using G4F for interview preparation (fallback)")
+                    return await self.g4f_service.prepare_interview(
+                        job_description, resume_content, company_name, job_title
+                    )
+                except Exception as e:
+                    self.logger.warning(f"G4F failed for interview prep: {e}")
+
+            # Try any available provider as last resort
+            if await self.gemini_service.is_available():
+                self.logger.debug(
+                    "Using Gemini as last resort for interview preparation"
+                )
+                return await self.gemini_service.prepare_interview(
+                    job_description, resume_content, company_name, job_title
+                )
+
+            if await self.g4f_service.is_available():
+                self.logger.debug("Using G4F as last resort for interview preparation")
+                return await self.g4f_service.prepare_interview(
+                    job_description, resume_content, company_name, job_title
+                )
+
             # Fall back to mock
+            self.logger.debug("No providers available, using mock response")
             return self._mock_interview_prep(job_title, company_name)
-            
+
         except Exception as e:
             self.logger.error(f"Error preparing interview: {e}", exc_info=True)
             return self._mock_interview_prep(job_title, company_name)
-    
-    def _build_interview_prep_prompt(self, job_description: str, resume_content: str, company_name: Optional[str] = None, job_title: Optional[str] = None) -> str:
+
+    def _build_interview_prep_prompt(
+        self,
+        job_description: str,
+        resume_content: str,
+        company_name: Optional[str] = None,
+        job_title: Optional[str] = None,
+    ) -> str:
         """Build prompt for interview preparation."""
         return f"""
 You are an expert interview coach. Based on the job description and candidate's resume, generate comprehensive interview preparation materials.
 
-Job Title: {job_title or 'Not specified'}
-Company: {company_name or 'Not specified'}
+Job Title: {job_title or "Not specified"}
+Company: {company_name or "Not specified"}
 
 Job Description:
 {job_description}
@@ -505,7 +861,7 @@ Please provide a JSON response with the following structure:
     ]
 }}
 """
-    
+
     def _parse_interview_prep_response(self, content: str) -> Dict[str, Any]:
         """Parse AI response for interview preparation."""
         try:
@@ -518,13 +874,17 @@ Please provide a JSON response with the following structure:
                 "strengths_to_highlight": data.get("strengths_to_highlight", []),
                 "weaknesses_to_address": data.get("weaknesses_to_address", []),
                 "company_research": data.get("company_research", ""),
-                "questions_to_ask": data.get("questions_to_ask", [])
+                "questions_to_ask": data.get("questions_to_ask", []),
             }
         except json.JSONDecodeError:
-            self.logger.warning("Failed to parse interview prep response as JSON. Using fallback.")
+            self.logger.warning(
+                "Failed to parse interview prep response as JSON. Using fallback."
+            )
             return self._mock_interview_prep(None, None)
-    
-    def _mock_interview_prep(self, job_title: Optional[str] = None, company_name: Optional[str] = None) -> Dict[str, Any]:
+
+    def _mock_interview_prep(
+        self, job_title: Optional[str] = None, company_name: Optional[str] = None
+    ) -> Dict[str, Any]:
         """Mock interview preparation response."""
         return {
             "questions": [
@@ -532,21 +892,29 @@ Please provide a JSON response with the following structure:
                     "question": "Tell me about yourself",
                     "type": "behavioral",
                     "suggested_answer": "Focus on your relevant experience and achievements that align with this role.",
-                    "tips": ["Be concise", "Highlight relevant experience", "Show enthusiasm"]
+                    "tips": [
+                        "Be concise",
+                        "Highlight relevant experience",
+                        "Show enthusiasm",
+                    ],
                 },
                 {
                     "question": "Why do you want to work here?",
                     "type": "motivational",
                     "suggested_answer": f"Express genuine interest in {company_name or 'the company'} and the role.",
-                    "tips": ["Research the company", "Connect your values to theirs", "Be specific"]
-                }
+                    "tips": [
+                        "Research the company",
+                        "Connect your values to theirs",
+                        "Be specific",
+                    ],
+                },
             ],
             "technical_questions": [
                 {
                     "question": "Describe your experience with relevant technologies",
                     "category": "technical",
                     "difficulty": "medium",
-                    "suggested_approach": "Provide specific examples from your resume"
+                    "suggested_approach": "Provide specific examples from your resume",
                 }
             ],
             "preparation_tips": [
@@ -554,7 +922,7 @@ Please provide a JSON response with the following structure:
                 "Review the job description and align your experience",
                 "Prepare STAR method examples",
                 "Practice common interview questions",
-                "Prepare questions to ask the interviewer"
+                "Prepare questions to ask the interviewer",
             ],
             "key_topics": ["Technical skills", "Problem-solving", "Team collaboration"],
             "strengths_to_highlight": ["Relevant experience", "Problem-solving skills"],
@@ -563,7 +931,6 @@ Please provide a JSON response with the following structure:
             "questions_to_ask": [
                 "What does success look like in this role?",
                 "What are the team's biggest challenges?",
-                "How does the company support professional development?"
-            ]
+                "How does the company support professional development?",
+            ],
         }
-

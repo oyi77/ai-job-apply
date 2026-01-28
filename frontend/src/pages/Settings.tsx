@@ -164,7 +164,7 @@ const Settings: React.FC = () => {
     setIsDeleting(true);
     try {
       // Call API endpoint for account deletion
-      await authService.deleteAccount();
+      await authService.deleteAccount(deletePassword);
 
       // Clear local data
       setAuthenticated(false);
@@ -709,7 +709,17 @@ const Settings: React.FC = () => {
                 ].map((provider) => (
                   <div
                     key={provider.id}
+                    role="button"
+                    tabIndex={0}
+                    aria-pressed={aiSettings.provider_preference === provider.id}
+                    data-testid={`ai-provider-${provider.id}`}
                     onClick={() => updateAISettings({ provider_preference: provider.id as any })}
+                    onKeyDown={(event) => {
+                      if (event.key === 'Enter' || event.key === ' ') {
+                        event.preventDefault();
+                        updateAISettings({ provider_preference: provider.id as any });
+                      }
+                    }}
                     className={`flex flex-col p-3 border rounded-lg cursor-pointer transition-all ${aiSettings.provider_preference === provider.id
                       ? 'border-primary-500 bg-primary-50 ring-1 ring-primary-500'
                       : 'border-gray-200 hover:border-gray-300 bg-white'

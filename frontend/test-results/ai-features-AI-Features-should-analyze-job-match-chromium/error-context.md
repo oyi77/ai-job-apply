@@ -1,0 +1,165 @@
+# Page snapshot
+
+```yaml
+- generic [ref=e1]:
+  - generic [ref=e4]:
+    - generic [ref=e6]:
+      - generic [ref=e7]:
+        - generic [ref=e9]: AI
+        - generic [ref=e10]: Job Apply
+      - navigation "Main navigation" [ref=e11]:
+        - link "Dashboard (Alt+1)" [ref=e12] [cursor=pointer]:
+          - /url: /
+          - img [ref=e13]
+          - text: Dashboard
+        - link "Applications (Alt+2)" [ref=e15] [cursor=pointer]:
+          - /url: /applications
+          - img [ref=e16]
+          - text: Applications
+        - link "Resumes (Alt+3)" [ref=e18] [cursor=pointer]:
+          - /url: /resumes
+          - img [ref=e19]
+          - text: Resumes
+        - link "Cover Letters (Alt+4)" [ref=e21] [cursor=pointer]:
+          - /url: /cover-letters
+          - img [ref=e22]
+          - text: Cover Letters
+        - link "Job Search (Alt+5)" [ref=e24] [cursor=pointer]:
+          - /url: /job-search
+          - img [ref=e25]
+          - text: Job Search
+        - link "AI Services (Alt+6)" [ref=e27] [cursor=pointer]:
+          - /url: /ai-services
+          - img [ref=e28]
+          - text: AI Services
+        - link "Analytics (Alt+7)" [ref=e30] [cursor=pointer]:
+          - /url: /analytics
+          - img [ref=e31]
+          - text: Analytics
+        - link "Settings (Alt+8)" [ref=e33] [cursor=pointer]:
+          - /url: /settings
+          - img [ref=e34]
+          - text: Settings
+        - link "Admin Settings (Alt+9)" [ref=e37] [cursor=pointer]:
+          - /url: /admin-settings
+          - img [ref=e38]
+          - text: Admin Settings
+    - generic [ref=e40]:
+      - banner [ref=e41]:
+        - generic [ref=e42]:
+          - generic [ref=e43]:
+            - img [ref=e45]
+            - heading "AI Job Assists" [level=1] [ref=e47]
+          - generic [ref=e48]:
+            - generic [ref=e49]:
+              - generic [ref=e50]:
+                - button "Light" [ref=e51] [cursor=pointer]:
+                  - img [ref=e52]
+                  - generic [ref=e54]: Light
+                - button "Dark" [ref=e55] [cursor=pointer]:
+                  - img [ref=e56]
+                  - generic [ref=e58]: Dark
+                - button "System" [ref=e59] [cursor=pointer]:
+                  - img [ref=e60]
+                  - generic [ref=e62]: System
+              - button "Open notifications" [ref=e64] [cursor=pointer]:
+                - img [ref=e65]
+            - button "Test User Pro Member" [ref=e68] [cursor=pointer]:
+              - img [ref=e70]
+              - generic [ref=e72]:
+                - paragraph [ref=e73]: Test User
+                - paragraph [ref=e74]: Pro Member
+      - main [ref=e75]:
+        - generic [ref=e77]:
+          - generic [ref=e78]:
+            - heading "AI Services" [level=1] [ref=e79]
+            - paragraph [ref=e80]: Leverage AI to optimize your job search and application process.
+          - generic [ref=e81]:
+            - generic [ref=e83]:
+              - img [ref=e84]
+              - heading "AI Service Status" [level=3] [ref=e86]
+            - generic [ref=e88]:
+              - generic [ref=e89]: Available
+              - generic [ref=e90]: AI services are ready to use
+          - generic [ref=e91]:
+            - generic [ref=e92]:
+              - generic [ref=e94]:
+                - img [ref=e95]
+                - heading "Resume Optimization" [level=3] [ref=e97]
+              - generic [ref=e98]:
+                - paragraph [ref=e99]: Get AI-powered suggestions to improve your resume for specific job postings.
+                - button "Optimize Resume" [ref=e100] [cursor=pointer]:
+                  - img [ref=e101]
+                  - text: Optimize Resume
+            - generic [ref=e103]:
+              - generic [ref=e105]:
+                - img [ref=e106]
+                - heading "Cover Letter Generation" [level=3] [ref=e108]
+              - generic [ref=e109]:
+                - paragraph [ref=e110]: Generate personalized cover letters tailored to specific job applications.
+                - button "Generate Cover Letter" [ref=e111] [cursor=pointer]:
+                  - img [ref=e112]
+                  - text: Generate Cover Letter
+            - generic [ref=e114]:
+              - generic [ref=e116]:
+                - img [ref=e117]
+                - heading "Job Matching" [level=3] [ref=e119]
+              - generic [ref=e120]:
+                - paragraph [ref=e121]: Analyze how well your resume matches specific job requirements.
+                - button "Analyze Match" [ref=e122] [cursor=pointer]:
+                  - img [ref=e123]
+                  - text: Analyze Match
+            - generic [ref=e125]:
+              - generic [ref=e127]:
+                - img [ref=e128]
+                - heading "Skills Extraction" [level=3] [ref=e130]
+              - generic [ref=e131]:
+                - paragraph [ref=e132]: Automatically extract and categorize skills from your resume content.
+                - button "Extract Skills" [ref=e133] [cursor=pointer]:
+                  - img [ref=e134]
+                  - text: Extract Skills
+            - generic [ref=e136]:
+              - generic [ref=e138]:
+                - img [ref=e139]
+                - heading "Interview Prep" [level=3] [ref=e141]
+              - generic [ref=e142]:
+                - paragraph [ref=e143]: Get AI-generated interview questions and preparation tips.
+                - button "Prepare for Interview" [ref=e144] [cursor=pointer]:
+                  - img [ref=e145]
+                  - text: Prepare for Interview
+            - generic [ref=e147]:
+              - generic [ref=e149]:
+                - img [ref=e150]
+                - heading "Career Insights" [level=3] [ref=e152]
+              - generic [ref=e153]:
+                - paragraph [ref=e154]: Receive personalized career advice and growth recommendations.
+                - button "Get Insights" [ref=e155] [cursor=pointer]:
+                  - img [ref=e156]
+                  - text: Get Insights
+  - generic:
+    - generic:
+      - generic:
+        - dialog "Job Matching Analysis" [active]:
+          - generic [ref=e161]:
+            - generic [ref=e162]:
+              - heading "Job Matching Analysis" [level=3] [ref=e163]
+              - button "Close" [ref=e164] [cursor=pointer]:
+                - img [ref=e165]
+            - generic [ref=e169]:
+              - generic [ref=e170]:
+                - generic [ref=e171]:
+                  - generic [ref=e172]: Select Resume*
+                  - button "Select Resume*" [ref=e174]:
+                    - generic [ref=e175]: Choose a resume to analyze
+                    - generic:
+                      - img
+                - generic [ref=e177]:
+                  - generic [ref=e178]: Job Description*
+                  - textbox "Job Description*" [ref=e180]:
+                    - /placeholder: Paste the job description to analyze the match...
+              - generic [ref=e181]:
+                - button "Cancel" [ref=e182] [cursor=pointer]
+                - button "Analyze Match" [ref=e183] [cursor=pointer]:
+                  - img [ref=e184]
+                  - text: Analyze Match
+```

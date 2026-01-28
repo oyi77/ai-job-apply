@@ -46,6 +46,7 @@ const CoverLetters: React.FC = () => {
   const [generationResult, setGenerationResult] = useState<string>('');
   const [generationProgress, setGenerationProgress] = useState(0);
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
+  const [generatedJobInfo, setGeneratedJobInfo] = useState<{ job_title: string; company: string } | null>(null);
 
   const { coverLetters, applications } = useAppStore();
   const itemsPerPage = 10;
@@ -178,7 +179,12 @@ const CoverLetters: React.FC = () => {
   };
 
   const handleGenerateCoverLetter = (data: any) => {
-    if (selectedResume && selectedJob) {
+    // Allow generation with selectedResume + form fields (custom job details)
+    // OR with selectedJob (selected application)
+    const jobTitle = data.job_title || selectedJob?.job_title;
+    const company = data.company || selectedJob?.company;
+    
+    if (selectedResume && jobTitle && company) {
       setGenerationProgress(0);
       const interval = setInterval(() => {
         setGenerationProgress(prev => {
@@ -190,10 +196,13 @@ const CoverLetters: React.FC = () => {
         });
       }, 200);
 
+      // Store the job info used for generation
+      setGeneratedJobInfo({ job_title: jobTitle, company });
+
       generationMutation.mutate({
         resumeId: selectedResume.id,
-        jobTitle: data.job_title || selectedJob.job_title,
-        company: data.company || selectedJob.company,
+        jobTitle: jobTitle,
+        company: company,
         jobDescription: data.job_description || '',
       });
     }
@@ -739,13 +748,18 @@ const CoverLetters: React.FC = () => {
         )}
       </Modal>
 
-      {/* AI Generation Modal */}
-      <Modal
-        isOpen={isGenerateModalOpen}
-        onClose={() => setIsGenerateModalOpen(false)}
-        title="Generate Cover Letter with AI"
-        size="lg"
-      >
+       {/* AI Generation Modal */}
+       <Modal
+         isOpen={isGenerateModalOpen}
+         onClose={() => {
+           setIsGenerateModalOpen(false);
+           setGenerationResult('');
+           setGenerationProgress(0);
+           setGeneratedJobInfo(null);
+         }}
+         title="Generate Cover Letter with AI"
+         size="lg"
+       >
         <Form onSubmit={handleGenerateCoverLetter}>
           <div className="space-y-4">
             <div>
@@ -823,58 +837,66 @@ const CoverLetters: React.FC = () => {
             </div>
           )}
 
-          {generationResult && (
-            <div className="mt-4">
-              <Alert type="success" title="Generation Complete!" message={generationResult.substring(0, 200) + '...'} />
-              <div className="mt-4 flex space-x-2">
-                <Button
-                  onClick={async () => {
-                    try {
-                      const jobTitle = selectedJob?.job_title || '';
-                      const company = selectedJob?.company || '';
-                      await createCoverLetterMutation.mutateAsync({
-                        job_title: jobTitle,
-                        company: company,
-                        content: generationResult,
-                        tone: 'professional',
-                        word_count: generationResult.split(/\s+/).length,
-                      });
-                      setIsGenerateModalOpen(false);
-                      setGenerationResult('');
-                      setGenerationProgress(0);
-                    } catch (error) {
-                      console.error('Error saving cover letter:', error);
-                      alert('Failed to save cover letter. Please try again.');
-                    }
-                  }}
-                  variant="primary"
-                  size="sm"
-                >
-                  Save Cover Letter
-                </Button>
-                <Button
-                  onClick={() => {
-                    setIsGenerateModalOpen(false);
-                    setGenerationResult('');
-                    setGenerationProgress(0);
-                  }}
-                  variant="secondary"
-                  size="sm"
-                >
-                  Close
-                </Button>
-              </div>
-            </div>
-          )}
+           {generationResult && (
+             <div className="mt-4">
+               <Alert type="success" title="Generation Complete!" message={generationResult.substring(0, 200) + '...'} />
+               <div className="mt-4 flex space-x-2">
+                 <Button
+                   onClick={async () => {
+                     try {
+                       // Use generatedJobInfo from the latest generation
+                       const jobTitle = generatedJobInfo?.job_title || '';
+                       const company = generatedJobInfo?.company || '';
+                       await createCoverLetterMutation.mutateAsync({
+                         job_title: jobTitle,
+                         company: company,
+                         content: generationResult,
+                         tone: 'professional',
+                         word_count: generationResult.split(/\s+/).length,
+                       });
+                       setIsGenerateModalOpen(false);
+                       setGenerationResult('');
+                       setGenerationProgress(0);
+                       setGeneratedJobInfo(null);
+                     } catch (error) {
+                       console.error('Error saving cover letter:', error);
+                       alert('Failed to save cover letter. Please try again.');
+                     }
+                   }}
+                   variant="primary"
+                   size="sm"
+                 >
+                   Save Cover Letter
+                 </Button>
+                 <Button
+                   onClick={() => {
+                     setIsGenerateModalOpen(false);
+                     setGenerationResult('');
+                     setGenerationProgress(0);
+                     setGeneratedJobInfo(null);
+                   }}
+                   variant="secondary"
+                   size="sm"
+                 >
+                   Close
+                 </Button>
+               </div>
+             </div>
+           )}
 
-          <div className="flex justify-end space-x-3 mt-6">
-            <Button
-              type="button"
-              variant="secondary"
-              onClick={() => setIsGenerateModalOpen(false)}
-            >
-              Cancel
-            </Button>
+           <div className="flex justify-end space-x-3 mt-6">
+             <Button
+               type="button"
+               variant="secondary"
+               onClick={() => {
+                 setIsGenerateModalOpen(false);
+                 setGenerationResult('');
+                 setGenerationProgress(0);
+                 setGeneratedJobInfo(null);
+               }}
+             >
+               Cancel
+             </Button>
             <Button
               type="submit"
               variant="primary"

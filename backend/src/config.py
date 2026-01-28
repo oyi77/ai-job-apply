@@ -57,6 +57,13 @@ class Settings(BaseSettings):
     gemini_api_key: Optional[str] = Field(default=None, env="GEMINI_API_KEY")
     gemini_model: str = Field(default="gemini-1.5-flash", env="GEMINI_MODEL")
 
+    # G4F Configuration
+    g4f_api_key: Optional[str] = Field(default=None, env="G4F_API_KEY")
+    g4f_model: str = Field(default="gpt-4", env="G4F_MODEL")
+
+    # AI Provider Selection
+    ai_provider: str = Field(default="auto", env="AI_PROVIDER")
+
     # File Storage
     upload_dir: str = Field(default="./uploads", env="UPLOAD_DIR")
     max_file_size: int = Field(default=10 * 1024 * 1024, env="MAX_FILE_SIZE")  # 10MB
@@ -195,6 +202,11 @@ class Settings(BaseSettings):
                 db_configs.get("local_ai_model") or self.local_ai_model
             )
 
+            self.g4f_api_key = db_configs.get("g4f_api_key") or self.g4f_api_key
+            self.g4f_model = db_configs.get("g4f_model") or self.g4f_model
+
+            self.ai_provider = db_configs.get("ai_provider") or self.ai_provider
+
             # Rebuild providers with updated values
             self._setup_ai_providers()
         except Exception as e:
@@ -274,6 +286,19 @@ class Settings(BaseSettings):
                     temperature=0.7,
                     max_tokens=2000,
                     timeout=60,
+                )
+            )
+
+        # G4F Provider
+        if self.g4f_api_key:
+            providers.append(
+                AIProviderConfig(
+                    provider_name="g4f",
+                    api_key=self.g4f_api_key,
+                    model=self.g4f_model,
+                    temperature=0.7,
+                    max_tokens=1000,
+                    timeout=30,
                 )
             )
 

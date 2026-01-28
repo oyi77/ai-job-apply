@@ -24,6 +24,9 @@ class ResumeTemplate(str, Enum):
     MINIMALIST = "minimalist"
     CREATIVE = "creative"
     TECHNICAL = "technical"
+    GOGO_EXECUTIVE = "gogo_executive"
+    GOGO_GUIDED = "gogo_guided"
+    GOGO_ALTERNATIVE = "gogo_alternative"
 
 
 class ResumeFormat(str, Enum):

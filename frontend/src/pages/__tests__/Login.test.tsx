@@ -1,9 +1,10 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen, fireEvent, waitFor } from '@testing-library/react';
+import { screen, fireEvent, waitFor } from '@testing-library/react';
 import { BrowserRouter } from 'react-router-dom';
 import Login from '../Login';
 import { useAppStore } from '../../stores/appStore';
 import { authService } from '../../services/api';
+import { renderWithProvider } from '../../test-utils/renderWithProvider';
 
 // Mock the dependencies
 vi.mock('../../services/api');
@@ -32,16 +33,27 @@ describe('Login', () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
-    (useAppStore as any).mockReturnValue({
-      setUser: mockSetUser,
-      setAuthenticated: mockSetAuthenticated,
-      setLoading: mockSetLoading,
-      setError: mockSetError,
+    // Mock useAppStore to handle selector functions
+    (useAppStore as any).mockImplementation((selector: any) => {
+      const store = {
+        // AuthProvider extracts these from the store
+        setUser: mockSetUser,
+        setAuthenticated: mockSetAuthenticated,
+        // Login page uses these
+        setLoading: mockSetLoading,
+        setError: mockSetError,
+      };
+      // If a selector function is provided, call it with the store
+      if (typeof selector === 'function') {
+        return selector(store);
+      }
+      // Otherwise return the whole store
+      return store;
     });
   });
 
   const renderLogin = () => {
-    return render(
+    return renderWithProvider(
       <BrowserRouter>
         <Login />
       </BrowserRouter>

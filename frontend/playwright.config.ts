@@ -23,6 +23,7 @@ export default defineConfig({
     : 'html',
   use: {
     baseURL: FRONTEND_URL,
+    storageState: 'playwright/.auth/user.json',
     trace: 'on-first-retry',
     screenshot: 'only-on-failure',
     video: 'retain-on-failure',

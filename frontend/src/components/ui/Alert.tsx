@@ -83,14 +83,16 @@ const Alert: React.FC<AlertProps> = ({
         {dismissible && onDismiss && (
           <div className="ml-auto pl-3">
             <div className="-mx-1.5 -my-1.5">
-              <button
-                type="button"
-                className={`inline-flex rounded-md p-1.5 ${messageColor} hover:${bgColor} focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-${type}-50 focus:ring-${type}-600`}
-                onClick={onDismiss}
-              >
-                <span className="sr-only">Dismiss</span>
-                <XMarkIcon className="h-5 w-5" aria-hidden="true" />
-              </button>
+               <button
+                 type="button"
+                 className={`inline-flex rounded-md p-1.5 ${messageColor} hover:${bgColor} focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-${type}-50 focus:ring-${type}-600`}
+                 onClick={onDismiss}
+                 aria-label="Dismiss alert"
+                 data-testid="alert-dismiss"
+               >
+                 <span className="sr-only">Dismiss</span>
+                 <XMarkIcon className="h-5 w-5" aria-hidden="true" />
+               </button>
             </div>
           </div>
         )}

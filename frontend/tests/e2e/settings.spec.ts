@@ -3,31 +3,16 @@
  */
 
 import { test, expect } from '@playwright/test';
-import { loginAsUser, waitForLoadingToComplete, waitForToast, elementExists } from './utils';
-import { testUsers } from './fixtures/test-data';
+import { waitForLoadingToComplete, elementExists } from './utils';
 
 test.describe('Settings Page', () => {
-  test.beforeEach(async ({ page }) => {
-    // Setup: Mock authentication
-    await page.goto('/login');
-    await page.evaluate(() => {
-      localStorage.setItem('token', 'mock-token');
-      localStorage.setItem('user', JSON.stringify({
-        id: '1',
-        email: 'test@example.com',
-        name: 'Test User',
-        first_name: 'Test',
-        last_name: 'User',
-      }));
-    });
-  });
 
   test('should navigate to Settings page', async ({ page }) => {
     await page.goto('/settings');
     await expect(page).toHaveURL(/.*settings/);
 
     // Check for Settings title
-    const title = page.locator('h1:has-text("Settings"), h1:has-text("settings")').first();
+    const title = page.getByRole('heading', { name: /settings/i });
     await expect(title).toBeVisible();
   });
 
@@ -36,23 +21,23 @@ test.describe('Settings Page', () => {
     await waitForLoadingToComplete(page);
 
     // Check for Profile Settings card
-    const profileCard = page.locator('text=Profile').first();
+    const profileCard = page.getByText('Profile').first();
     await expect(profileCard).toBeVisible();
 
     // Check for Notification Settings card
-    const notificationCard = page.locator('text=Notification').first();
+    const notificationCard = page.getByText('Notification').first();
     await expect(notificationCard).toBeVisible();
 
     // Check for Theme & Appearance card
-    const themeCard = page.locator('text=Theme').first();
+    const themeCard = page.getByText('Theme').first();
     await expect(themeCard).toBeVisible();
 
     // Check for Language & Region card
-    const languageCard = page.locator('text=Language').first();
+    const languageCard = page.getByText('Language').first();
     await expect(languageCard).toBeVisible();
 
     // Check for Data Management card
-    const dataCard = page.locator('text=Data').first();
+    const dataCard = page.getByText('Data').first();
     await expect(dataCard).toBeVisible();
   });
 
@@ -61,8 +46,7 @@ test.describe('Settings Page', () => {
     await waitForLoadingToComplete(page);
 
     // Find and click Profile Settings button
-    const profileButtons = page.locator('button:has-text("Edit Profile"), button:has-text("Update Profile")');
-    const profileButton = profileButtons.first();
+    const profileButton = page.getByRole('button', { name: /edit profile|update profile/i });
     
     if (await profileButton.isVisible()) {
       await profileButton.click();
@@ -77,8 +61,7 @@ test.describe('Settings Page', () => {
       await expect(firstNameInput).toBeVisible();
 
       // Close modal
-      const closeButton = page.locator('button:has-text("Cancel")').first();
-      await closeButton.click();
+      await page.getByRole('button', { name: /cancel/i }).click();
       await page.waitForTimeout(300);
 
       // Modal should be closed
@@ -91,8 +74,7 @@ test.describe('Settings Page', () => {
     await waitForLoadingToComplete(page);
 
     // Open Profile modal
-    const profileButtons = page.locator('button:has-text("Edit Profile"), button:has-text("Update Profile")');
-    const profileButton = profileButtons.first();
+    const profileButton = page.getByRole('button', { name: /edit profile|update profile/i });
     
     if (await profileButton.isVisible()) {
       await profileButton.click();
@@ -116,13 +98,13 @@ test.describe('Settings Page', () => {
       }
 
       // Submit form
-      const submitButton = page.locator('button:has-text("Save Changes"), button[type="submit"]').first();
+      const submitButton = page.getByRole('button', { name: /save changes|save/i });
       if (await submitButton.isVisible()) {
         await submitButton.click();
         await page.waitForTimeout(1000);
 
         // Check for success message
-        const successMessage = page.locator('[role="alert"], .alert, text=success, text=updated').first();
+        const successMessage = page.getByRole('alert').first();
         if (await successMessage.isVisible().catch(() => false)) {
           await expect(successMessage).toContainText(/success|updated|saved/i);
         }
@@ -135,8 +117,7 @@ test.describe('Settings Page', () => {
     await waitForLoadingToComplete(page);
 
     // Find and click Notification Settings button
-    const notificationButtons = page.locator('button:has-text("Notification"), button:has-text("Email")');
-    const notificationButton = notificationButtons.first();
+    const notificationButton = page.getByRole('button', { name: /notification|email/i });
     
     if (await notificationButton.isVisible()) {
       await notificationButton.click();
@@ -164,7 +145,7 @@ test.describe('Settings Page', () => {
       }
 
       // Close modal
-      const closeButton = page.locator('button:has-text("Cancel"), button:has-text("Close")').first();
+      const closeButton = page.getByRole('button', { name: /cancel|close/i });
       if (await closeButton.isVisible()) {
         await closeButton.click();
         await page.waitForTimeout(300);
@@ -177,8 +158,7 @@ test.describe('Settings Page', () => {
     await waitForLoadingToComplete(page);
 
     // Find and click Theme button
-    const themeButtons = page.locator('button:has-text("Theme"), button:has-text("Appearance")');
-    const themeButton = themeButtons.first();
+    const themeButton = page.getByRole('button', { name: /theme|appearance/i });
     
     if (await themeButton.isVisible()) {
       await themeButton.click();
@@ -207,7 +187,7 @@ test.describe('Settings Page', () => {
       }
 
       // Close modal
-      const closeButton = page.locator('button:has-text("Close"), button:has-text("Cancel")').first();
+      const closeButton = page.getByRole('button', { name: /close|cancel/i });
       if (await closeButton.isVisible()) {
         await closeButton.click();
         await page.waitForTimeout(300);
@@ -220,7 +200,7 @@ test.describe('Settings Page', () => {
     await waitForLoadingToComplete(page);
 
     // Look for theme badge showing current theme
-    const themeBadge = page.locator('text=Light, text=Dark, text=System').first();
+    const themeBadge = page.getByText(/light|dark|system/i).first();
     if (await themeBadge.isVisible().catch(() => false)) {
       await expect(themeBadge).toBeVisible();
     }
@@ -231,8 +211,7 @@ test.describe('Settings Page', () => {
     await waitForLoadingToComplete(page);
 
     // Find and click Language button
-    const languageButtons = page.locator('button:has-text("Language"), button:has-text("Region")');
-    const languageButton = languageButtons.first();
+    const languageButton = page.getByRole('button', { name: /language|region/i });
     
     if (await languageButton.isVisible()) {
       await languageButton.click();
@@ -258,7 +237,7 @@ test.describe('Settings Page', () => {
       }
 
       // Close modal
-      const closeButton = page.locator('button:has-text("Close"), button:has-text("Cancel")').first();
+      const closeButton = page.getByRole('button', { name: /close|cancel/i });
       if (await closeButton.isVisible()) {
         await closeButton.click();
         await page.waitForTimeout(300);
@@ -271,8 +250,7 @@ test.describe('Settings Page', () => {
     await waitForLoadingToComplete(page);
 
     // Find and click Privacy & Security button
-    const privacyButtons = page.locator('button:has-text("Privacy"), button:has-text("Security")');
-    const privacyButton = privacyButtons.first();
+    const privacyButton = page.getByRole('button', { name: /privacy|security/i });
     
     if (await privacyButton.isVisible()) {
       await privacyButton.click();
@@ -283,13 +261,13 @@ test.describe('Settings Page', () => {
       await expect(modal).toBeVisible();
 
       // Look for privacy settings
-      const privacySettings = page.locator('text=Profile Visibility, text=Data Sharing, text=Two-Factor').first();
+      const privacySettings = page.getByText(/profile visibility|data sharing|two-factor/i).first();
       if (await privacySettings.isVisible().catch(() => false)) {
         await expect(privacySettings).toBeVisible();
       }
 
       // Close modal
-      const closeButton = page.locator('button:has-text("Cancel"), button:has-text("Close")').first();
+      const closeButton = page.getByRole('button', { name: /cancel|close/i });
       if (await closeButton.isVisible()) {
         await closeButton.click();
         await page.waitForTimeout(300);
@@ -302,13 +280,13 @@ test.describe('Settings Page', () => {
     await waitForLoadingToComplete(page);
 
     // Look for Export Data button
-    const exportButton = page.locator('button:has-text("Export")').first();
+    const exportButton = page.getByRole('button', { name: /export/i });
     if (await exportButton.isVisible()) {
       await expect(exportButton).toBeVisible();
     }
 
     // Look for Delete Account button
-    const deleteButton = page.locator('button:has-text("Delete")').first();
+    const deleteButton = page.getByRole('button', { name: /delete/i });
     if (await deleteButton.isVisible()) {
       await expect(deleteButton).toBeVisible();
     }
@@ -319,7 +297,7 @@ test.describe('Settings Page', () => {
     await waitForLoadingToComplete(page);
 
     // Find and click Export Data button
-    const exportButton = page.locator('button:has-text("Export")').first();
+    const exportButton = page.getByRole('button', { name: /export/i });
     
     if (await exportButton.isVisible()) {
       await exportButton.click();
@@ -330,17 +308,17 @@ test.describe('Settings Page', () => {
       await expect(modal).toBeVisible();
 
       // Check for export confirmation text
-      const exportText = page.locator('text=Export Your Data, text=Download').first();
+    const exportText = page.getByText(/export your data|download/i).first();
       if (await exportText.isVisible().catch(() => false)) {
         await expect(exportText).toBeVisible();
       }
 
       // Close modal
-      const closeButton = page.locator('button:has-text("Cancel")').first();
-      if (await closeButton.isVisible()) {
-        await closeButton.click();
-        await page.waitForTimeout(300);
-      }
+    const closeButton = page.getByRole('button', { name: /cancel/i });
+    if (await closeButton.isVisible()) {
+      await closeButton.click();
+      await page.waitForTimeout(300);
+    }
     }
   });
 
@@ -349,7 +327,7 @@ test.describe('Settings Page', () => {
     await waitForLoadingToComplete(page);
 
     // Find and click Delete Account button
-    const deleteButton = page.locator('button:has-text("Delete")').first();
+    const deleteButton = page.getByRole('button', { name: /delete/i });
     
     if (await deleteButton.isVisible()) {
       await deleteButton.click();
@@ -360,7 +338,7 @@ test.describe('Settings Page', () => {
       await expect(modal).toBeVisible();
 
       // Check for delete confirmation text
-      const deleteText = page.locator('text=Delete Your Account, text=cannot be undone').first();
+    const deleteText = page.getByText(/delete your account|cannot be undone/i).first();
       if (await deleteText.isVisible().catch(() => false)) {
         await expect(deleteText).toBeVisible();
       }
@@ -372,11 +350,11 @@ test.describe('Settings Page', () => {
       }
 
       // Close modal without confirming
-      const closeButton = page.locator('button:has-text("Cancel")').first();
-      if (await closeButton.isVisible()) {
-        await closeButton.click();
-        await page.waitForTimeout(300);
-      }
+    const closeButton = page.getByRole('button', { name: /cancel/i });
+    if (await closeButton.isVisible()) {
+      await closeButton.click();
+      await page.waitForTimeout(300);
+    }
     }
   });
 
@@ -385,12 +363,12 @@ test.describe('Settings Page', () => {
     await waitForLoadingToComplete(page);
 
     // Look for AI Intelligence card
-    const aiCard = page.locator('text=AI Intelligence, text=Sparkles').first();
+    const aiCard = page.getByText(/AI Intelligence|Sparkles/i).first();
     if (await aiCard.isVisible().catch(() => false)) {
       await expect(aiCard).toBeVisible();
 
       // Look for AI settings button
-      const aiButton = page.locator('button:has-text("AI"), button:has-text("Intelligence")').first();
+    const aiButton = page.getByRole('button', { name: /ai|intelligence/i });
       if (await aiButton.isVisible()) {
         await aiButton.click();
         await page.waitForTimeout(500);
@@ -400,11 +378,11 @@ test.describe('Settings Page', () => {
         await expect(modal).toBeVisible();
 
         // Close modal
-        const closeButton = page.locator('button:has-text("Close")').first();
-        if (await closeButton.isVisible()) {
-          await closeButton.click();
-          await page.waitForTimeout(300);
-        }
+    const closeButton = page.getByRole('button', { name: /close/i });
+    if (await closeButton.isVisible()) {
+      await closeButton.click();
+      await page.waitForTimeout(300);
+    }
       }
     }
   });
@@ -414,7 +392,7 @@ test.describe('Settings Page', () => {
     await waitForLoadingToComplete(page);
 
     // Open Profile modal
-    const profileButton = page.locator('button:has-text("Edit Profile"), button:has-text("Update Profile")').first();
+    const profileButton = page.getByRole('button', { name: /edit profile|update profile/i });
     
     if (await profileButton.isVisible()) {
       await profileButton.click();
@@ -426,13 +404,13 @@ test.describe('Settings Page', () => {
         await firstNameInput.fill('Updated');
 
         // Submit form
-        const submitButton = page.locator('button:has-text("Save Changes"), button[type="submit"]').first();
+    const submitButton = page.getByRole('button', { name: /save changes|save/i });
         if (await submitButton.isVisible()) {
           await submitButton.click();
           await page.waitForTimeout(1000);
 
           // Check for success alert
-          const successAlert = page.locator('[role="alert"], .alert-success, text=success').first();
+    const successAlert = page.getByRole('alert').first();
           if (await successAlert.isVisible().catch(() => false)) {
             await expect(successAlert).toBeVisible();
           }
@@ -445,7 +423,8 @@ test.describe('Settings Page', () => {
     // Clear authentication
     await page.goto('/login');
     await page.evaluate(() => {
-      localStorage.removeItem('token');
+      localStorage.removeItem('auth_token');
+      localStorage.removeItem('refresh_token');
       localStorage.removeItem('user');
     });
 
@@ -466,7 +445,7 @@ test.describe('Settings Page', () => {
     await waitForLoadingToComplete(page);
 
     // Check that settings cards are visible
-    const profileCard = page.locator('text=Profile').first();
+    const profileCard = page.getByText('Profile').first();
     await expect(profileCard).toBeVisible();
 
     // Cards should stack vertically on mobile
@@ -483,7 +462,7 @@ test.describe('Settings Page', () => {
     await waitForLoadingToComplete(page);
 
     // Check that settings cards are visible
-    const profileCard = page.locator('text=Profile').first();
+    const profileCard = page.getByText('Profile').first();
     await expect(profileCard).toBeVisible();
   });
 
@@ -495,7 +474,7 @@ test.describe('Settings Page', () => {
     await waitForLoadingToComplete(page);
 
     // Check that settings cards are visible
-    const profileCard = page.locator('text=Profile').first();
+    const profileCard = page.getByText('Profile').first();
     await expect(profileCard).toBeVisible();
   });
 });

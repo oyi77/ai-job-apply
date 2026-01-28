@@ -182,14 +182,14 @@ def create_app() -> FastAPI:
     async def startup_event():
         """Initialize the application on startup."""
         try:
-            logger.info("🚀 Starting AI Job Application Assistant...")
+            logger.info("[START] Starting AI Job Application Assistant...")
 
             # Load configurations from database (if available)
             try:
                 from src.config import config
 
                 await config.load_from_database()
-                logger.info("✅ Configuration loaded from database")
+                logger.info("[OK] Configuration loaded from database")
             except Exception as e:
                 logger.warning(
                     f"Could not load configs from database: {e}. Using environment variables."
@@ -201,7 +201,7 @@ def create_app() -> FastAPI:
             # Initialize services
             logger.info("Initializing services...")
             await initialize_services()
-            logger.info("✅ Services initialized")
+            logger.info("[OK] Services initialized")
 
             # Start scheduler service if enabled
             try:
@@ -211,7 +211,7 @@ def create_app() -> FastAPI:
 
                     if getattr(config, "SCHEDULER_ENABLED", True):
                         await scheduler_service.start()
-                        logger.info("✅ Scheduler service started")
+                        logger.info("[OK] Scheduler service started")
                     else:
                         logger.info("Scheduler service disabled by configuration")
             except (KeyError, AttributeError) as e:
@@ -266,12 +266,12 @@ def create_app() -> FastAPI:
             except Exception as e:
                 logger.debug(f"Background tasks not available: {e}")
 
-            logger.info("=" * 60)
-            logger.info("✅ AI Job Application Assistant ready!")
-            logger.info(f"📚 API Docs: http://localhost:{config.port}/docs")
-            logger.info("=" * 60)
+            logger.info("-" * 60)
+            logger.info("[OK] AI Job Application Assistant ready!")
+            logger.info(f"[DOCS] API Docs: http://localhost:{config.port}/docs")
+            logger.info("-" * 60)
         except Exception as e:
-            logger.error(f"❌ Error during startup: {e}", exc_info=True)
+            logger.error(f"[ERROR] Error during startup: {e}", exc_info=True)
             raise
 
     # Shutdown event
@@ -279,24 +279,24 @@ def create_app() -> FastAPI:
     async def shutdown_event():
         """Cleanup the application on shutdown."""
         try:
-            logger.info("🔄 Shutting down AI Job Application Assistant...")
+            logger.info("[SHUTDOWN] Shutting down AI Job Application Assistant...")
 
             # Stop scheduler service gracefully
             try:
                 scheduler_service = service_registry.get_scheduler_service()
                 if scheduler_service:
                     await scheduler_service.stop()
-                    logger.info("✅ Scheduler service stopped")
+                    logger.info("[OK] Scheduler service stopped")
             except (KeyError, AttributeError) as e:
                 logger.debug(f"Scheduler service not available for shutdown: {e}")
 
             # Shutdown service registry
             await service_registry.shutdown()
-            logger.info("✅ Services shut down")
+            logger.info("[OK] Services shut down")
 
-            logger.info("👋 AI Job Application Assistant shut down complete")
+            logger.info("[DONE] AI Job Application Assistant shut down complete")
         except Exception as e:
-            logger.error(f"❌ Error during shutdown: {e}", exc_info=True)
+            logger.error(f"[ERROR] Error during shutdown: {e}", exc_info=True)
 
     return app
 
@@ -309,7 +309,7 @@ async def initialize_services() -> None:
             logger.info("Initializing database...")
             await database_config.initialize()
             await database_config.create_tables()
-            logger.info("✅ Database initialized")
+            logger.info("[OK] Database initialized")
 
         # Initialize unified service registry
         await service_registry.initialize()
@@ -325,7 +325,7 @@ async def initialize_services() -> None:
         if ai_available:
             logger.debug("AI Service available")
         else:
-            logger.warning("⚠️  AI Service not available - using mock responses")
+            logger.warning("[WARN] AI Service not available - using mock responses")
 
     except Exception as e:
         logger.error(f"Error initializing services: {e}", exc_info=True)

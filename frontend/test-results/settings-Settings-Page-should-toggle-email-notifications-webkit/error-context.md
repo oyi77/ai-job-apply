@@ -1,0 +1,145 @@
+# Page snapshot
+
+```yaml
+- generic [ref=e4]:
+  - generic [ref=e6]:
+    - generic [ref=e7]:
+      - generic [ref=e9]: AI
+      - generic [ref=e10]: Job Apply
+    - navigation "Main navigation" [ref=e11]:
+      - link "Dashboard (Alt+1)" [ref=e12]:
+        - /url: /
+        - img [ref=e13]
+        - text: Dashboard
+      - link "Applications (Alt+2)" [ref=e15]:
+        - /url: /applications
+        - img [ref=e16]
+        - text: Applications
+      - link "Resumes (Alt+3)" [ref=e18]:
+        - /url: /resumes
+        - img [ref=e19]
+        - text: Resumes
+      - link "Cover Letters (Alt+4)" [ref=e21]:
+        - /url: /cover-letters
+        - img [ref=e22]
+        - text: Cover Letters
+      - link "Job Search (Alt+5)" [ref=e24]:
+        - /url: /job-search
+        - img [ref=e25]
+        - text: Job Search
+      - link "AI Services (Alt+6)" [ref=e27]:
+        - /url: /ai-services
+        - img [ref=e28]
+        - text: AI Services
+      - link "Analytics (Alt+7)" [ref=e30]:
+        - /url: /analytics
+        - img [ref=e31]
+        - text: Analytics
+      - link "Settings (Alt+8)" [ref=e33]:
+        - /url: /settings
+        - img [ref=e34]
+        - text: Settings
+      - link "Admin Settings (Alt+9)" [ref=e37]:
+        - /url: /admin-settings
+        - img [ref=e38]
+        - text: Admin Settings
+  - generic [ref=e40]:
+    - banner [ref=e41]:
+      - generic [ref=e42]:
+        - generic [ref=e43]:
+          - img [ref=e45]
+          - heading "AI Job Assists" [level=1] [ref=e47]
+        - generic [ref=e48]:
+          - generic [ref=e49]:
+            - generic [ref=e50]:
+              - button "Light" [ref=e51] [cursor=pointer]:
+                - img [ref=e52]
+                - generic [ref=e54]: Light
+              - button "Dark" [ref=e55] [cursor=pointer]:
+                - img [ref=e56]
+                - generic [ref=e58]: Dark
+              - button "System" [ref=e59] [cursor=pointer]:
+                - img [ref=e60]
+                - generic [ref=e62]: System
+            - generic [ref=e63]:
+              - button "Open notifications" [ref=e64] [cursor=pointer]:
+                - img [ref=e65]
+              - generic [ref=e68]:
+                - generic [ref=e69]:
+                  - generic [ref=e70]: Notifications
+                  - button "Mark all as read" [ref=e71] [cursor=pointer]
+                - generic [ref=e73]: No notifications
+          - button "Updated User Pro Member" [ref=e75] [cursor=pointer]:
+            - img [ref=e77]
+            - generic [ref=e79]:
+              - paragraph [ref=e80]: Updated User
+              - paragraph [ref=e81]: Pro Member
+    - main [ref=e82]:
+      - generic [ref=e84]:
+        - generic [ref=e85]:
+          - heading "Settings" [level=1] [ref=e86]
+          - paragraph [ref=e87]: Manage your account preferences and application settings.
+        - generic [ref=e88]:
+          - generic [ref=e89]:
+            - generic [ref=e91]:
+              - img [ref=e92]
+              - heading "Profile" [level=3] [ref=e94]
+            - generic [ref=e95]:
+              - paragraph [ref=e96]: Update your personal information and contact details.
+              - button "Edit Profile" [ref=e97] [cursor=pointer]
+          - generic [ref=e98]:
+            - generic [ref=e100]:
+              - img [ref=e101]
+              - heading "Notifications" [level=3] [ref=e103]
+            - generic [ref=e104]:
+              - paragraph [ref=e105]: Configure how and when you receive notifications.
+              - button "Configure" [ref=e106] [cursor=pointer]
+          - generic [ref=e107]:
+            - generic [ref=e109]:
+              - img [ref=e110]
+              - heading "Privacy & Security" [level=3] [ref=e112]
+            - generic [ref=e113]:
+              - paragraph [ref=e114]: Manage your privacy settings and security preferences.
+              - button "Manage" [ref=e115] [cursor=pointer]
+          - generic [ref=e116]:
+            - generic [ref=e118]:
+              - img [ref=e119]
+              - heading "Theme & Appearance" [level=3] [ref=e121]
+            - generic [ref=e122]:
+              - paragraph [ref=e123]: Customize the look and feel of your application.
+              - generic [ref=e124]:
+                - generic [ref=e125]: "Current:"
+                - generic [ref=e126]: System
+              - button "Customize" [ref=e127] [cursor=pointer]
+          - generic [ref=e128]:
+            - generic [ref=e130]:
+              - img [ref=e131]
+              - heading "Language & Region" [level=3] [ref=e133]
+            - generic [ref=e134]:
+              - paragraph [ref=e135]: Set your preferred language and regional settings.
+              - generic [ref=e136]:
+                - generic [ref=e137]: "Current:"
+                - generic [ref=e138]: English
+              - button "Change Language" [ref=e139] [cursor=pointer]
+          - generic [ref=e140]:
+            - generic [ref=e142]:
+              - img [ref=e143]
+              - heading "Data Management" [level=3] [ref=e145]
+            - generic [ref=e146]:
+              - paragraph [ref=e147]: Export your data or manage your account information.
+              - generic [ref=e148]:
+                - button "Export Data" [ref=e149] [cursor=pointer]
+                - button "Delete Account" [ref=e150] [cursor=pointer]:
+                  - img [ref=e151]
+                  - text: Delete Account
+          - generic [ref=e153]:
+            - generic [ref=e155]:
+              - img [ref=e156]
+              - heading "AI Intelligence" [level=3] [ref=e158]
+            - generic [ref=e159]:
+              - paragraph [ref=e160]: Configure your AI providers and model preferences for resume optimization.
+              - generic [ref=e161]:
+                - generic [ref=e162]: "Active Provider:"
+                - generic [ref=e163]: OpenAI
+              - button "Configure AI" [ref=e164] [cursor=pointer]
+```

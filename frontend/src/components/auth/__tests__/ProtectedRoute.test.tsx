@@ -1,21 +1,12 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen } from '@testing-library/react';
+import { screen, waitFor } from '@testing-library/react';
 import { MemoryRouter, Routes, Route } from 'react-router-dom';
 import ProtectedRoute from '../ProtectedRoute';
-import { useAppStore } from '../../../stores/appStore';
 import { authService } from '../../../services/api';
-
-// Mock the store
-vi.mock('../../../stores/appStore');
+import { renderWithProvider } from '../../../test-utils/renderWithProvider';
 
 // Mock authService
-vi.mock('../../../services/api', () => ({
-  authService: {
-    isAuthenticated: vi.fn(),
-    getProfile: vi.fn(),
-    logout: vi.fn(),
-  },
-}));
+vi.mock('../../../services/api');
 
 describe('ProtectedRoute', () => {
   const mockUser = {
@@ -36,6 +27,9 @@ describe('ProtectedRoute', () => {
         data_sharing: false,
         analytics_tracking: true,
       },
+      ai: {
+        provider_preference: 'gemini' as const,
+      },
     },
     created_at: '2024-01-01T00:00:00',
     updated_at: '2024-01-01T00:00:00',
@@ -43,19 +37,16 @@ describe('ProtectedRoute', () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
+    // Clear localStorage between tests
+    localStorage.clear();
+    // Set up default mock for getProfile to return the mock user
+    (authService.getProfile as any).mockResolvedValue(mockUser);
   });
 
   const TestComponent = () => <div>Protected Content</div>;
 
-  const renderWithRouter = (isAuthenticated: boolean, user: typeof mockUser | null) => {
-    (useAppStore as any).mockReturnValue({
-      isAuthenticated,
-      user,
-      setAuthenticated: vi.fn(),
-      setUser: vi.fn(),
-    });
-
-    return render(
+  const renderWithRouter = () => {
+    return renderWithProvider(
       <MemoryRouter initialEntries={['/protected']}>
         <Routes>
           <Route element={<ProtectedRoute />}>
@@ -67,31 +58,56 @@ describe('ProtectedRoute', () => {
     );
   };
 
-  it('renders protected content when authenticated', () => {
-    renderWithRouter(true, mockUser);
+  it('renders protected content when authenticated', async () => {
+    renderWithRouter();
 
-    expect(screen.getByText('Protected Content')).toBeInTheDocument();
+    // Wait for AuthProvider to initialize and set isLoading to false
+    await waitFor(() => {
+      expect(screen.getByText('Protected Content')).toBeInTheDocument();
+    });
   });
 
-  it('redirects to login when not authenticated', () => {
-    renderWithRouter(false, null);
+  it('redirects to login when not authenticated', async () => {
+    // Mock getProfile to throw error (no token, not authenticated)
+    (authService.getProfile as any).mockRejectedValueOnce(new Error('Not authenticated'));
+    
+    // Don't set tokens - AuthProvider will find no token and not call getProfile
+    // Actually, we need to ensure tokens are NOT set
+    localStorage.clear();
+    
+    renderWithRouter();
 
-    expect(screen.getByText('Login Page')).toBeInTheDocument();
-    expect(screen.queryByText('Protected Content')).not.toBeInTheDocument();
+    // Wait for AuthProvider to initialize
+    await waitFor(() => {
+      expect(screen.getByText('Login Page')).toBeInTheDocument();
+      expect(screen.queryByText('Protected Content')).not.toBeInTheDocument();
+    });
   });
 
-  it('redirects to login when user is null', () => {
-    renderWithRouter(true, null);
+  it('redirects to login when user is null', async () => {
+    // Mock getProfile to return null/throw error
+    (authService.getProfile as any).mockRejectedValueOnce(new Error('Not authenticated'));
+    
+    renderWithRouter();
 
-    expect(screen.getByText('Login Page')).toBeInTheDocument();
-    expect(screen.queryByText('Protected Content')).not.toBeInTheDocument();
+    // Wait for AuthProvider to initialize
+    await waitFor(() => {
+      expect(screen.getByText('Login Page')).toBeInTheDocument();
+      expect(screen.queryByText('Protected Content')).not.toBeInTheDocument();
+    });
   });
 
-  it('redirects to login when authenticated but user data not loaded', () => {
-    renderWithRouter(true, null);
+  it('redirects to login when authenticated but user data not loaded', async () => {
+    // Mock getProfile to return null/throw error
+    (authService.getProfile as any).mockRejectedValueOnce(new Error('Not authenticated'));
+    
+    renderWithRouter();
 
-    expect(screen.getByText('Login Page')).toBeInTheDocument();
-    expect(screen.queryByText('Protected Content')).not.toBeInTheDocument();
+    // Wait for AuthProvider to initialize
+    await waitFor(() => {
+      expect(screen.getByText('Login Page')).toBeInTheDocument();
+      expect(screen.queryByText('Protected Content')).not.toBeInTheDocument();
+    });
   });
 });
 

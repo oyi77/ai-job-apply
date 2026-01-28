@@ -296,14 +296,16 @@ export interface ButtonProps {
   icon?: React.ReactNode;
 }
 
-export interface InputProps {
+export interface InputProps extends Omit<React.InputHTMLAttributes<HTMLInputElement>, 'onChange' | 'ref' | 'size'> {
   name: string;
   id?: string;
   label?: string;
   type?: 'text' | 'email' | 'password' | 'textarea' | 'number';
   placeholder?: string;
   value?: string;
-  onChange?: (value: string) => void;
+  // Support both controlled (value callback) and React Hook Form (event) patterns
+  onChange?: ((value: string) => void) | ((event: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => void);
+  onBlur?: ((event: React.FocusEvent<HTMLInputElement | HTMLTextAreaElement>) => void) | (() => void);
   error?: string;
   required?: boolean;
   disabled?: boolean;
@@ -316,6 +318,18 @@ export interface InputProps {
   rows?: number;
   helpText?: string;
   ref?: React.Ref<HTMLInputElement | HTMLTextAreaElement>;
+  // Standard HTML input attributes (already inherited from InputHTMLAttributes except those we override)
+  defaultValue?: string;
+  min?: string | number;
+  max?: string | number;
+  minLength?: number;
+  maxLength?: number;
+  pattern?: string;
+  step?: string | number;
+  autoComplete?: string;
+  autoFocus?: boolean;
+  readOnly?: boolean;
+  tabIndex?: number;
 }
 
 // Navigation Types

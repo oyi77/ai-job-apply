@@ -6,26 +6,21 @@ import { test, expect } from '@playwright/test';
 import { waitForLoadingToComplete, waitForToast } from './utils';
 
 test.describe('Resume Management', () => {
-  test.beforeEach(async ({ page }) => {
-    // Mock authentication
-    await page.goto('/login');
-    await page.evaluate(() => {
-      localStorage.setItem('token', 'mock-token');
-      localStorage.setItem('user', JSON.stringify({ id: '1', email: 'test@example.com' }));
-    });
-  });
-
   test('should display resumes list', async ({ page }) => {
     await page.goto('/resumes');
     await waitForLoadingToComplete(page);
 
     await expect(page).toHaveURL(/.*resumes/);
+    await expect(page.getByRole('heading', { name: /resumes/i })).toBeVisible();
     
     // Check for resumes list or empty state
-    const hasResumes = await page.locator('[data-testid="resume-card"], .resume-card, .resume-item').count();
-    const hasEmptyState = await page.locator('text=No resumes, text=Upload your first resume').count();
-    
-    expect(hasResumes > 0 || hasEmptyState > 0).toBeTruthy();
+    const resumeCards = page
+      .locator('[data-testid="resume-card"]')
+      .or(page.locator('.resume-card'))
+      .or(page.locator('.resume-item'));
+    const emptyState = page.getByText(/no resumes|upload your first resume/i);
+
+    expect((await resumeCards.count()) > 0 || (await emptyState.isVisible().catch(() => false))).toBeTruthy();
   });
 
   test('should navigate to upload resume page', async ({ page }) => {
@@ -33,15 +28,17 @@ test.describe('Resume Management', () => {
     await waitForLoadingToComplete(page);
 
     // Look for upload button
-    const uploadButton = page.locator('button:has-text("Upload"), button:has-text("Add Resume"), a:has-text("Upload")').first();
+    const uploadButton = page
+      .getByRole('button', { name: /upload|add resume/i })
+      .or(page.getByRole('link', { name: /upload|add resume/i }));
     
     if (await uploadButton.isVisible()) {
       await uploadButton.click();
       await page.waitForTimeout(1000);
       
       // Should show upload form or modal
-      const hasUploadForm = await page.locator('input[type="file"], [data-testid="upload-form"]').count();
-      expect(hasUploadForm > 0).toBeTruthy();
+      const uploadForm = page.locator('input[type="file"]').or(page.getByTestId('upload-form'));
+      expect(await uploadForm.count()).toBeGreaterThan(0);
     }
   });
 
@@ -50,43 +47,33 @@ test.describe('Resume Management', () => {
     await waitForLoadingToComplete(page);
 
     // Find upload button
-    const uploadSelectors = [
-      'button:has-text("Upload Resume")',
-      'button:has-text("Upload")',
-      'input[type="file"]',
-      '[data-testid="upload-resume"]',
-    ];
+    const uploadButton = page
+      .getByRole('button', { name: /upload resume|upload/i })
+      .or(page.getByTestId('upload-resume'));
+    const fileInput = page.locator('input[type="file"]');
 
-    for (const selector of uploadSelectors) {
-      const element = page.locator(selector).first();
-      if (await element.isVisible().catch(() => false)) {
-        if (element.tagName() === 'INPUT') {
-          // Create a test file
-          const fileInput = element;
-          await fileInput.setInputFiles({
-            name: 'test-resume.pdf',
-            mimeType: 'application/pdf',
-            buffer: Buffer.from('Test resume content'),
-          });
-          
-          // Wait for upload to complete
-          await waitForToast(page, /uploaded|success/i, 10000);
-        } else {
-          await element.click();
-          await page.waitForTimeout(1000);
-          
-          // Try to find file input in modal/form
-          const fileInput = page.locator('input[type="file"]').first();
-          if (await fileInput.isVisible().catch(() => false)) {
-            await fileInput.setInputFiles({
-              name: 'test-resume.pdf',
-              mimeType: 'application/pdf',
-              buffer: Buffer.from('Test resume content'),
-            });
-            await waitForToast(page, /uploaded|success/i, 10000);
-          }
-        }
-        break;
+    if (await fileInput.isVisible().catch(() => false)) {
+      await fileInput.setInputFiles({
+        name: 'test-resume.pdf',
+        mimeType: 'application/pdf',
+        buffer: Buffer.from('Test resume content'),
+      });
+      await waitForToast(page, 'uploaded', 10000);
+      return;
+    }
+
+    if (await uploadButton.isVisible().catch(() => false)) {
+      await uploadButton.click();
+      await page.waitForTimeout(1000);
+
+      const modalFileInput = page.locator('input[type="file"]').first();
+      if (await modalFileInput.isVisible().catch(() => false)) {
+        await modalFileInput.setInputFiles({
+          name: 'test-resume.pdf',
+          mimeType: 'application/pdf',
+          buffer: Buffer.from('Test resume content'),
+        });
+        await waitForToast(page, 'uploaded', 10000);
       }
     }
   });
@@ -96,25 +83,20 @@ test.describe('Resume Management', () => {
     await waitForLoadingToComplete(page);
 
     // Try to click on first resume
-    const resumeSelectors = [
-      '[data-testid="resume-card"]',
-      '.resume-card',
-      '.resume-item',
-      'a[href*="resume"]',
-    ];
+    const resumeCard = page
+      .locator('[data-testid="resume-card"]')
+      .or(page.locator('.resume-card'))
+      .or(page.locator('.resume-item'))
+      .or(page.locator('a[href*="resume"]'))
+      .first();
 
-    for (const selector of resumeSelectors) {
-      const element = page.locator(selector).first();
-      if (await element.isVisible().catch(() => false)) {
-        await element.click();
-        await page.waitForTimeout(1000);
-        
-        // Check if we're on detail page
-        const isDetailPage = await page.locator('h1, h2, [data-testid="resume-detail"]').count();
-        if (isDetailPage > 0) {
-          expect(page.url()).toMatch(/resume/);
-          return;
-        }
+    if (await resumeCard.isVisible().catch(() => false)) {
+      await resumeCard.click();
+      await page.waitForTimeout(1000);
+
+      const detailHeading = page.getByRole('heading').or(page.getByTestId('resume-detail'));
+      if ((await detailHeading.count()) > 0) {
+        expect(page.url()).toMatch(/resume/);
       }
     }
   });
@@ -124,11 +106,13 @@ test.describe('Resume Management', () => {
     await waitForLoadingToComplete(page);
 
     // Look for set default button
-    const defaultButton = page.locator('button:has-text("Set Default"), button:has-text("Make Default"), [data-testid="set-default"]').first();
+    const defaultButton = page
+      .getByRole('button', { name: /set default|make default/i })
+      .or(page.getByTestId('set-default'));
     
     if (await defaultButton.isVisible()) {
       await defaultButton.click();
-      await waitForToast(page, /default|updated/i);
+      await waitForToast(page, 'default');
     }
   });
 
@@ -137,7 +121,9 @@ test.describe('Resume Management', () => {
     await waitForLoadingToComplete(page);
 
     // Look for delete button
-    const deleteButton = page.locator('button:has-text("Delete"), button[aria-label*="Delete"], [data-testid="delete-resume"]').first();
+    const deleteButton = page
+      .getByRole('button', { name: /delete/i })
+      .or(page.getByTestId('delete-resume'));
     
     if (await deleteButton.isVisible()) {
       // Accept confirmation dialog if it appears
@@ -146,7 +132,7 @@ test.describe('Resume Management', () => {
       });
       
       await deleteButton.click();
-      await waitForToast(page, /deleted|removed/i);
+      await waitForToast(page, 'deleted');
     }
   });
 });

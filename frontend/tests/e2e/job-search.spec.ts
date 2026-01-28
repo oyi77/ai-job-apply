@@ -7,15 +7,6 @@ import { waitForLoadingToComplete, waitForToast } from './utils';
 import { testJobs } from './fixtures/test-data';
 
 test.describe('Job Search', () => {
-  test.beforeEach(async ({ page }) => {
-    // Mock authentication
-    await page.goto('/login');
-    await page.evaluate(() => {
-      localStorage.setItem('token', 'mock-token');
-      localStorage.setItem('user', JSON.stringify({ id: '1', email: 'test@example.com' }));
-    });
-  });
-
   test('should display job search page', async ({ page }) => {
     await page.goto('/job-search');
     await waitForLoadingToComplete(page);
@@ -23,8 +14,7 @@ test.describe('Job Search', () => {
     await expect(page).toHaveURL(/.*job-search/);
     
     // Check for search form
-    const hasSearchForm = await page.locator('input[placeholder*="Search"], input[placeholder*="Job"], form').count();
-    expect(hasSearchForm > 0).toBeTruthy();
+    await expect(page.getByRole('heading', { name: /job search/i })).toBeVisible();
   });
 
   test('should search for jobs', async ({ page }) => {
@@ -32,20 +22,28 @@ test.describe('Job Search', () => {
     await waitForLoadingToComplete(page);
 
     // Find search input
-    const searchInput = page.locator('input[placeholder*="Search"], input[placeholder*="Job"], input[name="query"], input[name="search"]').first();
+    const searchInput = page
+      .getByPlaceholder(/search|job/i)
+      .or(page.getByRole('textbox', { name: /search|job/i }))
+      .or(page.locator('input[name="query"]'))
+      .or(page.locator('input[name="search"]'));
     
     if (await searchInput.isVisible()) {
       await searchInput.fill('Software Engineer');
       
       // Find and click search button
-      const searchButton = page.locator('button:has-text("Search"), button[type="submit"], button[aria-label*="Search"]').first();
+      const searchButton = page.getByRole('button', { name: /search/i });
       if (await searchButton.isVisible()) {
         await searchButton.click();
         await waitForLoadingToComplete(page);
         
         // Check for results
-        const hasResults = await page.locator('[data-testid="job-card"], .job-card, .job-item, text=No results').count();
-        expect(hasResults > 0).toBeTruthy();
+        const jobCards = page
+          .locator('[data-testid="job-card"]')
+          .or(page.locator('.job-card'))
+          .or(page.locator('.job-item'));
+        const emptyState = page.getByText(/no results/i);
+        expect((await jobCards.count()) > 0 || (await emptyState.isVisible().catch(() => false))).toBeTruthy();
       }
     }
   });
@@ -55,13 +53,16 @@ test.describe('Job Search', () => {
     await waitForLoadingToComplete(page);
 
     // Find location input
-    const locationInput = page.locator('input[placeholder*="Location"], input[name="location"]').first();
+    const locationInput = page
+      .getByPlaceholder(/location/i)
+      .or(page.getByRole('textbox', { name: /location/i }))
+      .or(page.locator('input[name="location"]'));
     
     if (await locationInput.isVisible()) {
       await locationInput.fill('San Francisco');
       
       // Trigger search
-      const searchButton = page.locator('button:has-text("Search"), button[type="submit"]').first();
+      const searchButton = page.getByRole('button', { name: /search/i });
       if (await searchButton.isVisible()) {
         await searchButton.click();
         await waitForLoadingToComplete(page);
@@ -74,10 +75,10 @@ test.describe('Job Search', () => {
     await waitForLoadingToComplete(page);
 
     // Perform a search first
-    const searchInput = page.locator('input[placeholder*="Search"], input[placeholder*="Job"]').first();
+    const searchInput = page.getByPlaceholder(/search|job/i);
     if (await searchInput.isVisible()) {
       await searchInput.fill('Engineer');
-      const searchButton = page.locator('button:has-text("Search"), button[type="submit"]').first();
+      const searchButton = page.getByRole('button', { name: /search/i });
       if (await searchButton.isVisible()) {
         await searchButton.click();
         await waitForLoadingToComplete(page);
@@ -85,25 +86,20 @@ test.describe('Job Search', () => {
     }
 
     // Try to click on first job
-    const jobSelectors = [
-      '[data-testid="job-card"]',
-      '.job-card',
-      '.job-item',
-      'a[href*="job"]',
-    ];
+    const jobCard = page
+      .locator('[data-testid="job-card"]')
+      .or(page.locator('.job-card'))
+      .or(page.locator('.job-item'))
+      .or(page.locator('a[href*="job"]'))
+      .first();
 
-    for (const selector of jobSelectors) {
-      const element = page.locator(selector).first();
-      if (await element.isVisible().catch(() => false)) {
-        await element.click();
-        await page.waitForTimeout(1000);
-        
-        // Check if we're on detail page
-        const isDetailPage = await page.locator('h1, h2, [data-testid="job-detail"]').count();
-        if (isDetailPage > 0) {
-          expect(page.url()).toMatch(/job/);
-          return;
-        }
+    if (await jobCard.isVisible().catch(() => false)) {
+      await jobCard.click();
+      await page.waitForTimeout(1000);
+
+      const detailHeading = page.getByRole('heading').or(page.getByTestId('job-detail'));
+      if ((await detailHeading.count()) > 0) {
+        expect(page.url()).toMatch(/job/);
       }
     }
   });
@@ -113,10 +109,10 @@ test.describe('Job Search', () => {
     await waitForLoadingToComplete(page);
 
     // Perform a search first
-    const searchInput = page.locator('input[placeholder*="Search"], input[placeholder*="Job"]').first();
+    const searchInput = page.getByPlaceholder(/search|job/i);
     if (await searchInput.isVisible()) {
       await searchInput.fill('Engineer');
-      const searchButton = page.locator('button:has-text("Search"), button[type="submit"]').first();
+      const searchButton = page.getByRole('button', { name: /search/i });
       if (await searchButton.isVisible()) {
         await searchButton.click();
         await waitForLoadingToComplete(page);
@@ -124,11 +120,11 @@ test.describe('Job Search', () => {
     }
 
     // Look for save button
-    const saveButton = page.locator('button:has-text("Save"), button:has-text("Bookmark"), button[aria-label*="Save"]').first();
+    const saveButton = page.getByRole('button', { name: /save|bookmark/i });
     
     if (await saveButton.isVisible()) {
       await saveButton.click();
-      await waitForToast(page, /saved|bookmarked/i);
+      await waitForToast(page, 'saved');
     }
   });
 
@@ -137,10 +133,10 @@ test.describe('Job Search', () => {
     await waitForLoadingToComplete(page);
 
     // Perform a search first
-    const searchInput = page.locator('input[placeholder*="Search"], input[placeholder*="Job"]').first();
+    const searchInput = page.getByPlaceholder(/search|job/i);
     if (await searchInput.isVisible()) {
       await searchInput.fill('Engineer');
-      const searchButton = page.locator('button:has-text("Search"), button[type="submit"]').first();
+      const searchButton = page.getByRole('button', { name: /search/i });
       if (await searchButton.isVisible()) {
         await searchButton.click();
         await waitForLoadingToComplete(page);
@@ -148,15 +144,15 @@ test.describe('Job Search', () => {
     }
 
     // Look for apply button
-    const applyButton = page.locator('button:has-text("Apply"), button:has-text("Create Application"), a:has-text("Apply")').first();
+    const applyButton = page.getByRole('button', { name: /apply|create application/i });
     
     if (await applyButton.isVisible()) {
       await applyButton.click();
       await page.waitForTimeout(1000);
       
       // Should navigate to application form or open modal
-      const hasForm = await page.locator('form, [data-testid="application-form"]').count();
-      expect(hasForm > 0 || page.url().includes('application')).toBeTruthy();
+      const form = page.locator('form').or(page.getByTestId('application-form'));
+      expect((await form.count()) > 0 || page.url().includes('application')).toBeTruthy();
     }
   });
 });

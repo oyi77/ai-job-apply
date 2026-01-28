@@ -105,10 +105,10 @@ const EmailSettingsForm: React.FC<EmailSettingsFormProps> = ({ onClose }) => {
     <div className="space-y-6">
       {/* Success/Error Messages */}
       {success && (
-        <Alert type="success" message={success} onClose={() => setSuccess(null)} />
+        <Alert type="success" message={success} dismissible onDismiss={() => setSuccess(null)} />
       )}
       {error && (
-        <Alert type="error" message={error} onClose={() => setError(null)} />
+        <Alert type="error" message={error} dismissible onDismiss={() => setError(null)} />
       )}
 
       {/* Email Notifications Toggle */}
@@ -217,6 +217,7 @@ const EmailSettingsForm: React.FC<EmailSettingsFormProps> = ({ onClose }) => {
             </p>
             <div className="flex space-x-3">
               <Input
+                name="testEmail"
                 type="email"
                 placeholder="Enter test email address"
                 value={testEmail}

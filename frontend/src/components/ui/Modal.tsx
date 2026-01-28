@@ -49,7 +49,7 @@ const Modal: React.FC<ModalProps> = ({
     <Transition appear show={isOpen} as={Fragment}>
       <Dialog
         as="div"
-        className="relative z-50"
+        className="fixed inset-0 z-50 overflow-y-auto"
         onClose={closeOnBackdrop ? onClose : () => { }}
       >
         <Transition.Child
@@ -64,8 +64,7 @@ const Modal: React.FC<ModalProps> = ({
           <div className="fixed inset-0 bg-gray-900/40 backdrop-blur-sm" />
         </Transition.Child>
 
-        <div className="fixed inset-0 overflow-y-auto">
-          <div className="flex min-h-full items-center justify-center p-4 text-center">
+        <div className="flex min-h-full items-center justify-center p-4 text-center">
             <Transition.Child
               as={Fragment}
               enter="ease-out duration-300"
@@ -92,6 +91,8 @@ const Modal: React.FC<ModalProps> = ({
                     {showCloseButton && (
                       <button
                         type="button"
+                        aria-label="Close"
+                        data-testid="modal-close"
                         className="text-gray-400 hover:text-gray-900 hover:bg-gray-100 transition-all rounded-xl p-2"
                         onClick={onClose}
                       >
@@ -115,7 +116,6 @@ const Modal: React.FC<ModalProps> = ({
               </Dialog.Panel>
             </Transition.Child>
           </div>
-        </div>
       </Dialog>
     </Transition>
   );

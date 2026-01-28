@@ -6,6 +6,7 @@ import Layout from './components/layout/Layout';
 import Spinner from './components/ui/Spinner';
 import { NotificationContainer, useNotifications } from './components/ui/Notification';
 import ProtectedRoute from './components/auth/ProtectedRoute';
+import { AuthProvider } from './contexts/AuthContext';
 import { useTheme } from './hooks/useTheme';
 import { initializePerformanceMonitoring } from './utils/performance';
 
@@ -19,6 +20,7 @@ const AIServices = lazy(() => import('./pages/AIServices'));
 const Analytics = lazy(() => import('./pages/Analytics'));
 const Settings = lazy(() => import('./pages/Settings'));
 const AdminSettings = lazy(() => import('./pages/AdminSettings'));
+const AutoApply = lazy(() => import('./pages/AutoApply'));
 const Login = lazy(() => import('./pages/Login'));
 const Register = lazy(() => import('./pages/Register'));
 const PasswordResetRequest = lazy(() => import('./pages/PasswordResetRequest').then(module => ({ default: module.PasswordResetRequest })));
@@ -100,15 +102,16 @@ function AppContent({ notifications, dismissNotification }: { notifications: any
 
   return (
     <QueryClientProvider client={queryClient}>
-      <VibeKanbanWebCompanion />
-      <Router>
-        <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
-          <NotificationContainer
-            notifications={notifications}
-            onDismiss={dismissNotification}
-            position="top-right"
-          />
-          <Routes>
+      <AuthProvider>
+        <VibeKanbanWebCompanion />
+        <Router>
+          <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
+            <NotificationContainer
+              notifications={notifications}
+              onDismiss={dismissNotification}
+              position="top-right"
+            />
+            <Routes>
             {/* Public routes */}
             <Route path="/login" element={
               <Suspense fallback={<PageLoader />}>
@@ -175,12 +178,17 @@ function AppContent({ notifications, dismissNotification }: { notifications: any
                   </Suspense>
                 } />
                 <Route path="admin-settings" element={
-                  <Suspense fallback={<PageLoader />}>
-                    <AdminSettings />
-                  </Suspense>
-                } />
-              </Route>
-            </Route>
+                   <Suspense fallback={<PageLoader />}>
+                     <AdminSettings />
+                   </Suspense>
+                 } />
+                <Route path="auto-apply" element={
+                   <Suspense fallback={<PageLoader />}>
+                     <AutoApply />
+                   </Suspense>
+                 } />
+               </Route>
+             </Route>
 
             {/* 404 route */}
             <Route path="*" element={
@@ -189,8 +197,9 @@ function AppContent({ notifications, dismissNotification }: { notifications: any
               </Suspense>
             } />
           </Routes>
-        </div>
-      </Router>
+          </div>
+        </Router>
+      </AuthProvider>
     </QueryClientProvider>
   );
 }

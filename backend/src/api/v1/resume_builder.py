@@ -20,6 +20,9 @@ class ResumeTemplateEnum(str, Enum):
     minimalist = "minimalist"
     creative = "creative"
     technical = "technical"
+    gogo_executive = "gogo_executive"
+    gogo_guided = "gogo_guided"
+    gogo_alternative = "gogo_alternative"
 
 
 class ResumeFormatEnum(str, Enum):
@@ -244,6 +247,21 @@ async def get_available_templates(
                 "id": "technical",
                 "name": "Technical",
                 "description": "Optimized for technical roles",
+            },
+            {
+                "id": "gogo_executive",
+                "name": "Gogo Executive",
+                "description": "Executive-focused format with strong impact framing",
+            },
+            {
+                "id": "gogo_guided",
+                "name": "Gogo Guided",
+                "description": "Minimalist layout with clear impact-first structure",
+            },
+            {
+                "id": "gogo_alternative",
+                "name": "Gogo Alternative",
+                "description": "Compact format with split contact header",
             },
         ]
     }

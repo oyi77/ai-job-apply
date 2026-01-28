@@ -1,4 +1,4 @@
-import axios from 'axios';
+import axios, { AxiosHeaders } from 'axios';
 import type { AxiosInstance, AxiosResponse } from 'axios';
 import type {
   JobApplication,
@@ -29,9 +29,25 @@ const apiClient: AxiosInstance = axios.create({
     'Content-Type': 'application/json',
   },
 });
+
 // Token storage keys
 const ACCESS_TOKEN_KEY = 'auth_token';
 const REFRESH_TOKEN_KEY = 'refresh_token';
+
+apiClient.interceptors.request.use((config) => {
+  const token = localStorage.getItem(ACCESS_TOKEN_KEY);
+  if (token) {
+    if (!config.headers) {
+      config.headers = new AxiosHeaders();
+    }
+    if (config.headers instanceof AxiosHeaders) {
+      config.headers.set('Authorization', `Bearer ${token}`);
+    } else {
+      (config.headers as Record<string, string>).Authorization = `Bearer ${token}`;
+    }
+  }
+  return config;
+});
 
 // Token refresh helper
 let isRefreshing = false;
@@ -259,12 +275,7 @@ export const authService = {
     });
   },
 
-  // Delete account
-  deleteAccount: async (): Promise<void> => {
-    await apiClient.delete('/api/v1/auth/me');
-  },
-
-  // Check if user is authenticated
+   // Check if user is authenticated
   isAuthenticated: (): boolean => {
     return !!localStorage.getItem(ACCESS_TOKEN_KEY);
   },
@@ -365,6 +376,53 @@ export const applicationService = {
     const response = await apiClient.post('/api/v1/applications/export', { ids, format }, {
       responseType: 'blob'
     });
+    return response.data;
+  },
+};
+
+// Auto Apply Service
+export interface AutoApplyConfig {
+  keywords: string[];
+  locations: string[];
+  min_salary: number | undefined;
+  daily_limit: number;
+  is_active: boolean;
+}
+
+export interface ActivityLog {
+  id: string;
+  timestamp: string;
+  job_title: string;
+  company: string;
+  status: 'success' | 'failed' | 'skipped';
+}
+
+export const autoApplyService = {
+  // Get configuration
+  getConfig: async (): Promise<AutoApplyConfig> => {
+    const response = await apiClient.get('/api/v1/auto-apply/config');
+    return response.data;
+  },
+
+  // Update configuration
+  updateConfig: async (config: Partial<AutoApplyConfig>): Promise<AutoApplyConfig> => {
+    const response = await apiClient.post('/api/v1/auto-apply/config', config);
+    return response.data;
+  },
+
+  // Start auto-apply
+  start: async (): Promise<void> => {
+    await apiClient.post('/api/v1/auto-apply/start');
+  },
+
+  // Stop auto-apply
+  stop: async (): Promise<void> => {
+    await apiClient.post('/api/v1/auto-apply/stop');
+  },
+
+  // Get activity log
+  getActivity: async (): Promise<ActivityLog[]> => {
+    const response = await apiClient.get('/api/v1/auto-apply/activity');
     return response.data;
   },
 };

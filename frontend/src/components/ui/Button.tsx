@@ -1,14 +1,9 @@
 import React, { memo, useMemo } from 'react';
 
-export interface ButtonProps {
+export interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
   variant?: 'primary' | 'secondary' | 'danger' | 'ghost' | 'success' | 'warning' | 'info';
   size?: 'sm' | 'md' | 'lg';
-  disabled?: boolean;
   loading?: boolean;
-  children: React.ReactNode;
-  onClick?: () => void;
-  type?: 'button' | 'submit' | 'reset';
-  className?: string;
   icon?: React.ReactNode;
 }
 
@@ -22,6 +17,7 @@ const Button: React.FC<ButtonProps> = memo(({
   type = 'button',
   className = '',
   icon,
+  ...rest
 }) => {
   // Memoize variant classes to prevent recalculation
   const variantClasses = useMemo(() => ({
@@ -60,6 +56,7 @@ const Button: React.FC<ButtonProps> = memo(({
       disabled={disabled || loading}
       onClick={handleClick}
       className={finalClassName}
+      {...rest}
     >
       {loading ? (
         <>

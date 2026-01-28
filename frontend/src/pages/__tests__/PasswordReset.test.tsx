@@ -1,9 +1,12 @@
-import { render, screen, fireEvent, waitFor } from '@testing-library/react';
+import { screen, fireEvent, waitFor } from '@testing-library/react';
 import { BrowserRouter } from 'react-router-dom';
 import { PasswordReset } from '../PasswordReset';
-import { vi } from 'vitest';
+import { vi, describe, it, expect, beforeEach } from 'vitest';
+import { renderWithProvider } from '../../test-utils/renderWithProvider';
+import { useAppStore } from '../../stores/appStore';
 
-// Mock router hooks
+// Mock dependencies
+vi.mock('../../stores/appStore');
 vi.mock('react-router-dom', async () => {
     const actual = await vi.importActual('react-router-dom');
     return {
@@ -17,7 +20,7 @@ vi.mock('react-router-dom', async () => {
 global.fetch = vi.fn();
 
 const renderComponent = () => {
-    render(
+    renderWithProvider(
         <BrowserRouter>
             <PasswordReset />
         </BrowserRouter>
@@ -27,16 +30,27 @@ const renderComponent = () => {
 describe('PasswordReset', () => {
     beforeEach(() => {
         vi.clearAllMocks();
+        // Mock useAppStore for AuthProvider
+        (useAppStore as any).mockImplementation((selector: any) => {
+            const store = {
+                setUser: vi.fn(),
+                setAuthenticated: vi.fn(),
+            };
+            if (typeof selector === 'function') {
+                return selector(store);
+            }
+            return store;
+        });
     });
 
-    test('renders password inputs and submit button', () => {
+    it('renders password inputs and submit button', () => {
         renderComponent();
         expect(screen.getByLabelText(/^new password$/i)).toBeInTheDocument();
         expect(screen.getByLabelText(/confirm password/i)).toBeInTheDocument();
         expect(screen.getByRole('button', { name: /reset password/i })).toBeInTheDocument();
     });
 
-    test('validates password mismatch', async () => {
+    it('validates password mismatch', async () => {
         renderComponent();
 
         fireEvent.change(screen.getByLabelText(/^new password$/i), { target: { value: 'Password123' } });
@@ -46,7 +60,7 @@ describe('PasswordReset', () => {
         expect(await screen.findByText(/passwords do not match/i)).toBeInTheDocument();
     });
 
-    test('handles successful reset', async () => {
+    it('handles successful reset', async () => {
         (global.fetch as any).mockResolvedValueOnce({
             ok: true,
             json: async () => ({ message: 'Password reset' }),

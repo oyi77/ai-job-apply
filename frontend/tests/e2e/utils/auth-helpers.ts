@@ -13,39 +13,30 @@ export async function loginAsUser(
   user: 'valid' | 'invalid' | 'new' = 'valid'
 ): Promise<void> {
   const userData = testUsers[user];
-  
+
   await page.goto('/login');
-  await page.fill('input[type="email"], input[name="email"]', userData.email);
-  await page.fill('input[type="password"], input[name="password"]', userData.password);
-  await page.click('button[type="submit"], button:has-text("Sign In"), button:has-text("Login")');
-  
-  // Wait for navigation or error message
-  await page.waitForTimeout(1000);
+  await page.getByLabel('Email address').fill(userData.email);
+  await page.getByLabel('Password').fill(userData.password);
+  await page.getByRole('button', { name: 'Sign in' }).click();
+
+  await page.waitForLoadState('networkidle');
 }
 
 /**
  * Logout current user
  */
 export async function logout(page: Page): Promise<void> {
-  // Try to find logout button/link
-  const logoutSelectors = [
-    'button:has-text("Logout")',
-    'button:has-text("Sign Out")',
-    'a:has-text("Logout")',
-    'a:has-text("Sign Out")',
-    '[data-testid="logout"]',
-  ];
-  
-  for (const selector of logoutSelectors) {
-    const element = page.locator(selector).first();
-    if (await element.isVisible().catch(() => false)) {
-      await element.click();
-      await page.waitForTimeout(500);
-      return;
-    }
+  const logoutButton = page
+    .getByRole('button', { name: /logout|sign out/i })
+    .or(page.getByRole('link', { name: /logout|sign out/i }))
+    .or(page.getByTestId('logout'));
+
+  if (await logoutButton.first().isVisible().catch(() => false)) {
+    await logoutButton.first().click();
+    await page.waitForLoadState('networkidle');
+    return;
   }
-  
-  // Fallback: clear localStorage
+
   await page.evaluate(() => {
     localStorage.clear();
     sessionStorage.clear();
@@ -56,7 +47,7 @@ export async function logout(page: Page): Promise<void> {
  * Check if user is authenticated
  */
 export async function isAuthenticated(page: Page): Promise<boolean> {
-  const token = await page.evaluate(() => localStorage.getItem('token'));
+  const token = await page.evaluate(() => localStorage.getItem('auth_token'));
   return !!token;
 }
 
@@ -66,9 +57,23 @@ export async function isAuthenticated(page: Page): Promise<boolean> {
 export async function setAuthToken(page: Page, token: string, user?: any): Promise<void> {
   await page.evaluate(
     ({ token, user }) => {
-      localStorage.setItem('token', token);
+      localStorage.setItem('auth_token', token);
+      localStorage.setItem('refresh_token', token);
       if (user) {
-        localStorage.setItem('user', JSON.stringify(user));
+        localStorage.setItem(
+          'ai-job-apply-store',
+          JSON.stringify({
+            state: {
+              user,
+              isAuthenticated: true,
+              theme: 'system',
+              searchFilters: {},
+              sortOptions: { field: 'created_at', direction: 'desc' },
+              aiSettings: { provider_preference: 'openai' },
+            },
+            version: 0,
+          })
+        );
       }
     },
     { token, user }
@@ -80,8 +85,9 @@ export async function setAuthToken(page: Page, token: string, user?: any): Promi
  */
 export async function clearAuth(page: Page): Promise<void> {
   await page.evaluate(() => {
-    localStorage.removeItem('token');
-    localStorage.removeItem('user');
+    localStorage.removeItem('auth_token');
+    localStorage.removeItem('refresh_token');
+    localStorage.removeItem('ai-job-apply-store');
     sessionStorage.clear();
   });
 }
@@ -92,7 +98,7 @@ export async function clearAuth(page: Page): Promise<void> {
 export async function waitForAuth(page: Page, timeout = 5000): Promise<void> {
   await page.waitForFunction(
     () => {
-      return !!localStorage.getItem('token');
+      return !!localStorage.getItem('auth_token');
     },
     { timeout }
   );
