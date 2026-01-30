@@ -1,0 +1,242 @@
+# Application Form Field Templates
+# This YAML file defines form field mappings for job application platforms
+# Used by form filling services to populate common fields without AI generation
+# Last Updated: 2026-01-29
+
+# LinkedIn Form Fields
+# LinkedIn is the primary platform for job applications
+# Fields are mapped to XPath selectors and include predefined answer options
+linkedin:
+  years_of_experience:
+    # XPath selector for years of experience dropdown on LinkedIn job application form
+    xpath: '//select[@name="yearsOfExperience"] | //select[@aria-label="Years of experience"]'
+    type: 'select'
+    answers:
+      - 'Less than 1 year'
+      - '1-2 years'
+      - '2-5 years'
+      - '5-10 years'
+      - '10+ years'
+    ai_fallback: false
+    description: 'Candidate experience level in years'
+
+  authorized_to_work:
+    # XPath selector for work authorization checkbox on LinkedIn
+    xpath: '//input[@type="checkbox"][@aria-label="Authorized to work"] | //input[@name="authorizedToWork"]'
+    type: 'checkbox'
+    answers:
+      - 'true'
+      - 'false'
+    ai_fallback: false
+    description: 'Whether candidate is authorized to work in the country'
+
+  expected_salary:
+    # XPath selector for expected salary input field
+    xpath: '//input[@type="number"][@placeholder="Expected salary"] | //input[@name="expectedSalary"]'
+    type: 'number'
+    default_value: '0'
+    ai_fallback: true
+    description: 'Expected annual salary in local currency'
+
+  skills_required:
+    # XPath selector for skills multi-select field
+    xpath: '//input[@type="text"][@placeholder="Add skills"] | //div[@class="skills-input"]'
+    type: 'text'
+    answers:
+      - 'Python'
+      - 'JavaScript'
+      - 'React'
+      - 'Node.js'
+      - 'SQL'
+      - 'AWS'
+      - 'Docker'
+      - 'Git'
+    ai_fallback: true
+    description: 'Technical skills required for the position'
+
+  cover_letter:
+    # XPath selector for cover letter textarea
+    xpath: '//textarea[@name="coverLetter"] | //textarea[@placeholder="Cover letter"]'
+    type: 'textarea'
+    default_value: ''
+    ai_fallback: true
+    description: 'Custom cover letter for the application'
+
+  phone_number:
+    # XPath selector for phone number input
+    xpath: '//input[@type="tel"] | //input[@name="phoneNumber"]'
+    type: 'text'
+    default_value: ''
+    ai_fallback: false
+    description: 'Candidate contact phone number'
+
+  email:
+    # XPath selector for email input
+    xpath: '//input[@type="email"] | //input[@name="email"]'
+    type: 'text'
+    default_value: ''
+    ai_fallback: false
+    description: 'Candidate email address'
+
+# Indeed Form Fields
+# Indeed has specific field requirements for job applications
+# Resume and cover letter are primary fields on Indeed
+indeed:
+  resume_upload:
+    # XPath selector for resume file upload on Indeed
+    xpath: '//input[@type="file"][@accept=".pdf,.doc,.docx"] | //input[@name="resume"]'
+    type: 'file'
+    default_value: ''
+    ai_fallback: false
+    description: 'Resume file upload (PDF, DOC, DOCX formats)'
+
+  cover_letter:
+    # XPath selector for cover letter textarea on Indeed
+    xpath: '//textarea[@name="coverLetter"] | //textarea[@placeholder="Cover letter"]'
+    type: 'textarea'
+    default_value: ''
+    ai_fallback: true
+    description: 'Cover letter text for Indeed application'
+
+  phone_number:
+    # XPath selector for phone number on Indeed
+    xpath: '//input[@type="tel"] | //input[@name="phone"]'
+    type: 'text'
+    default_value: ''
+    ai_fallback: false
+    description: 'Candidate phone number'
+
+  email:
+    # XPath selector for email on Indeed
+    xpath: '//input[@type="email"] | //input[@name="email"]'
+    type: 'text'
+    default_value: ''
+    ai_fallback: false
+    description: 'Candidate email address'
+
+  work_authorization:
+    # XPath selector for work authorization on Indeed
+    xpath: '//select[@name="workAuthorization"] | //select[@aria-label="Work authorization"]'
+    type: 'select'
+    answers:
+      - 'Authorized to work'
+      - 'Requires sponsorship'
+      - 'Not authorized'
+    ai_fallback: false
+    description: 'Work authorization status'
+
+# Glassdoor Form Fields
+# Glassdoor has employment type and work location as key fields
+glassdoor:
+  employment_type:
+    # XPath selector for employment type dropdown on Glassdoor
+    xpath: '//select[@name="employmentType"] | //select[@aria-label="Employment type"]'
+    type: 'select'
+    answers:
+      - 'Full-time'
+      - 'Part-time'
+      - 'Contract'
+      - 'Temporary'
+      - 'Internship'
+    ai_fallback: false
+    description: 'Type of employment (full-time, part-time, etc.)'
+
+  work_location:
+    # XPath selector for work location field on Glassdoor
+    xpath: '//input[@type="text"][@placeholder="Work location"] | //input[@name="workLocation"]'
+    type: 'text'
+    answers:
+      - 'Remote'
+      - 'On-site'
+      - 'Hybrid'
+    ai_fallback: false
+    description: 'Work location preference (remote, on-site, hybrid)'
+
+  resume_upload:
+    # XPath selector for resume upload on Glassdoor
+    xpath: '//input[@type="file"][@accept=".pdf,.doc,.docx"] | //input[@name="resume"]'
+    type: 'file'
+    default_value: ''
+    ai_fallback: false
+    description: 'Resume file upload'
+
+  cover_letter:
+    # XPath selector for cover letter on Glassdoor
+    xpath: '//textarea[@name="coverLetter"] | //textarea[@placeholder="Cover letter"]'
+    type: 'textarea'
+    default_value: ''
+    ai_fallback: true
+    description: 'Cover letter for Glassdoor application'
+
+  phone_number:
+    # XPath selector for phone number on Glassdoor
+    xpath: '//input[@type="tel"] | //input[@name="phone"]'
+    type: 'text'
+    default_value: ''
+    ai_fallback: false
+    description: 'Candidate phone number'
+
+  email:
+    # XPath selector for email on Glassdoor
+    xpath: '//input[@type="email"] | //input[@name="email"]'
+    type: 'text'
+    default_value: ''
+    ai_fallback: false
+    description: 'Candidate email address'
+
+  years_of_experience:
+    # XPath selector for years of experience on Glassdoor
+    xpath: '//select[@name="yearsOfExperience"] | //select[@aria-label="Years of experience"]'
+    type: 'select'
+    answers:
+      - 'Less than 1 year'
+      - '1-2 years'
+      - '2-5 years'
+      - '5-10 years'
+      - '10+ years'
+    ai_fallback: false
+    description: 'Years of professional experience'
+
+# Field Type Definitions
+# Defines the types of form fields and their characteristics
+field_types:
+  text:
+    description: 'Single-line text input'
+    html_type: 'input[type="text"]'
+    
+  textarea:
+    description: 'Multi-line text input'
+    html_type: 'textarea'
+    
+  select:
+    description: 'Dropdown selection field'
+    html_type: 'select'
+    
+  checkbox:
+    description: 'Boolean checkbox field'
+    html_type: 'input[type="checkbox"]'
+    
+  number:
+    description: 'Numeric input field'
+    html_type: 'input[type="number"]'
+    
+  file:
+    description: 'File upload field'
+    html_type: 'input[type="file"]'
+
+# Configuration Metadata
+metadata:
+  version: '1.0'
+  created_date: '2026-01-29'
+  last_updated: '2026-01-29'
+  platforms:
+    - 'linkedin'
+    - 'indeed'
+    - 'glassdoor'
+  description: 'Form field templates for automated job application filling'
+  notes: |
+    - Fields with ai_fallback: false use predefined answers from the answers list
+    - Fields with ai_fallback: true require AI generation for custom responses
+    - XPath selectors should be tested against production sites before deployment
+    - File upload fields require actual file paths from the user's resume storage
+    - All timestamps are in UTC format
