@@ -527,6 +527,10 @@ class DBUser(Base):
         uselist=False,
     )
 
+    session_cookies: Mapped[List["DBSessionCookie"]] = relationship(
+        "DBSessionCookie", back_populates="user", cascade="all, delete-orphan"
+    )
+
     # Indexes for performance
     __table_args__ = (
         Index("idx_user_email", "email"),
@@ -982,11 +986,21 @@ class DBAutoApplyConfig(Base):
     user_id: Mapped[str] = mapped_column(
         String, ForeignKey("users.id", ondelete="CASCADE"), nullable=False, unique=True
     )
+    enabled: Mapped[bool] = mapped_column(Boolean, default=False)
+    platforms: Mapped[Optional[str]] = mapped_column(Text, nullable=True)  # JSON list
     keywords: Mapped[str] = mapped_column(Text, nullable=False)  # JSON list string
     locations: Mapped[str] = mapped_column(Text, nullable=False)  # JSON list string
     min_salary: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
     daily_limit: Mapped[int] = mapped_column(Integer, default=5)
-    is_active: Mapped[bool] = mapped_column(Boolean, default=False)
+    max_applications: Mapped[int] = mapped_column(Integer, default=10)
+    apply_schedule: Mapped[Optional[str]] = mapped_column(String, nullable=True)
+    schedule_time: Mapped[Optional[str]] = mapped_column(String, nullable=True)
+    resume_id: Mapped[Optional[str]] = mapped_column(String, nullable=True, index=True)
+    cover_letter_preference: Mapped[Optional[str]] = mapped_column(
+        String, nullable=True
+    )
+    auto_retry_enabled: Mapped[bool] = mapped_column(Boolean, default=True)
+    auto_retry_max_attempts: Mapped[int] = mapped_column(Integer, default=3)
     created_at: Mapped[datetime] = mapped_column(
         DateTime, default=lambda: datetime.now(timezone.utc)
     )
@@ -1005,11 +1019,416 @@ class DBAutoApplyConfig(Base):
         return {
             "id": self.id,
             "user_id": self.user_id,
+            "enabled": self.enabled,
+            "platforms": json.loads(self.platforms) if self.platforms else [],
             "keywords": json.loads(self.keywords) if self.keywords else [],
             "locations": json.loads(self.locations) if self.locations else [],
             "min_salary": self.min_salary,
             "daily_limit": self.daily_limit,
-            "is_active": self.is_active,
+            "max_applications": self.max_applications,
+            "apply_schedule": self.apply_schedule,
+            "schedule_time": self.schedule_time,
+            "resume_id": self.resume_id,
+            "cover_letter_preference": self.cover_letter_preference,
+            "auto_retry_enabled": self.auto_retry_enabled,
+            "auto_retry_max_attempts": self.auto_retry_max_attempts,
             "created_at": self.created_at.isoformat(),
             "updated_at": self.updated_at.isoformat(),
         }
+
+
+class DBSessionCookie(Base):
+    """Database model for session cookies from job platforms."""
+
+    __tablename__ = "session_cookies"
+
+    id: Mapped[str] = mapped_column(
+        String, primary_key=True, default=lambda: str(uuid.uuid4())
+    )
+    user_id: Mapped[str] = mapped_column(
+        String, ForeignKey("users.id", ondelete="CASCADE"), nullable=False
+    )
+    platform: Mapped[str] = mapped_column(
+        String(50), nullable=False
+    )  # "linkedin", "indeed", "glassdoor"
+    cookies: Mapped[str] = mapped_column(Text, nullable=False)  # JSON string of cookies
+    expires_at: Mapped[datetime] = mapped_column(DateTime, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime, default=lambda: datetime.now(timezone.utc)
+    )
+
+    # Relationships
+    user: Mapped["DBUser"] = relationship("DBUser", back_populates="session_cookies")
+
+    # Indexes for performance
+    __table_args__ = (
+        Index("idx_session_user_platform", "user_id", "platform"),
+        Index("idx_session_expires", "expires_at"),
+    )
+
+    def to_dict(self) -> dict:
+        """Convert to dictionary."""
+        import json
+
+        return {
+            "id": self.id,
+            "user_id": self.user_id,
+            "platform": self.platform,
+            "cookies": json.loads(self.cookies) if self.cookies else {},
+            "expires_at": self.expires_at.isoformat(),
+            "created_at": self.created_at.isoformat(),
+        }
+
+    @classmethod
+    def from_dict(cls, data: dict) -> "DBSessionCookie":
+        """Create database model from dictionary."""
+        import json
+
+        return cls(
+            id=data.get("id") or str(uuid.uuid4()),
+            user_id=data["user_id"],
+            platform=data["platform"],
+            cookies=json.dumps(data.get("cookies", {})),
+            expires_at=data["expires_at"],
+        )
+
+
+class DBFailureLog(Base):
+    """Database model for failure logs with screenshot capture."""
+
+    __tablename__ = "failure_logs"
+
+    id = mapped_column(String, primary_key=True, default=lambda: str(uuid.uuid4()))
+    user_id = mapped_column(String, nullable=False, index=True)
+    task_name = mapped_column(String, nullable=False, index=True)
+    platform = mapped_column(String, nullable=False, index=True)
+    error_type = mapped_column(
+        String, nullable=False, index=True
+    )  # e.g., "network_error", "form_filling_error", "ai_service_error"
+    error_message = mapped_column(Text, nullable=False)
+    stack_trace = mapped_column(Text, nullable=True)
+    screenshot = mapped_column(Text, nullable=True)  # Base64 encoded image
+    job_id = mapped_column(String, nullable=True, index=True)
+    application_id = mapped_column(String, nullable=True, index=True)
+    created_at = mapped_column(DateTime, default=lambda: datetime.now(timezone.utc))
+    updated_at = mapped_column(
+        DateTime,
+        default=lambda: datetime.now(timezone.utc),
+        onupdate=lambda: datetime.now(timezone.utc),
+    )
+
+    # Relationships
+    user = relationship("DBUser", back_populates="failure_logs")
+
+    # Indexes for performance
+    __table_args__ = (
+        Index("idx_failure_user_task", "user_id", "task_name"),
+        Index("idx_failure_platform", "platform"),
+        Index("idx_failure_error_type", "error_type"),
+        Index("idx_failure_created", "created_at"),
+    )
+
+    def to_dict(self) -> dict:
+        """Convert database model to domain model."""
+        return {
+            "id": self.id,
+            "user_id": self.user_id,
+            "task_name": self.task_name,
+            "platform": self.platform,
+            "error_type": self.error_type,
+            "error_message": self.error_message,
+            "stack_trace": self.stack_trace,
+            "screenshot": self.screenshot,
+            "job_id": self.job_id,
+            "application_id": self.application_id,
+            "created_at": self.created_at.isoformat(),
+        }
+
+    @classmethod
+    def from_model(cls, db_model: "DBFailureLog") -> FailureLog:
+        """Convert database model to domain model."""
+        return FailureLog(
+            id=db_model.id,
+            user_id=db_model.user_id,
+            task_name=db_model.task_name,
+            platform=db_model.platform,
+            error_type=db_model.error_type,
+            error_message=db_model.error_message,
+            stack_trace=db_model.stack_trace,
+            screenshot=db_model.screenshot,
+            job_id=db_model.job_id,
+            application_id=db_model.application_id,
+            created_at=db_model.created_at,
+        )
+
+
+class FailureLog:
+    """Domain model for failure log entries."""
+
+    def __init__(
+        self,
+        id: str,
+        user_id: str,
+        task_name: str,
+        platform: str,
+        error_type: str,
+        error_message: str,
+        stack_trace: Optional[str],
+        screenshot: Optional[str],  # Base64 encoded image
+        job_id: Optional[str],
+        application_id: Optional[str],
+        created_at: datetime,
+    ):
+        self.id = id
+        self.user_id = user_id
+        self.task_name = task_name
+        self.platform = platform
+        self.error_type = error_type
+        self.error_message = error_message
+        self.stack_trace = stack_trace
+        self.screenshot = screenshot
+        self.job_id = job_id
+        self.application_id = application_id
+        self.created_at = created_at
+
+    def to_dict(self) -> dict:
+        """Convert to dictionary for JSON serialization."""
+        return {
+            "id": self.id,
+            "user_id": self.user_id,
+            "task_name": self.task_name,
+            "platform": self.platform,
+            "error_type": self.error_type,
+            "error_message": self.error_message,
+            "stack_trace": self.stack_trace,
+            "screenshot": self.screenshot,
+            "job_id": self.job_id,
+            "application_id": self.application_id,
+            "created_at": self.created_at.isoformat(),
+        }
+
+    @classmethod
+    def from_dict(cls, data: dict) -> "FailureLog":
+        """Create FailureLog from dictionary."""
+        return cls(
+            id=data.get("id"),
+            user_id=data["user_id"],
+            task_name=data.get("task_name"),
+            platform=data.get("platform"),
+            error_type=data.get("error_type"),
+            error_message=data.get("error_message"),
+            stack_trace=data.get("stack_trace"),
+            screenshot=data.get("screenshot"),
+            job_id=data.get("job_id"),
+            application_id=data.get("application_id"),
+            created_at=datetime.fromisoformat(data["created_at"])
+            if data.get("created_at")
+            else datetime.now(timezone.utc),
+        )
+
+
+class DBRateLimit(Base):
+    """Database model for rate limiting with per-platform quotas."""
+
+    __tablename__ = "rate_limits"
+
+    id = mapped_column(String, primary_key=True, default=lambda: str(uuid.uuid4()))
+    user_id = mapped_column(String, nullable=False, index=True)
+    platform = mapped_column(String(50), nullable=False, index=True)
+    applications_count = mapped_column(Integer, default=0, nullable=False)
+    hourly_limit = mapped_column(
+        Integer, nullable=False
+    )  # Configured limit (e.g., LinkedIn: 5/hr)
+    daily_limit = mapped_column(
+        Integer, nullable=False
+    )  # Configured limit (e.g., LinkedIn: 50/day)
+    last_reset = mapped_column(DateTime, nullable=True)  # Time of last daily reset
+    created_at = mapped_column(
+        DateTime, default=lambda: datetime.now(timezone.utc), nullable=False
+    )
+    updated_at = mapped_column(
+        DateTime,
+        default=lambda: datetime.now(timezone.utc),
+        onupdate=lambda: datetime.now(timezone.utc),
+        nullable=False,
+    )
+
+    # Relationships
+    user = relationship("DBUser", back_populates="rate_limits")
+
+    # Indexes for performance
+    __table_args__ = (
+        Index("idx_rate_user_platform", "user_id", "platform"),
+        Index("idx_rate_last_reset", "last_reset"),
+        Index("idx_rate_count", "applications_count"),
+    )
+
+    def to_dict(self) -> dict:
+        """Convert database model to dictionary."""
+        return {
+            "id": self.id,
+            "user_id": self.user_id,
+            "platform": self.platform,
+            "applications_count": self.applications_count,
+            "hourly_limit": self.hourly_limit,
+            "daily_limit": self.daily_limit,
+            "last_reset": self.last_reset.isoformat() if self.last_reset else None,
+            "created_at": self.created_at.isoformat(),
+            "updated_at": self.updated_at.isoformat(),
+        }
+
+    @classmethod
+    def from_dict(cls, data: dict) -> "DBRateLimit":
+        """Create database model from dictionary."""
+        return cls(
+            id=data.get("id"),
+            user_id=data["user_id"],
+            platform=data["platform"],
+            applications_count=data.get("applications_count", 0),
+            hourly_limit=data.get("hourly_limit"),
+            daily_limit=data.get("daily_limit"),
+            last_reset=datetime.fromisoformat(data["last_reset"])
+            if data.get("last_reset")
+            else None,
+            created_at=datetime.fromisoformat(data["created_at"])
+            if data.get("created_at")
+            else datetime.now(timezone.utc),
+        )
+
+
+class DBAutoApplyConfig(Base):
+    """Database model for auto-apply configuration settings."""
+
+    __tablename__ = "auto_apply_configs"
+
+    id = mapped_column(String, primary_key=True, default=lambda: str(uuid.uuid4()))
+    user_id = mapped_column(String, nullable=False, index=True)
+    enabled = mapped_column(Boolean, default=False, nullable=False)  # Master toggle
+    platforms = mapped_column(Text, nullable=True)  # JSON list of enabled platforms
+    search_criteria = mapped_column(
+        Text, nullable=True
+    )  # JSON blob of job search criteria
+    max_applications = mapped_column(
+        Integer, default=10, nullable=False
+    )  # Max apps per cycle
+    apply_schedule = mapped_column(
+        String, nullable=True
+    )  # "daily", "hourly", "immediate", "manual"
+    schedule_time = mapped_column(
+        String, nullable=True
+    )  # Time to run (e.g., "09:00 UTC")
+    resume_id = mapped_column(String, nullable=True, index=True)  # Default resume ID
+    cover_letter_preference = mapped_column(
+        String, nullable=True
+    )  # "ai_generated", "upload_own"
+    auto_retry_enabled = mapped_column(
+        Boolean, default=True, nullable=False
+    )  # Retry failed apps automatically
+    auto_retry_max_attempts = mapped_column(
+        Integer, default=3, nullable=False
+    )  # Max retry count
+    created_at = mapped_column(
+        DateTime, default=lambda: datetime.now(timezone.utc), nullable=False
+    )
+    updated_at = mapped_column(
+        DateTime,
+        default=lambda: datetime.now(timezone.utc),
+        onupdate=lambda: datetime.now(timezone.utc),
+        nullable=False,
+    )
+
+    # Relationships
+    user = relationship("DBUser", back_populates="auto_apply_configs")
+
+    # Indexes for performance
+    __table_args__ = (
+        Index("idx_auto_apply_user", "user_id"),
+        Index("idx_auto_apply_enabled", "enabled"),
+        Index("idx_auto_apply_resume", "resume_id"),
+    )
+
+    def to_dict(self) -> dict:
+        """Convert database model to dictionary."""
+        import json
+
+        return {
+            "id": self.id,
+            "user_id": self.user_id,
+            "enabled": self.enabled,
+            "platforms": json.loads(self.platforms) if self.platforms else [],
+            "search_criteria": json.loads(self.search_criteria)
+            if self.search_criteria
+            else {},
+            "max_applications": self.max_applications,
+            "apply_schedule": self.apply_schedule,
+            "schedule_time": self.schedule_time,
+            "resume_id": self.resume_id,
+            "cover_letter_preference": self.cover_letter_preference,
+            "auto_retry_enabled": self.auto_retry_enabled,
+            "auto_retry_max_attempts": self.auto_retry_max_attempts,
+            "created_at": self.created_at.isoformat(),
+            "updated_at": self.updated_at.isoformat(),
+        }
+
+    @classmethod
+    def from_dict(cls, data: dict) -> "DBAutoApplyConfig":
+        """Create database model from dictionary."""
+        import json
+
+        return cls(
+            id=data.get("id"),
+            user_id=data["user_id"],
+            enabled=data.get("enabled", False),
+            platforms=json.loads(data.get("platforms", "[]")),
+            search_criteria=json.loads(data.get("search_criteria", "{}")),
+            max_applications=data.get("max_applications", 10),
+            apply_schedule=data.get("apply_schedule", "daily"),
+            schedule_time=data.get("schedule_time", "09:00"),
+            resume_id=data.get("resume_id"),
+            cover_letter_preference=data.get("cover_letter_preference", "ai_generated"),
+            auto_retry_enabled=data.get("auto_retry_enabled", True),
+            auto_retry_max_attempts=data.get("auto_retry_max_attempts", 3),
+            created_at=datetime.fromisoformat(data["created_at"])
+            if data.get("created_at")
+            else datetime.now(timezone.utc),
+            updated_at=datetime.fromisoformat(data["updated_at"])
+            if data.get("updated_at")
+            else datetime.now(timezone.utc),
+        )
+
+
+class DBAutoApplyActivityLog(Base):
+    """Database model for enhanced auto-apply activity logging."""
+
+    __tablename__ = "auto_apply_activity_logs"
+
+    id = mapped_column(String, primary_key=True, default=lambda: str(uuid.uuid4()))
+    user_id = mapped_column(String, nullable=False, index=True)
+    cycle_id = mapped_column(String, nullable=True, index=True)
+    cycle_start = mapped_column(DateTime, nullable=True, index=True)
+    cycle_end = mapped_column(DateTime, nullable=True)
+    cycle_status = mapped_column(String, nullable=False, index=True)
+    jobs_searched = mapped_column(Integer, default=0, nullable=False)
+    jobs_matched = mapped_column(Integer, default=0, nullable=False)
+    jobs_applied = mapped_column(Integer, default=0, nullable=False)
+    applications_successful = mapped_column(Integer, default=0, nullable=False)
+    applications_failed = mapped_column(Integer, default=0, nullable=False)
+    errors = mapped_column(Text, nullable=True)  # JSON array of error details
+    screenshots = mapped_column(Text, nullable=True)  # JSON array of screenshot paths
+    created_at = mapped_column(
+        DateTime, default=lambda: datetime.now(timezone.utc), nullable=False
+    )
+
+    # Relationships
+    user = relationship("DBUser", back_populates="auto_apply_activity_logs")
+
+    # Indexes for performance
+    __table_args__ = (
+        Index("idx_activity_user", "user_id"),
+        Index("idx_activity_cycle", "cycle_id"),
+        Index("idx_activity_status", "cycle_status"),
+        Index("idx_activity_created", "created_at"),
+    )
+
+    def to_dict(self) -> dict:
+        """Convert database model to dictionary."""

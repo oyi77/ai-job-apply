@@ -112,3 +112,4 @@ frontend/node_modules/
 
 # Playwright auth state
 frontend/playwright/.auth/
+frontend/playwright-report
