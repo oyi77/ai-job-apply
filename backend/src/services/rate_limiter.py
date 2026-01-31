@@ -234,7 +234,22 @@ class RateLimiter:
         """
         current = datetime.now(timezone.utc)
 
-        # Get last reset time
+        # Check cache first (primary source of truth)
+        if platform in self.cache:
+            cached = self.cache[platform]
+            if cached["last_reset"]:
+                # Check if last reset was yesterday
+                if cached["last_reset"].date() < current.date():
+                    # Reset at midnight (new day)
+                    return True
+                else:
+                    # Last reset was today, no reset needed
+                    return False
+            else:
+                # No previous reset, need first reset
+                return True
+
+        # Fall back to rate_data if cache doesn't have platform
         if platform in self.rate_data:
             last_reset = self.rate_data[platform]["last_reset"]
             if last_reset:
