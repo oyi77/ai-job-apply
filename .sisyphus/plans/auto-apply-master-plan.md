@@ -368,13 +368,13 @@
 - Use proper async database patterns with session.begin()
 
 **Acceptance Criteria:**
-- [ ] Repository class created with all CRUD methods
-- [ ] `create()` inserts activity log with all required fields
-- [ ] `get_user_activities()` supports limit parameter for pagination
-- [ ] `get_latest_cycle()` returns most recent cycle for user
-- [ ] `update_activity()` adds application results to existing log
-- [ ] `get_cycles_in_range()` filters by date range correctly
-- [ ] All queries use `async with session.begin()`
+- [x] Repository class created with all CRUD methods
+- [x] `create()` inserts activity log with all required fields
+- [x] `get_user_activities()` supports limit parameter for pagination
+- [x] `get_latest_cycle()` returns most recent cycle for user
+- [x] `update_activity()` adds application results to existing log
+- [x] `get_cycles_in_range()` filters by date range correctly
+- [x] All queries use `async with session.begin()`
 - [ ] Unit tests for create, get, update, filtering
 - [ ] Integration test: Run cycle → verify activity log created
 - [ ] Integration test: Query activities → verify pagination works
