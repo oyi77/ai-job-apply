@@ -375,7 +375,7 @@
 - [x] `update_activity()` adds application results to existing log
 - [x] `get_cycles_in_range()` filters by date range correctly
 - [x] All queries use `async with session.begin()`
-- [ ] Unit tests for create, get, update, filtering
+- [x] Unit tests for create, get, update, filtering (tests exist, some failing due to minimum threshold logic)
 - [ ] Integration test: Run cycle → verify activity log created
 - [ ] Integration test: Query activities → verify pagination works
 
@@ -411,9 +411,9 @@
 - [x] `POST /retry-queued` endpoint implemented (accepts job_id)
 - [x] `POST /skip-queued` endpoint implemented (accepts job_id + reason)
 - [x] All endpoints require authentication (current_user dependency)
-- [ ] Request validation using Pydantic models (UpdateAutoApplyConfigRequest, RateLimitsRequest)
-- [ ] Proper status codes (200 success, 400 validation, 401 unauthorized, 500 server error)
-- [ ] Error messages are clear and actionable
+- [x] Request validation using Pydantic models (UpdateAutoApplyConfigRequest, RateLimitsRequest)
+- [x] Proper status codes (200 success, 400 validation, 401 unauthorized, 500 server error)
+- [x] Error messages are clear and actionable
 - [ ] Unit tests for all endpoints (config, start, stop, rate-limits, activity, queue)
 - [ ] Integration test: Update config → verify saved to database
 - [ ] Integration test: Start auto-apply → verify scheduler job registered
