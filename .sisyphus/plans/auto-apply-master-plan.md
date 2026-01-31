@@ -345,9 +345,9 @@
 - [x] Unit tests for create, get, update, reset
 - [x] Integration test: Apply to LinkedIn → verify count incremented
 - [x] Integration test: Apply to LinkedIn hourly limit → verify blocked
-- [ ] Migration script created (create table)
-- [ ] Migration script tested (applies to clean database)
-- [ ] Manual verification: Table exists with correct schema
+- [x] Migration script created (create table)
+- [x] Migration script tested (applies to clean database)
+- [x] Manual verification: Table exists with correct schema
 
 **Estimated Time:** 2 hours
 
