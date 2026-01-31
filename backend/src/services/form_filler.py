@@ -10,7 +10,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.services.ai_service import AIService
 from src.utils.logger import get_logger
-from src.models.job import Job, ApplicationFormQuestion
+from src.models.job import Job
 from src.models.application import JobApplication, ApplicationStatus
 
 

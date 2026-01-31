@@ -21,11 +21,7 @@ class RateLimitResult:
     allowed: bool
     retry_after: Optional[datetime] = None
 
-    def __init__(
-        self,
-        allowed: bool,
-        retry_after: Optional[datetime] = None
-    ):
+    def __init__(self, allowed: bool, retry_after: Optional[datetime] = None):
         self.allowed = allowed
         self.retry_after = retry_after
 
@@ -77,7 +73,7 @@ class RateLimiter:
         self.session = session
         self.user_id = user_id
         self.logger = get_logger(__name__)
-        self.cache: {}  # In-memory cache: {platform: rate_data}
+        self.cache: Dict[str, Dict] = {}  # In-memory cache: {platform: rate_data}
         self.current_date = datetime.now(timezone.utc)
 
         # Track rate data: {platform: {hourly_count, daily_count, last_reset}}
@@ -113,7 +109,10 @@ class RateLimiter:
             if cached:
                 current_date = datetime.now(timezone.utc)
                 # Check if cached data is from today
-                if cached["last_reset"] and cached["last_reset"].date() < self.current_date.date():
+                if (
+                    cached["last_reset"]
+                    and cached["last_reset"].date() < self.current_date.date()
+                ):
                     # Cached data is from yesterday, check if day changed
                     if cached["last_reset"].date() < self.current_date.date():
                         # Day changed, reset counters
@@ -132,7 +131,9 @@ class RateLimiter:
                     f"{rate_data['hourly_count']}/{limits['hourly_limit']}"
                 )
                 # Calculate retry time (next hour)
-                retry_after = (datetime.now(timezone.utc) + timedelta(hours=1)).replace(minute=0, second=0, microsecond=0)
+                retry_after = (datetime.now(timezone.utc) + timedelta(hours=1)).replace(
+                    minute=0, second=0, microsecond=0
+                )
                 return RateLimitResult(allowed=False, retry_after=retry_after)
 
             # Check daily limit
@@ -142,7 +143,9 @@ class RateLimiter:
                     f"{rate_data['daily_count']}/{limits['daily_limit']}"
                 )
                 # Calculate retry time (tomorrow midnight)
-                retry_after = (datetime.now(timezone.utc) + timedelta(days=1)).replace(hour=0, minute=0, second=0, microsecond=0)
+                retry_after = (datetime.now(timezone.utc) + timedelta(days=1)).replace(
+                    hour=0, minute=0, second=0, microsecond=0
+                )
                 return RateLimitResult(allowed=False, retry_after=retry_after)
 
             # Check minimum threshold
@@ -153,9 +156,15 @@ class RateLimiter:
                 )
                 # Wait until minimum threshold
                 # Calculate time until next slot
-                remaining_slots = limits["minimum_threshold"] - rate_data["hourly_count"]
-                seconds_per_slot = 3600 / limits["minimum_threshold"]  # 1 hour in seconds
-                retry_after = (datetime.now(timezone.utc) + timedelta(seconds=seconds_per_slot * remaining_slots))
+                remaining_slots = (
+                    limits["minimum_threshold"] - rate_data["hourly_count"]
+                )
+                seconds_per_slot = (
+                    3600 / limits["minimum_threshold"]
+                )  # 1 hour in seconds
+                retry_after = datetime.now(timezone.utc) + timedelta(
+                    seconds=seconds_per_slot * remaining_slots
+                )
                 return RateLimitResult(allowed=False, retry_after=retry_after)
 
             # All checks passed, allow application
@@ -182,7 +191,10 @@ class RateLimiter:
             if platform in self.cache:
                 cached = self.cache[platform]
                 # Check if day reset needed
-                if cached["last_reset"] and cached["last_reset"].date() < self.current_date.date():
+                if (
+                    cached["last_reset"]
+                    and cached["last_reset"].date() < self.current_date.date()
+                ):
                     # Day changed, reset counters
                     cached["hourly_count"] = 0
                     cached["daily_count"] = 0
@@ -242,13 +254,15 @@ class RateLimiter:
         """
         try:
             # Reset cached data
-            cached = self.cache.get(platform, {"hourly_count": 0, "daily_count": 0, "last_reset": None})
+            cached = self.cache.get(
+                platform, {"hourly_count": 0, "daily_count": 0, "last_reset": None}
+            )
             if cached:
                 # Update cache
                 self.cache[platform] = {
-                    **"hourly_count": 0,
-                    **"daily_count": 0,
-                    **"last_reset": self.current_date
+                    "hourly_count": 0,
+                    "daily_count": 0,
+                    "last_reset": self.current_date,
                 }
 
                 # Update in-memory rate data
@@ -292,7 +306,11 @@ class RateLimiter:
             limits = self.PLATFORM_LIMITS.get(platform)
             remaining_hourly = max(0, limits["hourly_limit"] - cached["hourly_count"])
             remaining_daily = max(0, limits["daily_limit"] - cached["daily_count"])
-            remaining_hourly_pct = int((remaining_hourly / limits["hourly_limit"]) * 100) if limits["hourly_limit"] > 0 else 0
+            remaining_hourly_pct = (
+                int((remaining_hourly / limits["hourly_limit"]) * 100)
+                if limits["hourly_limit"] > 0
+                else 0
+            )
 
             return {
                 "platform": platform,
@@ -303,8 +321,13 @@ class RateLimiter:
                 "remaining_hourly": remaining_hourly,
                 "remaining_daily": remaining_daily,
                 "remaining_hourly_pct": remaining_hourly_pct,
-                "reset_time": cached["last_reset"].isoformat() if cached["last_reset"] else None,
-                "status": "active" if cached["hourly_count"] < limits["hourly_limit"] and cached["daily_count"] < limits["daily_limit"] else "blocked"
+                "reset_time": cached["last_reset"].isoformat()
+                if cached["last_reset"]
+                else None,
+                "status": "active"
+                if cached["hourly_count"] < limits["hourly_limit"]
+                and cached["daily_count"] < limits["daily_limit"]
+                else "blocked",
             }
         else:
             # No cached data, return default status
@@ -319,7 +342,7 @@ class RateLimiter:
                 "remaining_daily": limits["daily_limit"],
                 "remaining_hourly_pct": 100,
                 "reset_time": None,
-                "status": "active"
+                "status": "active",
             }
 
     def clear_cache(self) -> None:

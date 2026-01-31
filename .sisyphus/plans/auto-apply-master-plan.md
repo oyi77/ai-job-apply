@@ -158,15 +158,15 @@
 - Use async database operations with proper transaction management
 
 **Acceptance Criteria:**
-- [ ] SessionManager class created with all methods
-- [ ] `load_session()` checks cache first, then database
-- [ ] `save_session()` saves to database with 7-day expiry
-- [ ] In-memory cache working (reduces DB queries by 90%)
-- [ ] Database transaction wrapping (async with session.begin())
-- [ ] Unit tests for session loading/saving
-- [ ] Integration test: Load session → verify cookies retrieved
-- [ ] Integration test: Save session → verify stored in database
-- [ ] Integration test: Expired session → verify None returned
+- [x] SessionManager class created with all methods
+- [x] `load_session()` checks cache first, then database
+- [x] `save_session()` saves to database with 7-day expiry
+- [x] In-memory cache working (reduces DB queries by 90%)
+- [x] Database transaction wrapping (async with session.begin())
+- [x] Unit tests for session loading/saving
+- [ [x] Integration test: Load session → verify cookies retrieved
+- [x] Integration test: Save session → verify stored in database
+- [x] Integration test: Expired session → verify None returned
 
 **Estimated Time:** 3 hours
 
@@ -242,13 +242,13 @@
 
 **Acceptance Criteria:**
 - [x] YAML file created with LinkedIn section
-- [ ] LinkedIn section includes: years_of_experience, authorized_to_work, expected_salary, skills_required
+- [x] LinkedIn section includes: years_of_experience, authorized_to_work, expected_salary, skills_required
 - [x] Each field has: xpath, type, answers/default_value, ai_fallback
-- [ ] Indeed section includes: resume_upload, cover_letter
-- [ ] Glassdoor section includes: employment_type, work_location
-- [ ] YAML is valid (no syntax errors)
-- [ ] File is well-documented with comments
-- [ ] Manual verification: YAML loads without errors in Python
+- [x] Indeed section includes: resume_upload, cover_letter
+- [x] Glassdoor section includes: employment_type, work_location
+- [x] YAML is valid (no syntax errors)
+- [x] File is well-documented with comments
+- [x] Manual verification: YAML loads without errors in Python
 
 **Estimated Time:** 2 hours
 
@@ -269,45 +269,24 @@
 - Add comprehensive error handling and logging
 
 **Acceptance Criteria:**
-- [ ] FormFiller class created with YAML loading
-- [ ] `fill_form()` iterates through all field types correctly
-- [ ] `_get_mapped_answer()` returns YAML answer or user preference
-- [ ] `_get_ai_answer()` calls AI service with proper prompt
-- [ ] Field-specific methods handle select, checkbox, number, text, textarea, file
-- [ ] Error handling catches and logs all field-filling failures
-- [ ] Unit tests for YAML loading, mapped answers, AI fallback
-- [ ] Integration test: Fill LinkedIn form with known values → verify all fields populated
-- [ ] Integration test: Fill form with AI → verify AI responses used
-
-**Estimated Time:** 4 hours
-
-**Parallelizable:** YES (with Task 1.4 completed)
-
----
-
-#### Task 1.6: Implement Multi-Layered Rate Limiter
-**File:** `backend/src/services/rate_limiter.py` (NEW FILE)
-
-**What to do:**
-- Create `RateLimiter` class with per-platform limits
-- Define platform limits: LinkedIn (5/hr, 50/day), Indeed (10/hr, 100/day), Glassdoor (3/hr, 30/day), Email (20/day)
-- Implement `can_apply()` method (check hourly + daily limits)
-- Implement `record_application()` method (increment counter, handle day reset)
-- Implement in-memory cache for fast limit checks
-- Add minimum thresholds per platform (prevents spammy rates)
-- Implement retry time calculation (when can apply again)
-- Add comprehensive logging for limit enforcement
-
-**Acceptance Criteria:**
-- [ ] RateLimiter class created with platform limits dictionary
-- [ ] Platform limits: LinkedIn (5/hr, 50/day), Indeed (10/hr, 100/day), Glassdoor (3/hr, 30/day)
-- [ ] `can_apply()` checks hourly limit (returns allowed + retry_after time)
-- [ ] `can_apply()` checks daily limit (returns allowed + retry_after time)
-- [ ] `record_application()` increments counter, handles 24h reset
-- [ ] In-memory cache working (user_id → platform → rate_data)
-- [ ] Minimum thresholds enforced (can't go below 1/hr per platform)
-- [ ] Retry time calculated correctly (seconds until allowed again)
-- [ ] Unit tests for limit checks, recording, day reset
+- [x] FormFiller class created with YAML loading
+- [x] `fill_form()` iterates through all field types correctly
+- [x] `_get_mapped_answer()` returns YAML answer or user preference
+- [x] `_get_ai_answer()` calls AI service with proper prompt
+- [x] Field-specific methods handle select, checkbox, number, text, textarea, file
+- [x] Error handling catches and logs all field-filling failures
+- [x] Unit tests for YAML loading, mapped answers, AI fallback
+- [x] Integration test: Fill LinkedIn form with known values → verify all fields populated
+- [x] Integration test: Fill form with AI → verify AI responses used
+- [x] RateLimiter class created with platform limits dictionary
+- [x] Platform limits: LinkedIn (5/hr, 50/day), Indeed (10/hr, 100/day), Glassdoor (3/hr, 30/day)
+- [x] `can_apply()` checks hourly limit (returns allowed + retry_after time)
+- [x] `can_apply()` checks daily limit (returns allowed + retry_after time)
+- [x] `record_application()` increments counter, handles 24h reset
+- [x] In-memory cache working (user_id → platform → rate_data)
+- [x] Minimum thresholds enforced (can't go below 1/hr per platform)
+- [x] Retry time calculated correctly (seconds until allowed again)
+- [x] Unit tests for limit checks, recording, day reset
 - [ ] Integration test: Apply 5 LinkedIn jobs → verify 6th blocked
 - [ ] Integration test: Apply 51st job → verify daily limit blocked
 
@@ -328,13 +307,13 @@
 - Add from_dict() and from_model() methods if needed
 
 **Acceptance Criteria:**
-- [ ] `DBRateLimit` model defined with all required fields
-- [ ] Table name: "rate_limits"
-- [ ] Primary key: id (String)
-- [ ] Foreign key: user_id (references users.id)
-- [ ] applications_count field: mapped_column(Integer)
-- [ ] reset_time field: mapped_column(DateTime)
-- [ ] Indexes added: idx_rate_user_platform
+- [x] `DBRateLimit` model defined with all required fields
+- [x] Table name: "rate_limits"
+- [x] Primary key: id (String)
+- [x] Foreign key: user_id (references users.id)
+- [x] applications_count field: mapped_column(Integer)
+- [x] reset_time field: mapped_column(DateTime)
+- [x] Indexes added: idx_rate_user_platform
 - [ ] Migration script created (create table)
 - [ ] Migration script tested (applies to clean database)
 - [ ] Manual verification: Table exists with correct schema

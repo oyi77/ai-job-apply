@@ -1,11 +1,13 @@
 {
-  "active_plan": "C:\\Users\\Snap-PC-Dev-026\\ai-job-apply\\.sisyphus\\plans\\auto-apply-master-plan.md",
-  "started_at": "2026-01-29T04:36:00.000Z",
+  "active_plan": "/Users/paijo/ai-job-apply/.sisyphus/plans/auto-apply-master-plan.md",
+  "started_at": "2026-01-30T18:01:12.179Z",
   "session_ids": [
     "ses_3fd8a1222ffeNAuaWhaVPd7Hup",
     "ses_3f34f8badffeQhy6t5EsISPwc1",
     "ses_3f34b131bffetHD41nnaZwAVhs",
-    "ses_3f3115fbdffeAEPQW4g8vZHhaw"
+    "ses_3f3115fbdffeAEPQW4g8vZHhaw",
+    "ses_3efef0d3fffeC7pvfpSXe9OC1H",
+    "ses_3eceed340ffeWpAkOwPkIJHXxY"
   ],
   "plan_name": "auto-apply-master-plan"
 }

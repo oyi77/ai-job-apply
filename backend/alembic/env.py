@@ -42,6 +42,8 @@ from src.database.models import (
     DBConfig,
     AIProviderConfig,
     GlobalAISettings,
+    DBSessionCookie,
+    DBRateLimit,
 )
 from src.models.password_history import PasswordHistory
 

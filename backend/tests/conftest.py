@@ -13,21 +13,33 @@ import uuid
 
 import pytest
 
-from .fixtures.test_data import (  # noqa: E402
-    sample_application_data,
-    sample_cover_letter_data,
-    sample_job_data,
-    sample_resume_data,
-)
+import sys
+from pathlib import Path
 
 # Ensure `src` package is importable when running tests without installing the
 # project into the current environment.
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 SRC_ROOT = PROJECT_ROOT / "src"
-if str(PROJECT_ROOT) not in sys.path:
-    sys.path.insert(0, str(PROJECT_ROOT))
-if str(SRC_ROOT) not in sys.path:
-    sys.path.insert(0, str(SRC_ROOT))
+TESTS_ROOT = Path(__file__).resolve().parents[0]
+
+# Add paths in order: project root first, then tests for fixtures, then src
+paths_to_add = [
+    str(PROJECT_ROOT),
+    str(TESTS_ROOT),
+    str(SRC_ROOT),
+]
+
+for p in paths_to_add:
+    if p not in sys.path:
+        sys.path.insert(0, p)
+
+# Now imports will work
+from fixtures.test_data import (  # noqa: E402
+    sample_application_data,
+    sample_cover_letter_data,
+    sample_job_data,
+    sample_resume_data,
+)
 
 
 @pytest.fixture(scope="session")

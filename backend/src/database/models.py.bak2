@@ -531,10 +531,6 @@ class DBUser(Base):
         "DBSessionCookie", back_populates="user", cascade="all, delete-orphan"
     )
 
-    rate_limits: Mapped[List["DBRateLimit"]] = relationship(
-        "DBRateLimit", back_populates="user", cascade="all, delete-orphan"
-    )
-
     # Indexes for performance
     __table_args__ = (
         Index("idx_user_email", "email"),
@@ -979,6 +975,68 @@ class GlobalAISettings(Base):
         }
 
 
+class DBAutoApplyConfig(Base):
+    """Database model for Auto-Apply configuration."""
+
+    __tablename__ = "auto_apply_configs"
+
+    id: Mapped[str] = mapped_column(
+        String, primary_key=True, default=lambda: str(uuid.uuid4())
+    )
+    user_id: Mapped[str] = mapped_column(
+        String, ForeignKey("users.id", ondelete="CASCADE"), nullable=False, unique=True
+    )
+    enabled: Mapped[bool] = mapped_column(Boolean, default=False)
+    platforms: Mapped[Optional[str]] = mapped_column(Text, nullable=True)  # JSON list
+    keywords: Mapped[str] = mapped_column(Text, nullable=False)  # JSON list string
+    locations: Mapped[str] = mapped_column(Text, nullable=False)  # JSON list string
+    min_salary: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
+    daily_limit: Mapped[int] = mapped_column(Integer, default=5)
+    max_applications: Mapped[int] = mapped_column(Integer, default=10)
+    apply_schedule: Mapped[Optional[str]] = mapped_column(String, nullable=True)
+    schedule_time: Mapped[Optional[str]] = mapped_column(String, nullable=True)
+    resume_id: Mapped[Optional[str]] = mapped_column(String, nullable=True, index=True)
+    cover_letter_preference: Mapped[Optional[str]] = mapped_column(
+        String, nullable=True
+    )
+    auto_retry_enabled: Mapped[bool] = mapped_column(Boolean, default=True)
+    auto_retry_max_attempts: Mapped[int] = mapped_column(Integer, default=3)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime, default=lambda: datetime.now(timezone.utc)
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime,
+        default=lambda: datetime.now(timezone.utc),
+        onupdate=lambda: datetime.now(timezone.utc),
+    )
+
+    # Relationships
+    user: Mapped["DBUser"] = relationship("DBUser", back_populates="auto_apply_config")
+
+    def to_dict(self) -> dict:
+        import json
+
+        return {
+            "id": self.id,
+            "user_id": self.user_id,
+            "enabled": self.enabled,
+            "platforms": json.loads(self.platforms) if self.platforms else [],
+            "keywords": json.loads(self.keywords) if self.keywords else [],
+            "locations": json.loads(self.locations) if self.locations else [],
+            "min_salary": self.min_salary,
+            "daily_limit": self.daily_limit,
+            "max_applications": self.max_applications,
+            "apply_schedule": self.apply_schedule,
+            "schedule_time": self.schedule_time,
+            "resume_id": self.resume_id,
+            "cover_letter_preference": self.cover_letter_preference,
+            "auto_retry_enabled": self.auto_retry_enabled,
+            "auto_retry_max_attempts": self.auto_retry_max_attempts,
+            "created_at": self.created_at.isoformat(),
+            "updated_at": self.updated_at.isoformat(),
+        }
+
+
 class DBSessionCookie(Base):
     """Database model for session cookies from job platforms."""
 
@@ -1087,7 +1145,7 @@ class DBFailureLog(Base):
         }
 
     @classmethod
-    def from_model(cls, db_model: "DBFailureLog") -> "FailureLog":
+    def from_model(cls, db_model: "DBFailureLog") -> FailureLog:
         """Convert database model to domain model."""
         return FailureLog(
             id=db_model.id,
