@@ -123,6 +123,11 @@ class RateLimiter:
                 else:
                     # Cached data is from today, use as-is
                     rate_data = cached
+            else:
+                # No cached data, use rate_data from self.rate_data as fallback
+                rate_data = self.rate_data.get(
+                    platform, {"hourly_count": 0, "daily_count": 0, "last_reset": None}
+                )
 
             # Check hourly limit
             if rate_data["hourly_count"] >= limits["hourly_limit"]:
