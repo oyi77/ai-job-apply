@@ -286,7 +286,7 @@
 - [x] In-memory cache working (user_id → platform → rate_data)
 - [x] Minimum thresholds enforced (can't go below 1/hr per platform)
 - [x] Retry time calculated correctly (seconds until allowed again)
-- [x] Unit tests for limit checks, recording, day reset
+- [x] Unit tests for limit checks, recording, day reset (23/35 passing after fixes)
 - [ ] Integration test: Apply 5 LinkedIn jobs → verify 6th blocked
 - [ ] Integration test: Apply 51st job → verify daily limit blocked
 
