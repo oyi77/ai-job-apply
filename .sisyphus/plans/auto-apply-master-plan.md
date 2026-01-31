@@ -402,15 +402,15 @@
 - Add proper error handling and status codes
 
 **Acceptance Criteria:**
-- [ ] `POST /config` endpoint implemented with UpdateAutoApplyConfig request
-- [ ] `POST /start` endpoint implemented (sets is_active=True)
-- [ ] `POST /stop` endpoint implemented (sets is_active=False)
-- [ ] `POST /rate-limits` endpoint implemented with RateLimitsRequest
-- [ ] `GET /activity` endpoint implemented with limit and pagination
-- [ ] `GET /queue` endpoint implemented with user filtering
-- [ ] `POST /retry-queued` endpoint implemented (accepts job_id)
-- [ ] `POST /skip-queued` endpoint implemented (accepts job_id + reason)
-- [ ] All endpoints require authentication (current_user dependency)
+- [x] `POST /config` endpoint implemented with UpdateAutoApplyConfig request
+- [x] `POST /start` endpoint implemented (sets is_active=True)
+- [x] `POST /stop` endpoint implemented (sets is_active=False)
+- [x] `POST /rate-limits` endpoint implemented with RateLimitsRequest
+- [x] `GET /activity` endpoint implemented with limit and pagination
+- [x] `GET /queue` endpoint implemented with user filtering
+- [x] `POST /retry-queued` endpoint implemented (accepts job_id)
+- [x] `POST /skip-queued` endpoint implemented (accepts job_id + reason)
+- [x] All endpoints require authentication (current_user dependency)
 - [ ] Request validation using Pydantic models (UpdateAutoApplyConfigRequest, RateLimitsRequest)
 - [ ] Proper status codes (200 success, 400 validation, 401 unauthorized, 500 server error)
 - [ ] Error messages are clear and actionable
