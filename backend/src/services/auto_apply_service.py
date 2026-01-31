@@ -1,11 +1,33 @@
 from typing import List, Optional
 from datetime import datetime
 import uuid
+from typing import TYPE_CHECKING
+from src.core.auto_apply_service import AutoApplyService as CoreAutoApplyService
 from src.models.automation import (
     AutoApplyConfig,
     AutoApplyConfigCreate,
     AutoApplyActivityLog,
 )
+
+
+class AutoApplyServiceProvider:
+    """Provider for AutoApplyService to enable per-user instances."""
+
+    def __init__(self):
+        self._service: CoreAutoApplyService = CoreAutoApplyService(None)
+
+    def get_service(self) -> CoreAutoApplyService:
+        """Get the AutoApplyService instance."""
+        return self._service
+
+    async def initialize(self) -> None:
+        """Initialize the service (no-op - creates actual instance per user)."""
+        pass
+
+    async def cleanup(self) -> None:
+        """Clean up the service."""
+        if hasattr(self._service, "cleanup"):
+            await self._service.cleanup()
 
 
 class AutoApplyService:

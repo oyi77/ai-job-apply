@@ -217,6 +217,19 @@ class ServiceRegistry:
         await export_provider.initialize()
         self._instances["export_service"] = export_provider.get_service()
 
+        # Auto Apply service (core of auto-apply functionality)
+        try:
+            from src.services.auto_apply_service import AutoApplyService
+
+            auto_apply_provider = AutoApplyServiceProvider()
+            self.register_service("auto_apply_service", auto_apply_provider)
+            await auto_apply_provider.initialize()
+            self._instances["auto_apply_service"] = auto_apply_provider.get_service()
+        except Exception as e:
+            self._logger.warning(
+                f"Failed to initialize auto apply service: {e}. Continuing without auto-apply."
+            )
+
         # Scheduler service (no dependencies)
         try:
             from src.services.scheduler_service import SchedulerService
