@@ -520,19 +520,16 @@ class DBUser(Base):
         "DBPushSubscription", back_populates="user", cascade="all, delete-orphan"
     )
 
-    auto_apply_config: Mapped[Optional["DBAutoApplyConfig"]] = relationship(
-        "DBAutoApplyConfig",
-        back_populates="user",
-        cascade="all, delete-orphan",
-        uselist=False,
-    )
-
     session_cookies: Mapped[List["DBSessionCookie"]] = relationship(
         "DBSessionCookie", back_populates="user", cascade="all, delete-orphan"
     )
 
     rate_limits: Mapped[List["DBRateLimit"]] = relationship(
         "DBRateLimit", back_populates="user", cascade="all, delete-orphan"
+    )
+
+    failure_logs: Mapped[List["DBFailureLog"]] = relationship(
+        "DBFailureLog", back_populates="user", cascade="all, delete-orphan"
     )
 
     # Indexes for performance
@@ -1041,7 +1038,9 @@ class DBFailureLog(Base):
     __tablename__ = "failure_logs"
 
     id = mapped_column(String, primary_key=True, default=lambda: str(uuid.uuid4()))
-    user_id = mapped_column(String, nullable=False, index=True)
+    user_id = mapped_column(
+        String, ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True
+    )
     task_name = mapped_column(String, nullable=False, index=True)
     platform = mapped_column(String, nullable=False, index=True)
     error_type = mapped_column(
@@ -1175,7 +1174,9 @@ class DBRateLimit(Base):
     __tablename__ = "rate_limits"
 
     id = mapped_column(String, primary_key=True, default=lambda: str(uuid.uuid4()))
-    user_id = mapped_column(String, nullable=False, index=True)
+    user_id = mapped_column(
+        String, ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True
+    )
     platform = mapped_column(String(50), nullable=False, index=True)
     applications_count = mapped_column(Integer, default=0, nullable=False)
     hourly_limit = mapped_column(
@@ -1236,141 +1237,3 @@ class DBRateLimit(Base):
             if data.get("created_at")
             else datetime.now(timezone.utc),
         )
-
-
-class DBAutoApplyConfig(Base):
-    """Database model for auto-apply configuration settings."""
-
-    __tablename__ = "auto_apply_configs"
-
-    id = mapped_column(String, primary_key=True, default=lambda: str(uuid.uuid4()))
-    user_id = mapped_column(String, nullable=False, index=True)
-    enabled = mapped_column(Boolean, default=False, nullable=False)  # Master toggle
-    platforms = mapped_column(Text, nullable=True)  # JSON list of enabled platforms
-    search_criteria = mapped_column(
-        Text, nullable=True
-    )  # JSON blob of job search criteria
-    max_applications = mapped_column(
-        Integer, default=10, nullable=False
-    )  # Max apps per cycle
-    apply_schedule = mapped_column(
-        String, nullable=True
-    )  # "daily", "hourly", "immediate", "manual"
-    schedule_time = mapped_column(
-        String, nullable=True
-    )  # Time to run (e.g., "09:00 UTC")
-    resume_id = mapped_column(String, nullable=True, index=True)  # Default resume ID
-    cover_letter_preference = mapped_column(
-        String, nullable=True
-    )  # "ai_generated", "upload_own"
-    auto_retry_enabled = mapped_column(
-        Boolean, default=True, nullable=False
-    )  # Retry failed apps automatically
-    auto_retry_max_attempts = mapped_column(
-        Integer, default=3, nullable=False
-    )  # Max retry count
-    created_at = mapped_column(
-        DateTime, default=lambda: datetime.now(timezone.utc), nullable=False
-    )
-    updated_at = mapped_column(
-        DateTime,
-        default=lambda: datetime.now(timezone.utc),
-        onupdate=lambda: datetime.now(timezone.utc),
-        nullable=False,
-    )
-
-    # Relationships
-    user = relationship("DBUser", back_populates="auto_apply_configs")
-
-    # Indexes for performance
-    __table_args__ = (
-        Index("idx_auto_apply_user", "user_id"),
-        Index("idx_auto_apply_enabled", "enabled"),
-        Index("idx_auto_apply_resume", "resume_id"),
-    )
-
-    def to_dict(self) -> dict:
-        """Convert database model to dictionary."""
-        import json
-
-        return {
-            "id": self.id,
-            "user_id": self.user_id,
-            "enabled": self.enabled,
-            "platforms": json.loads(self.platforms) if self.platforms else [],
-            "search_criteria": json.loads(self.search_criteria)
-            if self.search_criteria
-            else {},
-            "max_applications": self.max_applications,
-            "apply_schedule": self.apply_schedule,
-            "schedule_time": self.schedule_time,
-            "resume_id": self.resume_id,
-            "cover_letter_preference": self.cover_letter_preference,
-            "auto_retry_enabled": self.auto_retry_enabled,
-            "auto_retry_max_attempts": self.auto_retry_max_attempts,
-            "created_at": self.created_at.isoformat(),
-            "updated_at": self.updated_at.isoformat(),
-        }
-
-    @classmethod
-    def from_dict(cls, data: dict) -> "DBAutoApplyConfig":
-        """Create database model from dictionary."""
-        import json
-
-        return cls(
-            id=data.get("id"),
-            user_id=data["user_id"],
-            enabled=data.get("enabled", False),
-            platforms=json.loads(data.get("platforms", "[]")),
-            search_criteria=json.loads(data.get("search_criteria", "{}")),
-            max_applications=data.get("max_applications", 10),
-            apply_schedule=data.get("apply_schedule", "daily"),
-            schedule_time=data.get("schedule_time", "09:00"),
-            resume_id=data.get("resume_id"),
-            cover_letter_preference=data.get("cover_letter_preference", "ai_generated"),
-            auto_retry_enabled=data.get("auto_retry_enabled", True),
-            auto_retry_max_attempts=data.get("auto_retry_max_attempts", 3),
-            created_at=datetime.fromisoformat(data["created_at"])
-            if data.get("created_at")
-            else datetime.now(timezone.utc),
-            updated_at=datetime.fromisoformat(data["updated_at"])
-            if data.get("updated_at")
-            else datetime.now(timezone.utc),
-        )
-
-
-class DBAutoApplyActivityLog(Base):
-    """Database model for enhanced auto-apply activity logging."""
-
-    __tablename__ = "auto_apply_activity_logs"
-
-    id = mapped_column(String, primary_key=True, default=lambda: str(uuid.uuid4()))
-    user_id = mapped_column(String, nullable=False, index=True)
-    cycle_id = mapped_column(String, nullable=True, index=True)
-    cycle_start = mapped_column(DateTime, nullable=True, index=True)
-    cycle_end = mapped_column(DateTime, nullable=True)
-    cycle_status = mapped_column(String, nullable=False, index=True)
-    jobs_searched = mapped_column(Integer, default=0, nullable=False)
-    jobs_matched = mapped_column(Integer, default=0, nullable=False)
-    jobs_applied = mapped_column(Integer, default=0, nullable=False)
-    applications_successful = mapped_column(Integer, default=0, nullable=False)
-    applications_failed = mapped_column(Integer, default=0, nullable=False)
-    errors = mapped_column(Text, nullable=True)  # JSON array of error details
-    screenshots = mapped_column(Text, nullable=True)  # JSON array of screenshot paths
-    created_at = mapped_column(
-        DateTime, default=lambda: datetime.now(timezone.utc), nullable=False
-    )
-
-    # Relationships
-    user = relationship("DBUser", back_populates="auto_apply_activity_logs")
-
-    # Indexes for performance
-    __table_args__ = (
-        Index("idx_activity_user", "user_id"),
-        Index("idx_activity_cycle", "cycle_id"),
-        Index("idx_activity_status", "cycle_status"),
-        Index("idx_activity_created", "created_at"),
-    )
-
-    def to_dict(self) -> dict:
-        """Convert database model to dictionary."""
