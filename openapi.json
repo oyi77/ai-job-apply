@@ -1,0 +1,46 @@
+{
+    "openapi": "3.1.0",
+    "info": {
+        "title": "AI Job Application Assistant",
+        "description": "An AI-powered assistant for job searching, resume optimization, and application management",
+        "version": "1.0.0"
+    },
+    "paths": {
+        "/": {
+            "get": {
+                "summary": "Root",
+                "description": "Serve the main HTML interface.",
+                "operationId": "root__get",
+                "responses": {
+                    "200": {
+                        "description": "Successful Response",
+                        "content": {
+                            "text/html": {
+                                "schema": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/health": {
+            "get": {
+                "summary": "Health Check",
+                "description": "Health check endpoint.",
+                "operationId": "health_check_health_get",
+                "responses": {
+                    "200": {
+                        "description": "Successful Response",
+                        "content": {
+                            "application/json": {
+                                "schema": {}
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
