@@ -763,6 +763,8 @@ class SchedulerServiceProvider(ServiceProvider):
 
         self._service = SchedulerService()
         await self._service.initialize()
+        # Start the scheduler so it's ready to execute background tasks
+        await self._service.start()
 
     async def cleanup(self) -> None:
         if hasattr(self._service, "cleanup"):

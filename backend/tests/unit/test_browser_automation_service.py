@@ -18,15 +18,12 @@ if str(SRC_ROOT) not in sys.path:
 from src.services.browser_automation_service import (
     BrowserManager,
     FormFieldDetector,
-    PlatformHandler,
-    LinkedInHandler,
-    IndeedHandler,
-    GlassdoorHandler,
     BrowserAutomationService,
+    # PlatformHandler, LinkedInHandler, IndeedHandler, GlassdoorHandler - Not yet implemented
 )
 from src.models.application import (
-    ApplicationCreateRequest,
-    AutomationConfig,
+    ApplicationUpdateRequest,  # Fixed: was ApplicationCreateRequest
+    # AutomationConfig - Not defined in models
 )
 
 

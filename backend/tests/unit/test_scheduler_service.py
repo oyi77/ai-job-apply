@@ -18,9 +18,9 @@ if str(SRC_ROOT) not in sys.path:
 
 from src.services.scheduler_service import (
     SchedulerService,
-    ReminderType,
     ReminderConfig,
     ReminderJob,
+    # ReminderType - Not defined in the service
 )
 from src.services.notification_service import NotificationService
 

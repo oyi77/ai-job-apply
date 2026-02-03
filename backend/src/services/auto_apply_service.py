@@ -2,7 +2,8 @@ from typing import List, Optional
 from datetime import datetime
 import uuid
 from typing import TYPE_CHECKING
-from src.core.auto_apply_service import AutoApplyService as CoreAutoApplyService
+
+# Base interface removed - using direct implementation
 from src.models.automation import (
     AutoApplyConfig,
     AutoApplyConfigCreate,
