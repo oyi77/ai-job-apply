@@ -11,7 +11,6 @@ Implements per-platform rate limiting with:
 from typing import Optional, Dict
 from datetime import datetime, timezone, timedelta
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select
 from src.utils.logger import get_logger
 
 
@@ -107,7 +106,6 @@ class RateLimiter:
             # Get cached rate data
             cached = self.cache.get(platform)
             if cached:
-                current_date = datetime.now(timezone.utc)
                 # Check if cached data is from today
                 if (
                     cached["last_reset"]
@@ -159,18 +157,7 @@ class RateLimiter:
                     f"Below minimum threshold for {platform}: "
                     f"{rate_data['hourly_count']}/{limits['minimum_threshold']}"
                 )
-                # Wait until minimum threshold
-                # Calculate time until next slot
-                remaining_slots = (
-                    limits["minimum_threshold"] - rate_data["hourly_count"]
-                )
-                seconds_per_slot = (
-                    3600 / limits["minimum_threshold"]
-                )  # 1 hour in seconds
-                retry_after = datetime.now(timezone.utc) + timedelta(
-                    seconds=seconds_per_slot * remaining_slots
-                )
-                return RateLimitResult(allowed=False, retry_after=retry_after)
+                # Continue without blocking when below minimum threshold
 
             # All checks passed, allow application
             self.logger.debug(
@@ -322,10 +309,35 @@ class RateLimiter:
             Dictionary with rate status for API responses
         """
         cached = self.cache.get(platform)
+        cached_data = cached or {
+            "hourly_count": 0,
+            "daily_count": 0,
+            "last_reset": None,
+        }
+        limits = self.PLATFORM_LIMITS.get(platform)
+        if not limits:
+            return {
+                "platform": platform,
+                "hourly_limit": 0,
+                "daily_limit": 0,
+                "hourly_used": cached_data["hourly_count"],
+                "daily_used": cached_data["daily_count"],
+                "remaining_hourly": 0,
+                "remaining_daily": 0,
+                "remaining_hourly_pct": 0,
+                "reset_time": cached_data["last_reset"].isoformat()
+                if cached_data["last_reset"]
+                else None,
+                "status": "unknown",
+            }
+
+        assert limits is not None
+
         if cached:
-            limits = self.PLATFORM_LIMITS.get(platform)
-            remaining_hourly = max(0, limits["hourly_limit"] - cached["hourly_count"])
-            remaining_daily = max(0, limits["daily_limit"] - cached["daily_count"])
+            remaining_hourly = max(
+                0, limits["hourly_limit"] - cached_data["hourly_count"]
+            )
+            remaining_daily = max(0, limits["daily_limit"] - cached_data["daily_count"])
             remaining_hourly_pct = (
                 int((remaining_hourly / limits["hourly_limit"]) * 100)
                 if limits["hourly_limit"] > 0
@@ -336,34 +348,32 @@ class RateLimiter:
                 "platform": platform,
                 "hourly_limit": limits["hourly_limit"],
                 "daily_limit": limits["daily_limit"],
-                "hourly_used": cached["hourly_count"],
-                "daily_used": cached["daily_count"],
+                "hourly_used": cached_data["hourly_count"],
+                "daily_used": cached_data["daily_count"],
                 "remaining_hourly": remaining_hourly,
                 "remaining_daily": remaining_daily,
                 "remaining_hourly_pct": remaining_hourly_pct,
-                "reset_time": cached["last_reset"].isoformat()
-                if cached["last_reset"]
+                "reset_time": cached_data["last_reset"].isoformat()
+                if cached_data["last_reset"]
                 else None,
                 "status": "active"
-                if cached["hourly_count"] < limits["hourly_limit"]
-                and cached["daily_count"] < limits["daily_limit"]
+                if cached_data["hourly_count"] < limits["hourly_limit"]
+                and cached_data["daily_count"] < limits["daily_limit"]
                 else "blocked",
             }
-        else:
-            # No cached data, return default status
-            limits = self.PLATFORM_LIMITS.get(platform)
-            return {
-                "platform": platform,
-                "hourly_limit": limits["hourly_limit"],
-                "daily_limit": limits["daily_limit"],
-                "hourly_used": 0,
-                "daily_used": 0,
-                "remaining_hourly": limits["hourly_limit"],
-                "remaining_daily": limits["daily_limit"],
-                "remaining_hourly_pct": 100,
-                "reset_time": None,
-                "status": "active",
-            }
+        # No cached data, return default status
+        return {
+            "platform": platform,
+            "hourly_limit": limits["hourly_limit"],
+            "daily_limit": limits["daily_limit"],
+            "hourly_used": 0,
+            "daily_used": 0,
+            "remaining_hourly": limits["hourly_limit"],
+            "remaining_daily": limits["daily_limit"],
+            "remaining_hourly_pct": 100,
+            "reset_time": None,
+            "status": "active",
+        }
 
     def clear_cache(self) -> None:
         """Clear in-memory cache for a user."""
