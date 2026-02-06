@@ -198,11 +198,17 @@ class RateLimiter:
 
                 # Update cache
                 self.cache[platform] = cached
+            else:
+                self.cache[platform] = {
+                    "hourly_count": 1,
+                    "daily_count": 1,
+                    "last_reset": self.current_date,
+                }
 
-                self.logger.debug(
-                    f"Recorded application for {platform}: "
-                    f"Hourly: {cached['hourly_count']}, Daily: {cached['daily_count']}"
-                )
+            self.logger.debug(
+                f"Recorded application for {platform}: "
+                f"Hourly: {self.cache[platform]['hourly_count']}, Daily: {self.cache[platform]['daily_count']}"
+            )
 
             # Persist to database (will need DBRateLimit model in future task)
             # await self._persist_to_database(platform, cached)

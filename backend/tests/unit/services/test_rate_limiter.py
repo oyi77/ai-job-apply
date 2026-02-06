@@ -12,8 +12,7 @@ Tests cover:
 """
 
 import pytest
-import pytest_asyncio
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import AsyncMock
 from datetime import datetime, timezone, timedelta
 from pathlib import Path
 import sys
@@ -302,8 +301,7 @@ class TestRateLimiter:
 
         assert rate_limiter_with_cache.cache == {}
 
-    @pytest.mark.asyncio
-    async def test_should_reset_day_same_day(self, rate_limiter):
+    def test_should_reset_day_same_day(self, rate_limiter):
         """Test _should_reset_day returns False for same day."""
         rate_limiter.cache = {
             "linkedin": {
@@ -313,19 +311,18 @@ class TestRateLimiter:
             }
         }
 
-        result = await rate_limiter._should_reset_day("linkedin")
+        result = rate_limiter._should_reset_day("linkedin")
 
         assert result is False
 
-    @pytest.mark.asyncio
-    async def test_should_reset_day_different_day(self, rate_limiter):
+    def test_should_reset_day_different_day(self, rate_limiter):
         """Test _should_reset_day returns True for different day."""
         yesterday = datetime.now(timezone.utc) - timedelta(days=1)
         rate_limiter.cache = {
             "linkedin": {"hourly_count": 3, "daily_count": 20, "last_reset": yesterday}
         }
 
-        result = await rate_limiter._should_reset_day("linkedin")
+        result = rate_limiter._should_reset_day("linkedin")
 
         assert result is True
 
@@ -340,7 +337,7 @@ class TestRateLimiter:
             }
         }
 
-        await rate_limiter.reset_day("linkedin")
+        await rate_limiter._reset_day("linkedin")
 
         # Counters should be reset
         assert rate_limiter.cache["linkedin"]["hourly_count"] == 0
@@ -519,11 +516,11 @@ class TestRateLimiterEdgeCases:
         }
 
         # Check if day should be reset
-        should_reset = await rate_limiter._should_reset_day("linkedin")
+        should_reset = rate_limiter._should_reset_day("linkedin")
         assert should_reset is True
 
         # Reset the day
-        await rate_limiter.reset_day("linkedin")
+        await rate_limiter._reset_day("linkedin")
 
         # Counters should be reset
         assert rate_limiter.cache["linkedin"]["hourly_count"] == 0
@@ -588,8 +585,17 @@ class TestRateLimiterIntegration:
         """Test realistic daily limit scenario."""
         rate_limiter.cache = {}
 
-        # Simulate a full day's applications
-        for i in range(50):  # LinkedIn daily limit
+        # Simulate a full day's applications (limited by hourly limit)
+        # LinkedIn: 5/hr limit, 50/day limit
+        # With 5 per hour, need 10 hours to reach 50
+        for i in range(50):
+            # Check if we hit hourly limit
+            hourly_count = rate_limiter.cache.get("linkedin", {}).get("hourly_count", 0)
+            if hourly_count >= 5:
+                # Simulate hour passing by resetting hourly counter only
+                if "linkedin" in rate_limiter.cache:
+                    rate_limiter.cache["linkedin"]["hourly_count"] = 0
+
             result = await rate_limiter.can_apply("linkedin")
             assert result.allowed is True
             await rate_limiter.record_application("linkedin")
@@ -651,7 +657,7 @@ class TestRateLimiterIntegration:
         assert status["remaining_daily"] == 25
 
     @pytest.mark.asyncio
-    async def test_concurrent_session_isolation(self, rate_limiter):
+    async def test_concurrent_session_isolation(self, rate_limiter, mock_session):
         """Test that each RateLimiter instance has isolated cache."""
         # Create two rate limiters for different users
         limiter1 = RateLimiter(session=mock_session, user_id="user1")
