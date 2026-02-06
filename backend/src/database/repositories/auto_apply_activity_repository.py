@@ -1,9 +1,10 @@
 """Repository for AutoApply Activity Log operations."""
 
 import uuid
+from contextlib import asynccontextmanager
 from datetime import datetime, timezone
-from typing import List, Optional, Dict, Any
-from sqlalchemy import select, func, and_
+from typing import AsyncIterator, List, Optional
+from sqlalchemy import select, and_
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.database.models import DBAutoApplyActivityLog
@@ -16,6 +17,14 @@ class AutoApplyActivityLogRepository:
     def __init__(self, session: AsyncSession):
         """Initialize repository with database session."""
         self.session = session
+
+    @asynccontextmanager
+    async def _transaction(self) -> AsyncIterator[AsyncSession]:
+        if self.session.in_transaction():
+            yield self.session
+        else:
+            async with self.session.begin():
+                yield self.session
 
     async def create(
         self,
@@ -45,7 +54,7 @@ class AutoApplyActivityLogRepository:
         Returns:
             Created AutoApplyActivityLog instance
         """
-        async with self.session.begin():
+        async with self._transaction():
             db_log = DBAutoApplyActivityLog(
                 id=str(uuid.uuid4()),
                 user_id=user_id,
@@ -75,7 +84,7 @@ class AutoApplyActivityLogRepository:
         Returns:
             AutoApplyActivityLog if found, None otherwise
         """
-        async with self.session.begin():
+        async with self._transaction():
             result = await self.session.execute(
                 select(DBAutoApplyActivityLog).where(
                     DBAutoApplyActivityLog.id == log_id
@@ -103,17 +112,11 @@ class AutoApplyActivityLogRepository:
         Returns:
             List of AutoApplyActivityLog instances
         """
-        async with self.session.begin():
+        async with self._transaction():
             conditions = [DBAutoApplyActivityLog.user_id == user_id]
 
             if cycle_status:
                 conditions.append(DBAutoApplyActivityLog.cycle_status == cycle_status)
-
-            # Get total count
-            count_result = await self.session.execute(
-                select(func.count(DBAutoApplyActivityLog.id)).where(and_(*conditions))
-            )
-            total_count = count_result.scalar_one()
 
             # Get paginated results
             result = await self.session.execute(
@@ -136,7 +139,7 @@ class AutoApplyActivityLogRepository:
         Returns:
             Most recent AutoApplyActivityLog if found, None otherwise
         """
-        async with self.session.begin():
+        async with self._transaction():
             result = await self.session.execute(
                 select(DBAutoApplyActivityLog)
                 .where(DBAutoApplyActivityLog.user_id == user_id)
@@ -165,7 +168,7 @@ class AutoApplyActivityLogRepository:
         Returns:
             List of AutoApplyActivityLog instances within the date range
         """
-        async with self.session.begin():
+        async with self._transaction():
             result = await self.session.execute(
                 select(DBAutoApplyActivityLog)
                 .where(
@@ -212,7 +215,7 @@ class AutoApplyActivityLogRepository:
         Returns:
             Updated AutoApplyActivityLog if found, None otherwise
         """
-        async with self.session.begin():
+        async with self._transaction():
             result = await self.session.execute(
                 select(DBAutoApplyActivityLog).where(
                     DBAutoApplyActivityLog.id == log_id
@@ -256,7 +259,7 @@ class AutoApplyActivityLogRepository:
         Returns:
             True if deleted, False if not found
         """
-        async with self.session.begin():
+        async with self._transaction():
             result = await self.session.execute(
                 select(DBAutoApplyActivityLog).where(
                     DBAutoApplyActivityLog.id == log_id

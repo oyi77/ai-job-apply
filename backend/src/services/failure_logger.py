@@ -7,141 +7,17 @@ Comprehensive error logging service that:
 - Provides structured logging for troubleshooting and monitoring
 """
 
-from typing import Optional, Dict
-from datetime import datetime, timezone
-from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select
-from io import BytesIO
 import base64
+from datetime import datetime, timedelta, timezone
+from contextlib import asynccontextmanager
+from typing import Any, AsyncIterator, Dict, Optional
+import uuid
 
+from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
+
+from src.database.models import DBFailureLog
 from src.utils.logger import get_logger
-
-
-class FailureLog:
-    """Domain model for failure log entries."""
-
-    def __init__(
-        self,
-        id: str,
-        user_id: str,
-        task_name: str,
-        platform: str,
-        error_type: str,
-        error_message: str,
-        stack_trace: Optional[str],
-        screenshot: Optional[str],  # Base64 encoded image
-        job_id: Optional[str],
-        application_id: Optional[str],
-        created_at: datetime,
-    ):
-        self.id = id
-        self.user_id = user_id
-        self.task_name = task_name
-        self.platform = platform
-        self.error_type = error_type
-        self.error_message = error_message
-        self.stack_trace = stack_trace
-        self.screenshot = screenshot
-        self.job_id = job_id
-        self.application_id = application_id
-        self.created_at = created_at
-
-    def to_dict(self) -> dict:
-        """Convert to dictionary for JSON serialization."""
-        return {
-            "id": self.id,
-            "user_id": self.user_id,
-            "task_name": self.task_name,
-            "platform": self.platform,
-            "error_type": self.error_type,
-            "error_message": self.error_message,
-            "stack_trace": self.stack_trace,
-            "screenshot": self.screenshot,
-            "job_id": self.job_id,
-            "application_id": self.application_id,
-            "created_at": self.created_at.isoformat(),
-        }
-
-    @classmethod
-    def from_dict(cls, data: dict) -> "FailureLog":
-        """Create FailureLog from dictionary."""
-        return cls(
-            id=data.get("id"),
-            user_id=data["user_id"],
-            task_name=data.get("task_name"),
-            platform=data.get("platform"),
-            error_type=data.get("error_type"),
-            error_message=data.get("error_message"),
-            stack_trace=data.get("stack_trace"),
-            screenshot=data.get("screenshot"),
-            job_id=data.get("job_id"),
-            application_id=data.get("application_id"),
-            created_at=datetime.fromisoformat(data["created_at"]) if data.get("created_at") else datetime.now(timezone.utc),
-        )
-
-
-class DBFailureLog(Base):
-    """Database model for failure logs."""
-
-    __tablename__ = "failure_logs"
-
-    id = mapped_column(String, primary_key=True, default=lambda: str(uuid.uuid4()))
-    user_id = mapped_column(String, nullable=False)
-    task_name = mapped_column(String, nullable=False, index=True)
-    platform = mapped_column(String, nullable=False, index=True)
-    error_type = mapped_column(String, nullable=False, index=True)  # e.g., "network_error", "form_filling_error", "ai_service_error"
-    error_message = mapped_column(Text, nullable=False)
-    stack_trace = mapped_column(Text, nullable=True)
-    screenshot = mapped_column(Text, nullable=True)  # Base64 encoded image
-    job_id = mapped_column(String, nullable=True, index=True)
-    application_id = mapped_column(String, nullable=True, index=True)
-    created_at = mapped_column(DateTime, default=lambda: datetime.now(timezone.utc))
-    updated_at = mapped_column(DateTime, default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc))
-
-    # Relationships
-    user = relationship("DBUser", back_populates="failure_logs")
-    # Optional: job, application relationships if needed
-
-    # Indexes for performance
-    __table_args__ = (
-        Index("idx_failure_user_task", "user_id", "task_name"),
-        Index("idx_failure_platform", "platform"),
-        Index("idx_failure_error_type", "error_type"),
-        Index("idx_failure_created", "created_at"),
-    )
-
-    def to_dict(self) -> dict:
-        """Convert database model to domain model."""
-        return FailureLog(
-            id=self.id,
-            user_id=self.user_id,
-            task_name=self.task_name,
-            platform=self.platform,
-            error_type=self.error_type,
-            error_message=self.error_message,
-            stack_trace=self.stack_trace,
-            screenshot=self.screenshot,
-            job_id=self.job_id,
-            application_id=self.application_id,
-            created_at=self.created_at,
-        )
-
-    @classmethod
-    def from_model(cls, db_model: "DBFailureLog") -> FailureLog:
-        """Convert database model to domain model."""
-        return cls(
-            id=db_model.id,
-            user_id=db_model.user_id,
-            task_name=db_model.task_name,
-            platform=db_model.platform,
-            error_type=db_model.error_type,
-            error_message=db_model.error_message,
-            stack_trace=db_model.stack_trace,
-            screenshot=db_model.screenshot,
-            job_id=db_model.job_id,
-            application_id=db_model.application_id,
-            created_at=db_model.created_at,
-        )
 
 
 class FailureLoggerService:
@@ -170,6 +46,14 @@ class FailureLoggerService:
         self.retention_days = retention_days
         self.screenshot_dir = "screenshots"  # Local directory for screenshots
 
+    @asynccontextmanager
+    async def _transaction(self) -> AsyncIterator[AsyncSession]:
+        if self.session.in_transaction():
+            yield self.session
+        else:
+            async with self.session.begin():
+                yield self.session
+
     async def log_error(
         self,
         task_name: str,
@@ -180,6 +64,7 @@ class FailureLoggerService:
         screenshot: Optional[bytes] = None,
         job_id: Optional[str] = None,
         application_id: Optional[str] = None,
+        extra: Optional[Dict[str, Any]] = None,
     ) -> None:
         """Log an error with optional screenshot.
 
@@ -200,8 +85,7 @@ class FailureLoggerService:
                 screenshot_b64 = base64.b64encode(screenshot).decode("utf-8")
                 self.logger.debug(f"Screenshot captured, size: {len(screenshot)} bytes")
 
-            # Create failure log domain model
-            failure_log = FailureLog(
+            db_log = DBFailureLog(
                 id=str(uuid.uuid4()),
                 user_id=self.user_id,
                 task_name=task_name,
@@ -213,26 +97,28 @@ class FailureLoggerService:
                 job_id=job_id,
                 application_id=application_id,
                 created_at=datetime.now(timezone.utc),
+                updated_at=datetime.now(timezone.utc),
             )
 
-            # Convert to database model
-            db_log = DBFailureLog.from_model(failure_log)
-
             # Persist to database
-            async with self.session.begin():
+            async with self._transaction():
                 self.session.add(db_log)
                 await self.session.flush()  # Get ID
 
+            log_extra = {
+                "user_id": self.user_id,
+                "platform": platform,
+                "task_name": task_name,
+                "job_id": job_id,
+                "application_id": application_id,
+                "failure_log_id": db_log.id,
+            }
+            if extra:
+                log_extra.update(extra)
+
             self.logger.error(
                 f"[{error_type}] {task_name} on {platform}: {error_message}",
-                extra={
-                    "user_id": self.user_id,
-                    "platform": platform,
-                    "task_name": task_name,
-                    "job_id": job_id,
-                    "application_id": application_id,
-                    "failure_log_id": db_log.id,
-                },
+                extra=log_extra,
             )
 
         except Exception as e:
@@ -303,15 +189,15 @@ class FailureLoggerService:
 
     async def log_ai_service_error(
         self,
-        platform: Optional[str] = None,
         error_message: str,
+        platform: Optional[str] = None,
         stack_trace: Optional[str] = None,
     ) -> None:
         """Log an AI service error.
 
         Args:
-            platform: Platform where AI service failed (optional)
             error_message: Error message
+            platform: Platform where AI service failed (optional)
             stack_trace: Stack trace if available
         """
         await self.log_error(
@@ -404,14 +290,12 @@ class FailureLoggerService:
             Number of logs deleted
         """
         try:
-            cutoff_date = datetime.now(timezone.utc) - timedelta(days=self.retention_days)
+            cutoff_date = datetime.now(timezone.utc) - timedelta(
+                days=self.retention_days
+            )
 
             # Find logs older than cutoff
-            stmt = (
-                select(DBFailureLog)
-                .where(DBFailureLog.created_at < cutoff_date)
-                .with_only_deleted()
-            )
+            stmt = select(DBFailureLog).where(DBFailureLog.created_at < cutoff_date)
 
             # Get count before deletion
             result = await self.session.execute(stmt)
@@ -421,7 +305,9 @@ class FailureLoggerService:
             async with self.session.begin():
                 await self.session.execute(stmt)
 
-            self.logger.info(f"Cleaned up {count} old failure logs (older than {self.retention_days} days)")
+            self.logger.info(
+                f"Cleaned up {count} old failure logs (older than {self.retention_days} days)"
+            )
             return count
 
         except Exception as e:
@@ -432,7 +318,7 @@ class FailureLoggerService:
         self,
         user_id: str,
         days: int = 7,
-    ) -> Dict[str, int]:
+    ) -> Dict[str, Any]:
         """Get error statistics for a user.
 
         Args:
@@ -465,8 +351,12 @@ class FailureLoggerService:
 
             # Group by error type
             for log in logs:
-                stats["by_error_type"][log.error_type] = stats["by_error_type"].get(log.error_type, 0) + 1
-                stats["by_platform"][log.platform] = stats["by_platform"].get(log.platform, 0) + 1
+                stats["by_error_type"][log.error_type] = (
+                    stats["by_error_type"].get(log.error_type, 0) + 1
+                )
+                stats["by_platform"][log.platform] = (
+                    stats["by_platform"].get(log.platform, 0) + 1
+                )
 
             return stats
 
