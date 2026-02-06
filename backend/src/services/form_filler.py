@@ -4,14 +4,19 @@ Service for filling job application forms using YAML templates and AI fallback.
 Supports LinkedIn, Indeed, and Glassdoor platforms with intelligent field population.
 """
 
-from typing import Optional, Dict, List
+from typing import Any, Optional, Dict, List, Protocol
 from pathlib import Path
-from sqlalchemy.ext.asyncio import AsyncSession
+from inspect import isawaitable
+import yaml
 
-from src.services.ai_service import AIService
 from src.utils.logger import get_logger
-from src.models.job import Job
-from src.models.application import JobApplication, ApplicationStatus
+
+
+class FormFillerAI(Protocol):
+    """Protocol for AI services used by FormFillerService."""
+
+    async def generate_content(self, prompt: str) -> Any:
+        """Generate content for a prompt."""
 
 
 class FormFillerService:
@@ -25,7 +30,7 @@ class FormFillerService:
     - Error handling and logging for form filling failures
     """
 
-    def __init__(self, ai_service: AIService, user_id: str):
+    def __init__(self, ai_service: FormFillerAI, user_id: str):
         """Initialize form filler service.
 
         Args:
@@ -37,16 +42,19 @@ class FormFillerService:
         self.logger = get_logger(__name__)
 
         # Load form templates from YAML
-        self.templates = self._load_form_templates()
-
-        self.logger.info(
-            f"FormFiller initialized for user {user_id} "
-            f"with {len(self.templates.get('linkedin', {}))} LinkedIn, "
-            f"{len(self.templates.get('indeed', {}))} Indeed, "
-            f"{len(self.templates.get('glassdoor', {}))} Glassdoor fields"
+        self.templates: Optional[Dict[str, Dict[str, Any]]] = (
+            self._load_form_templates()
         )
 
-    def _load_form_templates(self) -> Dict[str, Dict]:
+        templates = self.templates or {}
+        self.logger.info(
+            f"FormFiller initialized for user {user_id} "
+            f"with {len(templates.get('linkedin', {}))} LinkedIn, "
+            f"{len(templates.get('indeed', {}))} Indeed, "
+            f"{len(templates.get('glassdoor', {}))} Glassdoor fields"
+        )
+
+    def _load_form_templates(self) -> Dict[str, Dict[str, Any]]:
         """Load form field templates from YAML configuration file.
 
         Returns:
@@ -54,8 +62,6 @@ class FormFillerService:
             Format: {platform: {field_name: field_definition}}
         """
         try:
-            import yaml
-
             # Path to YAML file
             yaml_path = (
                 Path(__file__).parent / "config" / "application_form_fields.yaml"
@@ -81,9 +87,9 @@ class FormFillerService:
     async def fill_form(
         self,
         platform: str,
-        field_values: Dict[str, str],
+        field_values: Optional[Dict[str, str]] = None,
         user_preferences: Optional[Dict[str, str]] = None,
-    ) -> Dict[str, str]:
+    ) -> Dict[str, Any]:
         """Fill a form using templates and AI fallback.
 
         Args:
@@ -97,7 +103,7 @@ class FormFillerService:
         """
         try:
             # Get platform templates
-            platform_templates = self.templates.get(platform, {})
+            platform_templates = (self.templates or {}).get(platform, {})
 
             if not platform_templates:
                 self.logger.warning(f"No form templates found for platform: {platform}")
@@ -107,11 +113,6 @@ class FormFillerService:
 
             # Iterate through each field definition
             for field_name, field_def in platform_templates.items():
-                # Get field type and attributes
-                field_type = field_def.get("type")
-                xpath = field_def.get("xpath")
-                ai_fallback = field_def.get("ai_fallback", False)
-
                 # Determine field value
                 value = await self._get_field_value(
                     field_name=field_name,
@@ -120,7 +121,7 @@ class FormFillerService:
                     user_preferences=user_preferences,
                 )
 
-                if value:
+                if value is not None:
                     filled_fields[field_name] = value
                     self.logger.debug(
                         f"Filled field {field_name} with value: {str(value)[:100]}..."
@@ -135,10 +136,10 @@ class FormFillerService:
     async def _get_field_value(
         self,
         field_name: str,
-        field_def: Dict[str, str],
-        field_values: Dict[str, str],
+        field_def: Dict[str, Any],
+        field_values: Optional[Dict[str, str]],
         user_preferences: Optional[Dict[str, str]],
-    ) -> Optional[str]:
+    ) -> Optional[str | int]:
         """Get value for a specific field using templates, user prefs, or AI.
 
         Args:
@@ -167,19 +168,24 @@ class FormFillerService:
                 if answer and str(answer).strip():
                     return answer
 
+        default_value = field_def.get("default_value")
+        if default_value is not None and str(default_value).strip() != "":
+            return default_value
+
         # Check if AI fallback is enabled
         if field_def.get("ai_fallback"):
             # Generate AI response for custom/unknown fields
             value = await self._generate_ai_answer(field_name, field_def)
-            return value
+            if value is not None:
+                return value
 
-        # Use default value from YAML
-        return field_def.get("default_value")
+        # Use default value from YAML (including empty string)
+        return default_value
 
     async def _generate_ai_answer(
         self,
         field_name: str,
-        field_def: Dict[str, str],
+        field_def: Dict[str, Any],
     ) -> Optional[str]:
         """Generate AI answer for a form field.
 
@@ -213,13 +219,23 @@ class FormFillerService:
             """
 
             # Call AI service
-            response = await self.ai_service.generate_content(prompt)
+            generate_content = getattr(self.ai_service, "generate_content", None)
+            if not callable(generate_content):
+                self.logger.warning(
+                    "AI service does not support generate_content for form filler"
+                )
+                return None
 
+            result = generate_content(prompt)
+            response = await result if isawaitable(result) else result
+
+            answer = None
             # Extract answer from response
-            if response and hasattr(response, "parts"):
+            parts = getattr(response, "parts", None)
+            if parts:
                 # Gemini API returns parts (streaming or multi-part)
                 # Get first part with text
-                for part in response.parts:
+                for part in parts:
                     if hasattr(part, "text"):
                         answer = part.text.strip()
                         if answer:
@@ -240,8 +256,8 @@ class FormFillerService:
         self,
         field_name: str,
         value: str,
-        field_def: Dict[str, str],
-    ) -> Dict[str, str]:
+        field_def: Dict[str, Any],
+    ) -> Dict[str, Any]:
         """Fill a select dropdown field.
 
         Args:
@@ -273,8 +289,8 @@ class FormFillerService:
         self,
         field_name: str,
         value: str,
-        field_def: Dict[str, str],
-    ) -> Dict[str, str]:
+        field_def: Dict[str, Any],
+    ) -> Dict[str, Any]:
         """Fill a text input field.
 
         Args:
@@ -296,8 +312,8 @@ class FormFillerService:
         self,
         field_name: str,
         value: str,
-        field_def: Dict[str, str],
-    ) -> Dict[str, str]:
+        field_def: Dict[str, Any],
+    ) -> Dict[str, Any]:
         """Fill a textarea field.
 
         Args:
@@ -309,7 +325,7 @@ class FormFillerService:
             Dictionary with field operations
         """
         return {
-            "action": "type_text",
+            "action": "type_textarea",
             "field_name": field_name,
             "value": value,
             "xpath": field_def.get("xpath"),
@@ -318,9 +334,9 @@ class FormFillerService:
     async def _fill_number_field(
         self,
         field_name: str,
-        value: int,
-        field_def: Dict[str, str],
-    ) -> Dict[str, str]:
+        value: str | int,
+        field_def: Dict[str, Any],
+    ) -> Dict[str, Any]:
         """Fill a numeric input field.
 
         Args:
@@ -331,19 +347,28 @@ class FormFillerService:
         Returns:
             Dictionary with field operations
         """
+        numeric_value: int | str
+        if isinstance(value, str):
+            try:
+                numeric_value = int(value)
+            except ValueError:
+                numeric_value = value
+        else:
+            numeric_value = value
+
         return {
             "action": "type_number",
             "field_name": field_name,
-            "value": value,
+            "value": numeric_value,
             "xpath": field_def.get("xpath"),
         }
 
     async def _fill_checkbox_field(
         self,
         field_name: str,
-        value: bool,
-        field_def: Dict[str, str],
-    ) -> Dict[str, str]:
+        value: str | bool,
+        field_def: Dict[str, Any],
+    ) -> Dict[str, Any]:
         """Fill a checkbox field.
 
         Args:
@@ -354,15 +379,36 @@ class FormFillerService:
         Returns:
             Dictionary with field operations
         """
-        # Convert boolean to checkbox action
-        if value:
-            action = "check"
-        else:
-            action = "uncheck"
+        is_checked = self._is_truthy(value)
+        action = "check" if is_checked else "uncheck"
 
         return {
             "action": action,
             "field_name": field_name,
+            "value": value,
+            "xpath": field_def.get("xpath"),
+        }
+
+    async def _fill_file_field(
+        self,
+        field_name: str,
+        value: str,
+        field_def: Dict[str, Any],
+    ) -> Dict[str, Any]:
+        """Fill a file upload field.
+
+        Args:
+            field_name: Name of the field
+            value: File path to upload
+            field_def: Field definition from YAML
+
+        Returns:
+            Dictionary with file upload action
+        """
+        return {
+            "action": "upload_file",
+            "field_name": field_name,
+            "file_path": value,
             "xpath": field_def.get("xpath"),
         }
 
@@ -372,8 +418,8 @@ class FormFillerService:
         file_data: bytes,
         file_name: str,
         content_type: str,
-        field_def: Dict[str, str],
-    ) -> Dict[str, str]:
+        field_def: Dict[str, Any],
+    ) -> Dict[str, Any]:
         """Fill a file upload field.
 
         Args:
@@ -404,12 +450,12 @@ class FormFillerService:
         Returns:
             List of field names available for the platform
         """
-        platform_templates = self.templates.get(platform, {})
+        platform_templates = (self.templates or {}).get(platform, {})
         return list(platform_templates.keys())
 
     def get_field_definition(
         self, platform: str, field_name: str
-    ) -> Optional[Dict[str, str]]:
+    ) -> Optional[Dict[str, Any]]:
         """Get field definition from loaded templates.
 
         Args:
@@ -419,7 +465,7 @@ class FormFillerService:
         Returns:
             Field definition if found, None otherwise
         """
-        platform_templates = self.templates.get(platform, {})
+        platform_templates = (self.templates or {}).get(platform, {})
         return platform_templates.get(field_name)
 
     def get_mapped_answers(self, platform: str, field_name: str) -> List[str]:
@@ -432,7 +478,7 @@ class FormFillerService:
         Returns:
             List of mapped answers if available, empty list otherwise
         """
-        platform_templates = self.templates.get(platform, {})
+        platform_templates = (self.templates or {}).get(platform, {})
         field_def = platform_templates.get(field_name)
 
         if field_def:
@@ -450,13 +496,28 @@ class FormFillerService:
         Returns:
             True if AI fallback enabled, False otherwise
         """
-        platform_templates = self.templates.get(platform, {})
+        platform_templates = (self.templates or {}).get(platform, {})
         field_def = platform_templates.get(field_name)
 
         if field_def:
             return field_def.get("ai_fallback", False)
 
         return False
+
+    def get_platform_stats(self) -> Dict[str, Dict[str, int]]:
+        """Get statistics for all platform templates.
+
+        Returns:
+            Dictionary keyed by platform with total field counts.
+        """
+        stats: Dict[str, Dict[str, int]] = {}
+
+        for platform, fields in (self.templates or {}).items():
+            stats[platform] = {
+                "total_fields": len(fields),
+            }
+
+        return stats
 
     def validate_form_structure(self, platform: str) -> Dict[str, bool]:
         """Validate form structure for a platform.
@@ -467,7 +528,7 @@ class FormFillerService:
         Returns:
             Dictionary with validation results for each required field
         """
-        platform_templates = self.templates.get(platform, {})
+        platform_templates = (self.templates or {}).get(platform, {})
         validation_results = {}
 
         # Check for required fields
@@ -497,8 +558,8 @@ class FormFillerService:
     async def get_field_completion_status(
         self,
         platform: str,
-        filled_fields: Dict[str, str],
-    ) -> Dict[str, Dict[str, str]]:
+        filled_fields: Dict[str, Any],
+    ) -> Dict[str, Dict[str, Any]]:
         """Get completion status for all fields in a form.
 
         Args:
@@ -509,7 +570,7 @@ class FormFillerService:
             Dictionary with completion status for each field
             Format: {field_name: {is_complete: bool, is_valid: bool}}
         """
-        platform_templates = self.templates.get(platform, {})
+        platform_templates = (self.templates or {}).get(platform, {})
         completion_status = {}
 
         for field_name, field_def in platform_templates.items():
@@ -539,7 +600,7 @@ class FormFillerService:
         self,
         platform: str,
         user_preferences: Optional[Dict[str, str]] = None,
-    ) -> Dict[str, Dict[str, str]]:
+    ) -> Dict[str, str]:
         """Generate a preview of form with auto-filled values.
 
         Args:
@@ -549,7 +610,7 @@ class FormFillerService:
         Returns:
             Dictionary with field names and auto-filled values
         """
-        platform_templates = self.templates.get(platform, {})
+        platform_templates = (self.templates or {}).get(platform, {})
         preview = {}
 
         for field_name, field_def in platform_templates.items():
@@ -583,3 +644,13 @@ class FormFillerService:
         """
         self.templates = self._load_form_templates()
         self.logger.info("Form templates reloaded")
+
+    async def close(self) -> None:
+        """Release resources used by the form filler service."""
+        self.templates = None
+
+    @staticmethod
+    def _is_truthy(value: str | bool) -> bool:
+        if isinstance(value, bool):
+            return value
+        return value.strip().lower() in {"true", "1", "yes", "y"}

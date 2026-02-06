@@ -25,15 +25,11 @@ class MockAIService:
     """Mock AI service for testing."""
 
     def __init__(self):
-        self.generate_content = AsyncMock()
-
-    async def generate_content(self, prompt: str) -> MagicMock:
-        """Mock AI response generation."""
         mock_response = MagicMock()
         mock_part = MagicMock()
         mock_part.text = "Mock AI generated answer"
         mock_response.parts = [mock_part]
-        return mock_response
+        self.generate_content = AsyncMock(return_value=mock_response)
 
 
 class TestFormFillerService:
@@ -130,18 +126,21 @@ class TestFormFillerService:
         """Test successful YAML template loading."""
         mock_ai = MockAIService()
         service = FormFillerService(ai_service=mock_ai, user_id="test_user")
+        original_open = open
 
         # Manually call _load_form_templates
         with patch("pathlib.Path.exists", return_value=True):
             with patch(
                 "builtins.open",
                 MagicMock(
-                    side_effect=lambda *args, **kwargs: open(temp_yaml_file, "r")
+                    side_effect=lambda *args, **kwargs: original_open(
+                        temp_yaml_file, "r"
+                    )
                 ),
             ):
                 with patch(
                     "yaml.safe_load",
-                    return_value=yaml.safe_load(open(temp_yaml_file).read()),
+                    return_value=yaml.safe_load(original_open(temp_yaml_file).read()),
                 ):
                     templates = service._load_form_templates()
 
@@ -376,7 +375,7 @@ class TestFormFillerService:
         user_preferences = None
 
         # AI service should be called
-        result = await form_filler_service._get_field_value(
+        await form_filler_service._get_field_value(
             field_name="test_field",
             field_def=field_def,
             field_values=field_values,
@@ -538,8 +537,6 @@ class TestFormFillerService:
     @pytest.mark.asyncio
     async def test_reload_templates(self, form_filler_service):
         """Test template reloading."""
-        initial_templates = form_filler_service.templates
-
         # Mock _load_form_templates to return different data
         with patch.object(
             FormFillerService, "_load_form_templates", return_value={"new": "templates"}
@@ -568,7 +565,6 @@ class TestFormFillerService:
         form_filler_service.templates = mock_yaml_content
 
         # Mock _get_field_value to raise exception
-        original_method = form_filler_service._get_field_value
         form_filler_service._get_field_value = AsyncMock(
             side_effect=Exception("Test error")
         )
@@ -652,9 +648,6 @@ class TestFormFillerService:
     @pytest.mark.asyncio
     async def test_service_close(self, form_filler_service):
         """Test service cleanup."""
-        # Get initial state
-        initial_templates = form_filler_service.templates
-
         # Close service
         await form_filler_service.close()
 
