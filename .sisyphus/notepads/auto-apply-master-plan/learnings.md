@@ -531,3 +531,10 @@ class SessionCookieRepository:
 - Added tests to cover cache day rollover, rate_data fallback, and error handling in _reset_day.
 - Covered _should_reset_day branches for cache and rate_data (today vs yesterday) and unknown platform status formatting.
 - Achieved 100% coverage for `src/services/rate_limiter.py` with `pytest tests/unit/services/test_rate_limiter.py --cov=src.services.rate_limiter`.
+
+---
+
+## 2026-02-10 Task: FormFillerService unit test coverage
+- Added tests for template load errors, user preference overrides, AI fallback edge cases, and file upload fields.
+- Covered helper methods: platform field lookups, mapped answers, AI fallback flags, validation, completion status, and preview generation.
+- Verified coverage with `pytest tests/unit/services/test_form_filler.py --cov=src.services.form_filler` (98.43%).

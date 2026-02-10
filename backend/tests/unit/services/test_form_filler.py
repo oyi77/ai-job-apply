@@ -13,12 +13,13 @@ import pytest_asyncio
 from unittest.mock import AsyncMock, MagicMock, patch
 from pathlib import Path
 import yaml
+from typing import cast
 
 import sys
 
 sys.path.insert(0, str(Path(__file__).parent.parent.parent.parent))
 
-from src.services.form_filler import FormFillerService
+from src.services.form_filler import FormFillerService, FormFillerAI
 
 
 class MockAIService:
@@ -653,6 +654,194 @@ class TestFormFillerService:
 
         # Templates should be cleared
         assert form_filler_service.templates is None
+
+    @pytest.mark.asyncio
+    async def test_load_form_templates_generic_error(self):
+        """Test handling of unexpected template loading errors."""
+        mock_ai = MockAIService()
+        service = FormFillerService(ai_service=mock_ai, user_id="test_user")
+
+        with patch("pathlib.Path.exists", return_value=True):
+            with patch("builtins.open", side_effect=Exception("boom")):
+                templates = service._load_form_templates()
+
+        assert templates == {}
+
+    @pytest.mark.asyncio
+    async def test_get_field_value_user_preferences_override(self, form_filler_service):
+        """Test _get_field_value uses user preferences before field values."""
+        field_def = {
+            "type": "select",
+            "answers": ["Option1"],
+            "ai_fallback": False,
+        }
+        field_values = {"test_field": "Field Value"}
+        user_preferences = {"test_field": "Preferred"}
+
+        result = await form_filler_service._get_field_value(
+            field_name="test_field",
+            field_def=field_def,
+            field_values=field_values,
+            user_preferences=user_preferences,
+        )
+
+        assert result == "Preferred"
+
+    @pytest.mark.asyncio
+    async def test_generate_ai_answer_missing_generate_content(self):
+        """Test AI fallback when generate_content is missing."""
+        mock_ai = MagicMock()
+        mock_ai.generate_content = None
+        with patch.object(FormFillerService, "_load_form_templates", return_value={}):
+            service = FormFillerService(
+                ai_service=cast(FormFillerAI, mock_ai), user_id="test_user"
+            )
+
+        field_def = {"type": "text", "description": "Test field"}
+        result = await service._generate_ai_answer(
+            field_name="test_field", field_def=field_def
+        )
+
+        assert result is None
+
+    @pytest.mark.asyncio
+    async def test_generate_ai_answer_no_text_parts(self, form_filler_service):
+        """Test AI fallback when response parts are empty."""
+        response = MagicMock()
+        part = MagicMock()
+        part.text = "  "
+        response.parts = [part]
+        form_filler_service.ai_service.generate_content = AsyncMock(
+            return_value=response
+        )
+
+        field_def = {"type": "text", "description": "Test field"}
+        result = await form_filler_service._generate_ai_answer(
+            field_name="test_field", field_def=field_def
+        )
+
+        assert result is None
+
+    @pytest.mark.asyncio
+    async def test_fill_number_field_invalid_value(self, form_filler_service):
+        """Test number field handles non-numeric input."""
+        field_def = {"xpath": "//input[@type='number']", "type": "number"}
+
+        result = await form_filler_service._fill_number_field(
+            field_name="test_field", value="not-a-number", field_def=field_def
+        )
+
+        assert result["value"] == "not-a-number"
+
+    @pytest.mark.asyncio
+    async def test_fill_file_upload_field(self, form_filler_service):
+        """Test file upload field with bytes payload."""
+        field_def = {"xpath": "//input[@type='file']", "type": "file"}
+
+        result = await form_filler_service._fill_file_upload_field(
+            field_name="resume",
+            file_data=b"binary-content",
+            file_name="resume.pdf",
+            content_type="application/pdf",
+            field_def=field_def,
+        )
+
+        assert result["action"] == "upload_file"
+        assert result["file_name"] == "resume.pdf"
+        assert result["content_type"] == "application/pdf"
+
+    @pytest.mark.asyncio
+    async def test_get_platform_fields_and_definition(self, form_filler_service):
+        """Test platform field list and field definition lookup."""
+        form_filler_service.templates = {"test": {"field1": {"type": "text"}}}
+
+        fields = form_filler_service.get_platform_fields("test")
+        field_def = form_filler_service.get_field_definition("test", "field1")
+        missing_def = form_filler_service.get_field_definition("test", "missing")
+
+        assert fields == ["field1"]
+        assert field_def == {"type": "text"}
+        assert missing_def is None
+
+    @pytest.mark.asyncio
+    async def test_get_mapped_answers_and_ai_fallback(self, form_filler_service):
+        """Test mapped answers and AI fallback flag helpers."""
+        form_filler_service.templates = {
+            "test": {"field1": {"answers": ["A", "B"], "ai_fallback": True}}
+        }
+
+        answers = form_filler_service.get_mapped_answers("test", "field1")
+        missing_answers = form_filler_service.get_mapped_answers("test", "missing")
+        ai_enabled = form_filler_service.is_ai_fallback_enabled("test", "field1")
+        ai_disabled = form_filler_service.is_ai_fallback_enabled("test", "missing")
+
+        assert answers == ["A", "B"]
+        assert missing_answers == []
+        assert ai_enabled is True
+        assert ai_disabled is False
+
+    @pytest.mark.asyncio
+    async def test_validate_form_structure(self, form_filler_service):
+        """Test validation results for template definitions."""
+        form_filler_service.templates = {
+            "test": {
+                "valid_field": {
+                    "type": "text",
+                    "answers": ["A"],
+                    "ai_fallback": False,
+                },
+                "missing_type": {"answers": ["A"], "ai_fallback": False},
+                "missing_source": {"type": "text", "ai_fallback": False},
+            }
+        }
+
+        results = form_filler_service.validate_form_structure("test")
+
+        assert bool(results["valid_field"]["is_valid"]) is True
+        assert bool(results["missing_type"]["is_valid"]) is False
+        assert bool(results["missing_source"]["is_valid"]) is False
+
+    @pytest.mark.asyncio
+    async def test_get_field_completion_status(self, form_filler_service):
+        """Test completion status with blank values."""
+        form_filler_service.templates = {
+            "test": {
+                "field1": {"type": "text"},
+                "field2": {"type": "text"},
+            }
+        }
+        filled_fields = {"field1": "  "}
+
+        status = await form_filler_service.get_field_completion_status(
+            platform="test", filled_fields=filled_fields
+        )
+
+        assert status["field1"]["is_complete"] is True
+        assert status["field1"]["is_valid"] is False
+        assert status["field2"]["is_complete"] is False
+
+    @pytest.mark.asyncio
+    async def test_generate_form_preview_mapped_ai_default(self, form_filler_service):
+        """Test preview generation for mapped answers, AI fallback, and defaults."""
+        form_filler_service.templates = {
+            "test": {
+                "mapped": {"answers": ["Mapped Answer"], "ai_fallback": False},
+                "ai_field": {"answers": [], "ai_fallback": True},
+                "default": {
+                    "answers": [],
+                    "ai_fallback": False,
+                    "default_value": "Default",
+                },
+                "empty": {"answers": [], "ai_fallback": False, "default_value": ""},
+            }
+        }
+
+        preview = await form_filler_service.generate_form_preview(platform="test")
+
+        assert preview["mapped"] == "Mapped Answer"
+        assert preview["ai_field"] == "[AI Generated - Would require AI service call]"
+        assert preview["default"] == "Default"
+        assert "empty" not in preview
 
 
 # Edge case tests
