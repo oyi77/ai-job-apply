@@ -115,3 +115,4 @@ frontend/playwright/.auth/
 frontend/playwright-report
 
 repo_analysis
+.worktrees/
