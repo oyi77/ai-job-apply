@@ -1,14 +1,12 @@
 """Unit tests for scheduler service."""
 
-import pytest
 import sys
-from pathlib import Path
 from datetime import datetime, timedelta
+from pathlib import Path
 from unittest.mock import AsyncMock, MagicMock, patch
-from typing import Any
 
-# Ensure `src` package is importable when running tests without installing the
-# project into the current environment.
+import pytest
+
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
 SRC_ROOT = PROJECT_ROOT / "src"
 if str(PROJECT_ROOT) not in sys.path:
@@ -16,381 +14,218 @@ if str(PROJECT_ROOT) not in sys.path:
 if str(SRC_ROOT) not in sys.path:
     sys.path.insert(0, str(SRC_ROOT))
 
-from src.services.scheduler_service import (
-    SchedulerService,
-    ReminderConfig,
-    ReminderJob,
-    # ReminderType - Not defined in the service
-)
-from src.services.notification_service import NotificationService
+from src.services.scheduler_service import ReminderConfig, SchedulerService  # noqa: E402
 
 
-class TestSchedulerService:
-    """Test cases for SchedulerService class."""
+@pytest.fixture
+def scheduler_service() -> SchedulerService:
+    """Provide a scheduler service configured for immediate reminders."""
+    config = ReminderConfig(
+        follow_up_days=0,
+        stale_application_days=0,
+        check_interval_hours=1,
+    )
+    return SchedulerService(config=config)
 
-    @pytest.fixture
-    def mock_config(self):
-        """Create mock configuration for testing."""
-        config = MagicMock()
-        config.SCHEDULER_ENABLED = True
-        config.TIMEZONE = "UTC"
-        config.CHECK_INTERVAL = 60
-        return config
 
-    @pytest.fixture
-    def mock_notification_service(self):
-        """Create mock notification service."""
-        service = MagicMock(spec=NotificationService)
-        service.send_reminder = AsyncMock(return_value=True)
-        service.send_bulk_reminders = AsyncMock(return_value={"sent": 5, "failed": 0})
-        return service
+@pytest.mark.asyncio
+async def test_start_sets_running(scheduler_service: SchedulerService) -> None:
+    """Scheduler start should set running state when initialized."""
+    scheduler_service._initialized = True
+    scheduler_service.scheduler = MagicMock()
+    scheduler_service.scheduler.running = False
 
-    @pytest.fixture
-    def scheduler_service(self, mock_config, mock_notification_service):
-        """Create SchedulerService with mocked dependencies."""
-        with patch("src.services.scheduler_service.config", mock_config):
-            service = SchedulerService(notification_service=mock_notification_service)
-            return service
+    started = await scheduler_service.start()
 
-    def test_service_initialization(self, scheduler_service):
-        """Test service initializes with correct settings."""
-        assert scheduler_service is not None
-        assert scheduler_service.scheduler is not None
-        assert scheduler_service._reminders == {}
-        assert scheduler_service._running is False
+    assert started is True
+    assert scheduler_service._running is True
+    scheduler_service.scheduler.start.assert_called_once()
 
-    @pytest.mark.asyncio
-    async def test_start_scheduler(self, scheduler_service):
-        """Test starting the scheduler."""
-        with patch.object(scheduler_service.scheduler, "start", new_callable=AsyncMock):
-            await scheduler_service.start()
 
-            assert scheduler_service._running is True
+@pytest.mark.asyncio
+async def test_schedule_follow_up_stores_job(
+    scheduler_service: SchedulerService,
+) -> None:
+    """Scheduling a follow-up should store a reminder job."""
+    application_date = datetime.now()
 
-    @pytest.mark.asyncio
-    async def test_stop_scheduler(self, scheduler_service):
-        """Test stopping the scheduler."""
-        scheduler_service._running = True
+    job_id = await scheduler_service.schedule_follow_up(
+        application_id="app-123",
+        user_id="user-456",
+        application_date=application_date,
+        job_title="Software Engineer",
+        company="ExampleCo",
+    )
 
-        with patch.object(
-            scheduler_service.scheduler, "shutdown", new_callable=AsyncMock
-        ):
-            await scheduler_service.stop()
+    assert job_id
+    assert job_id in scheduler_service.reminder_jobs
+    reminder = scheduler_service.reminder_jobs[job_id]
+    assert reminder.reminder_type == "follow_up"
+    assert reminder.metadata
+    assert reminder.metadata["job_title"] == "Software Engineer"
 
-            assert scheduler_service._running is False
 
-    @pytest.mark.asyncio
-    async def test_schedule_reminder(self, scheduler_service):
-        """Test scheduling a reminder."""
-        scheduler_service._running = True
-
-        config = ReminderConfig(
-            reminder_type=ReminderType.FOLLOW_UP,
-            application_id="app_123",
-            user_id="user_456",
-            scheduled_time=datetime.utcnow() + timedelta(days=7),
-            metadata={"job_title": "Software Engineer"},
+@pytest.mark.asyncio
+async def test_follow_up_metadata_override_triggers_immediate_send() -> None:
+    """Metadata override should allow immediate follow-up execution."""
+    service = SchedulerService(
+        config=ReminderConfig(
+            follow_up_days=7,
+            stale_application_days=14,
+            check_interval_hours=1,
+        )
+    )
+    with patch(
+        "src.services.notification_service.notification_service.send_follow_up_reminder",
+        new=AsyncMock(return_value=True),
+    ) as send_follow_up:
+        job_id = await service.schedule_follow_up(
+            application_id="app-override",
+            user_id="user-override",
+            application_date=datetime.now() - timedelta(seconds=1),
+            job_title="Support Engineer",
+            company="ExampleCo",
+            metadata={"days_until_followup": 0},
         )
 
-        job_id = await scheduler_service.schedule_reminder(config)
+    send_follow_up.assert_called_once()
+    assert service.reminder_jobs[job_id].sent is True
 
-        assert job_id is not None
-        assert job_id in scheduler_service._reminders
 
-    @pytest.mark.asyncio
-    async def test_cancel_reminder(self, scheduler_service):
-        """Test canceling a scheduled reminder."""
-        # First schedule a reminder
-        config = ReminderConfig(
-            reminder_type=ReminderType.FOLLOW_UP,
-            application_id="app_123",
-            user_id="user_456",
-            scheduled_time=datetime.utcnow() + timedelta(days=7),
+@pytest.mark.asyncio
+async def test_check_reminders_sends_follow_up(
+    scheduler_service: SchedulerService,
+) -> None:
+    """Due reminders should invoke the follow-up callback and mark sent."""
+    application_date = datetime.now() - timedelta(days=1)
+
+    job_id = await scheduler_service.schedule_follow_up(
+        application_id="app-456",
+        user_id="user-789",
+        application_date=application_date,
+        job_title="Backend Engineer",
+        company="SampleCo",
+    )
+
+    with patch(
+        "src.services.notification_service.notification_service.send_follow_up_reminder",
+        new=AsyncMock(return_value=True),
+    ) as send_follow_up:
+        await scheduler_service._check_reminders()
+
+    send_follow_up.assert_called_once()
+    assert scheduler_service.reminder_jobs[job_id].sent is True
+    assert scheduler_service.reminder_jobs[job_id].sent_at is not None
+
+
+@pytest.mark.asyncio
+async def test_follow_up_uses_metadata_email() -> None:
+    """Follow-up reminder with past scheduled_time should be sent."""
+    service = SchedulerService(
+        config=ReminderConfig(
+            follow_up_days=7,
+            stale_application_days=14,
+            check_interval_hours=1,
+        )
+    )
+    with patch(
+        "src.services.notification_service.notification_service.send_follow_up_reminder",
+        new=AsyncMock(return_value=True),
+    ) as send_follow_up:
+        job_id = await service.schedule_follow_up(
+            application_id="app-email",
+            user_id="user-email",
+            application_date=datetime.now() - timedelta(seconds=1),
+            job_title="Backend Engineer",
+            company="SampleCo",
+            metadata={
+                "days_until_followup": 0,
+                "user_email": "tester@example.com",
+                "user_name": "Tester",
+            },
         )
 
-        job_id = await scheduler_service.schedule_reminder(config)
+    send_follow_up.assert_called_once()
+    call_kwargs = send_follow_up.call_args.kwargs
+    assert call_kwargs["user_email"] == "tester@example.com"
+    assert call_kwargs["user_name"] == "Tester"
 
-        # Now cancel it
-        with patch.object(
-            scheduler_service.scheduler, "remove_job", new_callable=AsyncMock
-        ):
-            result = await scheduler_service.cancel_reminder(job_id)
+    job = service.reminder_jobs.get(job_id)
+    assert job is not None
+    assert job.sent is True
 
-            assert result is True
-            assert job_id not in scheduler_service._reminders
 
-    @pytest.mark.asyncio
-    async def test_cancel_nonexistent_reminder(self, scheduler_service):
-        """Test canceling a non-existent reminder."""
-        result = await scheduler_service.cancel_reminder("nonexistent_id")
+@pytest.mark.asyncio
+async def test_schedule_follow_up_sends_immediately_when_due() -> None:
+    """Scheduling a due follow-up should send immediately."""
+    service = SchedulerService(
+        config=ReminderConfig(
+            follow_up_days=0,
+            stale_application_days=14,
+            check_interval_hours=1,
+        )
+    )
+    application_date = datetime.now() - timedelta(seconds=1)
 
-        assert result is False
-
-    @pytest.mark.asyncio
-    async def test_get_pending_reminders(self, scheduler_service):
-        """Test getting pending reminders."""
-        # Schedule multiple reminders
-        for i in range(3):
-            config = ReminderConfig(
-                reminder_type=ReminderType.FOLLOW_UP,
-                application_id=f"app_{i}",
-                user_id="user_456",
-                scheduled_time=datetime.utcnow() + timedelta(days=7),
-            )
-            await scheduler_service.schedule_reminder(config)
-
-        pending = scheduler_service.get_pending_reminders()
-
-        assert len(pending) == 3
-
-    @pytest.mark.asyncio
-    async def test_get_reminder_by_id(self, scheduler_service):
-        """Test getting a specific reminder by ID."""
-        config = ReminderConfig(
-            reminder_type=ReminderType.STATUS_CHECK,
-            application_id="app_123",
-            user_id="user_456",
-            scheduled_time=datetime.utcnow() + timedelta(days=14),
+    with patch(
+        "src.services.notification_service.notification_service.send_follow_up_reminder",
+        new=AsyncMock(return_value=True),
+    ) as send_follow_up:
+        job_id = await service.schedule_follow_up(
+            application_id="app-due",
+            user_id="user-due",
+            application_date=application_date,
+            job_title="Backend Engineer",
+            company="SampleCo",
+            metadata={
+                "days_until_followup": 0,
+                "user_email": "tester@example.com",
+                "user_name": "Tester",
+            },
         )
 
-        job_id = await scheduler_service.schedule_reminder(config)
-
-        reminder = scheduler_service.get_reminder(job_id)
-
-        assert reminder is not None
-        assert reminder.application_id == "app_123"
-
-    @pytest.mark.asyncio
-    async def test_update_reminder(self, scheduler_service):
-        """Test updating a scheduled reminder."""
-        config = ReminderConfig(
-            reminder_type=ReminderType.FOLLOW_UP,
-            application_id="app_123",
-            user_id="user_456",
-            scheduled_time=datetime.utcnow() + timedelta(days=7),
-        )
-
-        job_id = await scheduler_service.schedule_reminder(config)
-
-        # Update the reminder
-        new_config = ReminderConfig(
-            reminder_type=ReminderType.INTERVIEW_PREP,
-            application_id="app_123",
-            user_id="user_456",
-            scheduled_time=datetime.utcnow() + timedelta(days=1),
-        )
-
-        result = await scheduler_service.update_reminder(job_id, new_config)
-
-        assert result is True
-
-    @pytest.mark.asyncio
-    async def test_schedule_follow_up_reminder(self, scheduler_service):
-        """Test scheduling a follow-up reminder."""
-        scheduler_service._running = True
-
-        job_id = await scheduler_service.schedule_follow_up_reminder(
-            application_id="app_123",
-            user_id="user_456",
-            days_until_reminder=7,
-            metadata={"company_name": "TechCorp"},
-        )
-
-        assert job_id is not None
-        reminder = scheduler_service.get_reminder(job_id)
-        assert reminder.reminder_type == ReminderType.FOLLOW_UP
-
-    @pytest.mark.asyncio
-    async def test_schedule_status_check_reminder(self, scheduler_service):
-        """Test scheduling a status check reminder."""
-        scheduler_service._running = True
-
-        job_id = await scheduler_service.schedule_status_check_reminder(
-            application_id="app_123", user_id="user_456", days_until_reminder=14
-        )
-
-        assert job_id is not None
-        reminder = scheduler_service.get_reminder(job_id)
-        assert reminder.reminder_type == ReminderType.STATUS_CHECK
-
-    @pytest.mark.asyncio
-    async def test_schedule_interview_prep_reminder(self, scheduler_service):
-        """Test scheduling an interview preparation reminder."""
-        scheduler_service._running = True
-
-        interview_time = datetime.utcnow() + timedelta(days=2)
-
-        job_id = await scheduler_service.schedule_interview_prep_reminder(
-            application_id="app_123",
-            user_id="user_456",
-            interview_time=interview_time,
-            days_before_interview=2,
-        )
-
-        assert job_id is not None
-        reminder = scheduler_service.get_reminder(job_id)
-        assert reminder.reminder_type == ReminderType.INTERVIEW_PREP
-
-    @pytest.mark.asyncio
-    async def test_process_reminders(
-        self, scheduler_service, mock_notification_service
-    ):
-        """Test processing due reminders."""
-        # Schedule a reminder that's due now
-        config = ReminderConfig(
-            reminder_type=ReminderType.FOLLOW_UP,
-            application_id="app_123",
-            user_id="user_456",
-            scheduled_time=datetime.utcnow(),  # Due immediately
-        )
-
-        job_id = await scheduler_service.schedule_reminder(config)
-
-        # Process the reminder
-        with patch.object(scheduler_service.scheduler, "get_jobs", return_value=[]):
-            processed = await scheduler_service.process_due_reminders()
-
-            # Should have processed the reminder
-            mock_notification_service.send_reminder.assert_called()
-
-    @pytest.mark.asyncio
-    async def test_get_reminder_stats(self, scheduler_service):
-        """Test getting reminder statistics."""
-        # Schedule various reminders
-        for i in range(3):
-            config = ReminderConfig(
-                reminder_type=ReminderType.FOLLOW_UP,
-                application_id=f"app_{i}",
-                user_id="user_456",
-                scheduled_time=datetime.utcnow() + timedelta(days=7),
-            )
-            await scheduler_service.schedule_reminder(config)
-
-        stats = scheduler_service.get_stats()
-
-        assert stats["total_pending"] == 3
-        assert stats["running"] is False
-        assert "by_type" in stats
-
-    @pytest.mark.asyncio
-    async def test_cleanup_old_reminders(self, scheduler_service):
-        """Test cleaning up old reminders."""
-        # Add some old reminders
-        old_reminder = ReminderJob(
-            id="old_reminder",
-            config=ReminderConfig(
-                reminder_type=ReminderType.FOLLOW_UP,
-                application_id="app_old",
-                user_id="user_456",
-                scheduled_time=datetime.utcnow() - timedelta(days=30),
-            ),
-            created_at=datetime.utcnow() - timedelta(days=30),
-        )
-
-        scheduler_service._reminders["old_reminder"] = old_reminder
-
-        # Add a recent reminder
-        recent_reminder = ReminderJob(
-            id="recent_reminder",
-            config=ReminderConfig(
-                reminder_type=ReminderType.FOLLOW_UP,
-                application_id="app_recent",
-                user_id="user_456",
-                scheduled_time=datetime.utcnow() + timedelta(days=7),
-            ),
-            created_at=datetime.utcnow(),
-        )
-
-        scheduler_service._reminders["recent_reminder"] = recent_reminder
-
-        with patch.object(
-            scheduler_service.scheduler, "remove_job", new_callable=AsyncMock
-        ):
-            cleaned = await scheduler_service.cleanup_old_reminders(days_old=7)
-
-            assert cleaned == 1  # Only old reminder should be cleaned
-            assert "recent_reminder" in scheduler_service._reminders
-            assert "old_reminder" not in scheduler_service._reminders
+    send_follow_up.assert_called_once()
+    reminder = service.reminder_jobs[job_id]
+    assert reminder.sent is True
+    assert reminder.sent_at is not None
 
 
-class TestReminderConfig:
-    """Test cases for ReminderConfig class."""
+@pytest.mark.asyncio
+async def test_cancel_reminder_removes_job(
+    scheduler_service: SchedulerService,
+) -> None:
+    """Cancelling a reminder should remove it from storage."""
+    application_date = datetime.now()
 
-    def test_follow_up_reminder_config(self):
-        """Test creating follow-up reminder configuration."""
-        config = ReminderConfig(
-            reminder_type=ReminderType.FOLLOW_UP,
-            application_id="app_123",
-            user_id="user_456",
-            scheduled_time=datetime.utcnow() + timedelta(days=7),
-        )
+    job_id = await scheduler_service.schedule_follow_up(
+        application_id="app-789",
+        user_id="user-111",
+        application_date=application_date,
+        job_title="QA Engineer",
+        company="QualityCo",
+    )
 
-        assert config.reminder_type == ReminderType.FOLLOW_UP
-        assert config.application_id == "app_123"
+    cancelled = await scheduler_service.cancel_reminder(job_id)
 
-    def test_interview_prep_reminder_config(self):
-        """Test creating interview preparation reminder configuration."""
-        config = ReminderConfig(
-            reminder_type=ReminderType.INTERVIEW_PREP,
-            application_id="app_123",
-            user_id="user_456",
-            scheduled_time=datetime.utcnow() + timedelta(days=2),
-            metadata={"interview_type": "technical"},
-        )
-
-        assert config.reminder_type == ReminderType.INTERVIEW_PREP
-        assert config.metadata["interview_type"] == "technical"
+    assert cancelled is True
+    assert job_id not in scheduler_service.reminder_jobs
 
 
-class TestReminderJob:
-    """Test cases for ReminderJob class."""
+@pytest.mark.asyncio
+async def test_health_check_reflects_pending_reminders(
+    scheduler_service: SchedulerService,
+) -> None:
+    """Health check should report pending reminders."""
+    application_date = datetime.now()
 
-    def test_reminder_job_creation(self):
-        """Test creating a reminder job."""
-        config = ReminderConfig(
-            reminder_type=ReminderType.FOLLOW_UP,
-            application_id="app_123",
-            user_id="user_456",
-            scheduled_time=datetime.utcnow() + timedelta(days=7),
-        )
+    await scheduler_service.schedule_follow_up(
+        application_id="app-999",
+        user_id="user-222",
+        application_date=application_date,
+        job_title="DevOps Engineer",
+        company="OpsCo",
+    )
 
-        job = ReminderJob(id="job_123", config=config, created_at=datetime.utcnow())
+    health = await scheduler_service.health_check()
 
-        assert job.id == "job_123"
-        assert job.config == config
-        assert job.created_at is not None
-        assert job.status == "pending"
-
-    def test_reminder_job_status_transition(self):
-        """Test reminder job status transitions."""
-        config = ReminderConfig(
-            reminder_type=ReminderType.FOLLOW_UP,
-            application_id="app_123",
-            user_id="user_456",
-            scheduled_time=datetime.utcnow() + timedelta(days=7),
-        )
-
-        job = ReminderJob(id="job_123", config=config, created_at=datetime.utcnow())
-
-        # Initial status
-        assert job.status == "pending"
-
-        # Mark as sent
-        job.mark_sent()
-        assert job.status == "sent"
-        assert job.sent_at is not None
-
-        # Mark as failed
-        job.mark_failed(error="Test error")
-        assert job.status == "failed"
-        assert job.error == "Test error"
-
-
-class TestReminderType:
-    """Test cases for ReminderType enum."""
-
-    def test_reminder_types(self):
-        """Test all reminder types are defined."""
-        assert ReminderType.FOLLOW_UP.value == "follow_up"
-        assert ReminderType.STATUS_CHECK.value == "status_check"
-        assert ReminderType.INTERVIEW_PREP.value == "interview_prep"
+    assert health["pending_reminders"] == 1
