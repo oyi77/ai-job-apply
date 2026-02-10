@@ -1,7 +1,6 @@
 """Email service for sending notifications."""
 
 import abc
-import asyncio
 import smtplib
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
@@ -42,7 +41,7 @@ class ConsoleEmailProvider(EmailProvider):
         attachments: Optional[List[Dict[str, Any]]] = None,
     ) -> bool:
         """Log email details to console/logger."""
-        self.logger.info(f"--- EMAIL SIMULATION ---")
+        self.logger.info("--- EMAIL SIMULATION ---")
         self.logger.info(f"To: {to_email}")
         self.logger.info(f"Subject: {subject}")
         self.logger.debug(f"Body (Text): {body_text}")
@@ -50,7 +49,7 @@ class ConsoleEmailProvider(EmailProvider):
             self.logger.info(
                 f"Attachments: {[a.get('filename', 'unnamed') for a in attachments]}"
             )
-        self.logger.info(f"--- END EMAIL ---")
+        self.logger.info("--- END EMAIL ---")
         return True
 
 
@@ -59,13 +58,13 @@ class SMTPEmailProvider(EmailProvider):
 
     def __init__(
         self,
-        smtp_host: str = None,
-        smtp_port: int = None,
-        smtp_user: str = None,
-        smtp_password: str = None,
+        smtp_host: Optional[str] = None,
+        smtp_port: Optional[int] = None,
+        smtp_user: Optional[str] = None,
+        smtp_password: Optional[str] = None,
         use_tls: bool = True,
-        from_email: str = None,
-        from_name: str = None,
+        from_email: Optional[str] = None,
+        from_name: Optional[str] = None,
     ):
         """Initialize SMTP email provider.
 
@@ -179,8 +178,6 @@ class SMTPEmailProvider(EmailProvider):
                 for attachment in attachments:
                     filename = attachment.get("filename", "attachment")
                     content = attachment.get("content", b"")
-                    mime_type = attachment.get("mime_type", "application/octet-stream")
-
                     part = MIMEApplication(content, Name=filename)
                     part["Content-Disposition"] = f'attachment; filename="{filename}"'
                     msg.attach(part)
@@ -216,7 +213,7 @@ class SMTPEmailProvider(EmailProvider):
 class EmailService:
     """Service for sending emails."""
 
-    def __init__(self, provider: EmailProvider = None):
+    def __init__(self, provider: Optional[EmailProvider] = None):
         """Initialize email service.
 
         Args:
@@ -245,6 +242,23 @@ class EmailService:
         """
         self.provider = provider
         self.logger.info(f"Changed email provider to {type(provider).__name__}")
+
+    async def send_email(
+        self,
+        to_email: str,
+        subject: str,
+        body_html: str,
+        body_text: str,
+        attachments: Optional[List[Dict[str, Any]]] = None,
+    ) -> bool:
+        """Send an email using the configured provider."""
+        return await self.provider.send_email(
+            to_email=to_email,
+            subject=subject,
+            body_html=body_html,
+            body_text=body_text,
+            attachments=attachments,
+        )
 
     async def send_password_reset_email(
         self, to_email: str, reset_token: str, user_name: Optional[str] = None
