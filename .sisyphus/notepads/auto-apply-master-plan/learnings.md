@@ -524,3 +524,10 @@ class SessionCookieRepository:
 - Added unit tests for rate-limit error handling, no-config early return, and applied-limit breaks in run_cycle.
 - Covered helper methods: parsing criteria/platforms, external job detection, job identifier fallback, and config model error handling.
 - Verified coverage with `pytest tests/unit/services/test_auto_apply_service.py --cov=src.services.auto_apply_service` (98.42%).
+
+---
+
+## 2026-02-10 Task: RateLimiter unit test coverage
+- Added tests to cover cache day rollover, rate_data fallback, and error handling in _reset_day.
+- Covered _should_reset_day branches for cache and rate_data (today vs yesterday) and unknown platform status formatting.
+- Achieved 100% coverage for `src/services/rate_limiter.py` with `pytest tests/unit/services/test_rate_limiter.py --cov=src.services.rate_limiter`.

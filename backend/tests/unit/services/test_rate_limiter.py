@@ -12,10 +12,12 @@ Tests cover:
 """
 
 import pytest
-from unittest.mock import AsyncMock
+from unittest.mock import AsyncMock, patch
 from datetime import datetime, timezone, timedelta
 from pathlib import Path
 import sys
+from typing import cast
+from sqlalchemy.ext.asyncio import AsyncSession
 
 sys.path.insert(0, str(Path(__file__).parent.parent.parent.parent))
 
@@ -674,3 +676,125 @@ class TestRateLimiterIntegration:
             "linkedin" not in limiter2.cache
             or limiter2.cache["linkedin"]["hourly_count"] == 0
         )
+
+
+@pytest.mark.asyncio
+async def test_can_apply_resets_cached_day():
+    mock_session = cast(AsyncSession, MockAsyncSession())
+    rate_limiter = RateLimiter(session=mock_session, user_id="test_user_123")
+    now = datetime.now(timezone.utc)
+    rate_limiter.current_date = now + timedelta(days=1)
+    rate_limiter.cache = {
+        "linkedin": {
+            "hourly_count": 2,
+            "daily_count": 10,
+            "last_reset": now,
+        }
+    }
+
+    result = await rate_limiter.can_apply("linkedin")
+
+    assert result.allowed is True
+    assert rate_limiter.cache["linkedin"]["hourly_count"] == 0
+    assert rate_limiter.cache["linkedin"]["daily_count"] == 0
+    assert (
+        rate_limiter.cache["linkedin"]["last_reset"].date()
+        == rate_limiter.current_date.date()
+    )
+
+
+@pytest.mark.asyncio
+async def test_can_apply_uses_rate_data_when_no_cache():
+    mock_session = cast(AsyncSession, MockAsyncSession())
+    rate_limiter = RateLimiter(session=mock_session, user_id="test_user_123")
+    rate_limiter.cache = {}
+    rate_limiter.rate_data["linkedin"] = {
+        "hourly_count": 1,
+        "daily_count": 2,
+        "last_reset": datetime.now(timezone.utc),
+    }
+
+    result = await rate_limiter.can_apply("linkedin")
+
+    assert result.allowed is True
+
+
+@pytest.mark.asyncio
+async def test_record_application_resets_day_in_cache():
+    mock_session = cast(AsyncSession, MockAsyncSession())
+    rate_limiter = RateLimiter(session=mock_session, user_id="test_user_123")
+    rate_limiter.current_date = datetime.now(timezone.utc)
+    rate_limiter.cache = {
+        "linkedin": {
+            "hourly_count": 4,
+            "daily_count": 20,
+            "last_reset": rate_limiter.current_date - timedelta(days=1),
+        }
+    }
+
+    await rate_limiter.record_application("linkedin")
+
+    assert rate_limiter.cache["linkedin"]["hourly_count"] == 1
+    assert rate_limiter.cache["linkedin"]["daily_count"] == 1
+
+
+def test_should_reset_day_cache_no_last_reset():
+    mock_session = cast(AsyncSession, MockAsyncSession())
+    rate_limiter = RateLimiter(session=mock_session, user_id="test_user_123")
+    rate_limiter.cache = {
+        "linkedin": {"hourly_count": 0, "daily_count": 0, "last_reset": None}
+    }
+
+    assert rate_limiter._should_reset_day("linkedin") is True
+
+
+def test_should_reset_day_rate_data_today():
+    mock_session = cast(AsyncSession, MockAsyncSession())
+    rate_limiter = RateLimiter(session=mock_session, user_id="test_user_123")
+    rate_limiter.cache = {}
+    rate_limiter.rate_data["linkedin"]["last_reset"] = datetime.now(timezone.utc)
+
+    assert rate_limiter._should_reset_day("linkedin") is False
+
+
+def test_should_reset_day_rate_data_yesterday():
+    mock_session = cast(AsyncSession, MockAsyncSession())
+    rate_limiter = RateLimiter(session=mock_session, user_id="test_user_123")
+    rate_limiter.cache = {}
+    rate_limiter.rate_data["linkedin"]["last_reset"] = datetime.now(
+        timezone.utc
+    ) - timedelta(days=1)
+
+    assert rate_limiter._should_reset_day("linkedin") is True
+
+
+@pytest.mark.asyncio
+async def test_reset_day_handles_exception():
+    mock_session = cast(AsyncSession, MockAsyncSession())
+    rate_limiter = RateLimiter(session=mock_session, user_id="test_user_123")
+    rate_limiter.logger = AsyncMock()
+
+    class BrokenCache(dict):
+        def get(self, *args, **kwargs):
+            raise RuntimeError("boom")
+
+    rate_limiter.cache = BrokenCache()
+    await rate_limiter._reset_day("linkedin")
+
+    rate_limiter.logger.error.assert_called_once()
+
+
+def test_get_rate_status_unknown_platform_with_last_reset():
+    mock_session = cast(AsyncSession, MockAsyncSession())
+    rate_limiter = RateLimiter(session=mock_session, user_id="test_user_123")
+    last_reset = datetime.now(timezone.utc)
+    rate_limiter.cache["unknown"] = {
+        "hourly_count": 1,
+        "daily_count": 2,
+        "last_reset": last_reset,
+    }
+
+    status = rate_limiter.get_rate_status("unknown")
+
+    assert status["status"] == "unknown"
+    assert status["reset_time"] == last_reset.isoformat()

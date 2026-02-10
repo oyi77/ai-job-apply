@@ -837,20 +837,20 @@
 - Verify limit calculations with precise time assertions
 
 **Acceptance Criteria:**
-- [ ] Test file created with rate limiter test suite
-- [ ] All 8 test cases implemented with proper assertions
-- [ ] Fixtures created for mocking time and database
-- [ ] test_can_apply_within_limits() returns allowed: true
-- [ ] test_can_apply_hourly_limit_reached() returns allowed: false with retry_after
-- [ ] test_can_apply_daily_limit_reached() returns allowed: false with retry_after
-- [ ] test_record_application() increments counter and handles reset
-- [ ] test_record_application_day_reset() sets count to 0 for new day
-- [ ] test_minimum_thresholds() enforces minimum per platform
-- [ ] test_different_platforms() keeps separate counters
-- [ ] test_retry_time_calculation() returns correct seconds
-- [ ] All tests use async/await properly
-- [ ] Test coverage > 85% for rate_limiter.py
-- [ ] Manual verification: Run pytest → verify all tests pass
+- [x] Test file created with rate limiter test suite
+- [x] All 8 test cases implemented with proper assertions
+- [x] Fixtures created for mocking time and database
+- [x] test_can_apply_within_limits() returns allowed: true
+- [x] test_can_apply_hourly_limit_reached() returns allowed: false with retry_after
+- [x] test_can_apply_daily_limit_reached() returns allowed: false with retry_after
+- [x] test_record_application() increments counter and handles reset
+- [x] test_record_application_day_reset() sets count to 0 for new day
+- [x] test_minimum_thresholds() enforces minimum per platform
+- [x] test_different_platforms() keeps separate counters
+- [x] test_retry_time_calculation() returns correct seconds
+- [x] All tests use async/await properly
+- [x] Test coverage > 85% for rate_limiter.py
+- [x] Manual verification: Run pytest → verify all tests pass
 
 **Estimated Time:** 4 hours
 
