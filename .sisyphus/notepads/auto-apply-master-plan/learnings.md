@@ -517,3 +517,10 @@ class SessionCookieRepository:
 ✓ All tests passed!
 ```
 
+---
+
+## 2026-02-10 Task: AutoApplyService unit test coverage
+- Added provider-focused tests to cover initialization, registry fallback, and cleanup paths.
+- Added unit tests for rate-limit error handling, no-config early return, and applied-limit breaks in run_cycle.
+- Covered helper methods: parsing criteria/platforms, external job detection, job identifier fallback, and config model error handling.
+- Verified coverage with `pytest tests/unit/services/test_auto_apply_service.py --cov=src.services.auto_apply_service` (98.42%).

@@ -757,21 +757,21 @@
 - Assert expected behavior for each scenario
 
 **Acceptance Criteria:**
-- [ ] Test file created with auto-apply service test suite
-- [ ] All 9 test cases implemented with proper assertions
-- [ ] Fixtures created for mocking all dependencies
-- [ ] test_register_service() verifies service registration
-- [ ] test_run_cycle_no_configs() returns early with no errors
-- [ ] test_run_cycle_success() verifies all method calls
-- [ ] test_run_cycle_no_jobs() handles empty job list
-- [ ] test_run_cycle_ai_failure() handles AI service exception
-- [ ] test_run_cycle_duplicate_detection() skips duplicate job
-- [ ] test_run_cycle_rate_limit() verifies rate limit enforcement
-- [ ] test_run_cycle_external_site() queues external site
-- [ ] test_run_cycle_failure() logs failure correctly
-- [ ] All tests use async/await properly
-- [ ] Test coverage > 85% for auto_apply_service.py
-- [ ] Manual verification: Run pytest → verify all tests pass
+- [x] Test file created with auto-apply service test suite
+- [x] All 9 test cases implemented with proper assertions
+- [x] Fixtures created for mocking all dependencies
+- [x] test_register_service() verifies service registration
+- [x] test_run_cycle_no_configs() returns early with no errors
+- [x] test_run_cycle_success() verifies all method calls
+- [x] test_run_cycle_no_jobs() handles empty job list
+- [x] test_run_cycle_ai_failure() handles AI service exception
+- [x] test_run_cycle_duplicate_detection() skips duplicate job
+- [x] test_run_cycle_rate_limit() verifies rate limit enforcement
+- [x] test_run_cycle_external_site() queues external site
+- [x] test_run_cycle_failure() logs failure correctly
+- [x] All tests use async/await properly
+- [x] Test coverage > 85% for auto_apply_service.py
+- [x] Manual verification: Run pytest → verify all tests pass
 
 **Estimated Time:** 5 hours
 
