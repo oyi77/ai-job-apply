@@ -1,9 +1,10 @@
 """Rate limit repository for database operations."""
 
-from typing import Optional
+from typing import Optional, cast
 from datetime import datetime, timezone
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, update, and_
+from sqlalchemy import select, update
+from sqlalchemy.engine import CursorResult
 
 from src.database.models import DBRateLimit
 from src.utils.logger import get_logger
@@ -173,10 +174,10 @@ class RateLimitRepository:
                     updated_at=datetime.now(timezone.utc),
                 )
             )
-            result = await self.session.execute(stmt)
+            result = cast(CursorResult, await self.session.execute(stmt))
             await self.session.commit()
 
-            if result.rowcount > 0:
+            if result.rowcount and result.rowcount > 0:
                 self.logger.info(
                     f"Incremented application count for user {user_id} on {platform}"
                 )
@@ -218,10 +219,10 @@ class RateLimitRepository:
                     updated_at=datetime.now(timezone.utc),
                 )
             )
-            result = await self.session.execute(stmt)
+            result = cast(CursorResult, await self.session.execute(stmt))
             await self.session.commit()
 
-            if result.rowcount > 0:
+            if result.rowcount and result.rowcount > 0:
                 self.logger.info(f"Reset daily limit for user {user_id} on {platform}")
                 return True
             else:
@@ -250,7 +251,7 @@ class RateLimitRepository:
         try:
             stmt = select(DBRateLimit).where(DBRateLimit.user_id == user_id)
             result = await self.session.execute(stmt)
-            rate_limits = result.scalars().all()
+            rate_limits = list(result.scalars().all())
 
             self.logger.debug(
                 f"Found {len(rate_limits)} rate limits for user {user_id}"
