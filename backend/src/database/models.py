@@ -97,6 +97,7 @@ class DBResume(Base):
             is_default=self.is_default,
             created_at=self.created_at,
             updated_at=self.updated_at,
+            user_id=self.user_id,
         )
 
     @classmethod
@@ -119,6 +120,7 @@ class DBResume(Base):
             is_default=resume.is_default,
             created_at=resume.created_at,
             updated_at=resume.updated_at,
+            user_id=resume.user_id,
         )
 
 
@@ -164,10 +166,12 @@ class DBCoverLetter(Base):
             job_title=self.job_title,
             company_name=self.company_name,
             content=self.content,
+            file_path=None,
             tone=self.tone,
             word_count=self.word_count,
             created_at=self.created_at,
             updated_at=self.updated_at,
+            user_id=self.user_id,
         )
 
     @classmethod
@@ -182,6 +186,7 @@ class DBCoverLetter(Base):
             word_count=cover_letter.word_count,
             created_at=cover_letter.created_at,
             updated_at=cover_letter.updated_at,
+            user_id=cover_letter.user_id,
         )
 
 
@@ -268,6 +273,7 @@ class DBJobApplication(Base):
             notes=self.notes,
             created_at=self.created_at,
             updated_at=self.updated_at,
+            user_id=self.user_id,
         )
 
     @classmethod
@@ -287,6 +293,7 @@ class DBJobApplication(Base):
             notes=application.notes,
             created_at=application.created_at,
             updated_at=application.updated_at,
+            user_id=application.user_id,
         )
 
 
@@ -526,6 +533,16 @@ class DBUser(Base):
 
     rate_limits: Mapped[List["DBRateLimit"]] = relationship(
         "DBRateLimit", back_populates="user", cascade="all, delete-orphan"
+    )
+
+    auto_apply_configs: Mapped[List["DBAutoApplyConfig"]] = relationship(
+        "DBAutoApplyConfig", back_populates="user", cascade="all, delete-orphan"
+    )
+
+    auto_apply_activity_logs: Mapped[List["DBAutoApplyActivityLog"]] = relationship(
+        "DBAutoApplyActivityLog",
+        back_populates="user",
+        cascade="all, delete-orphan",
     )
 
     failure_logs: Mapped[List["DBFailureLog"]] = relationship(
@@ -1152,12 +1169,12 @@ class FailureLog:
     def from_dict(cls, data: dict) -> "FailureLog":
         """Create FailureLog from dictionary."""
         return cls(
-            id=data.get("id"),
-            user_id=data["user_id"],
-            task_name=data.get("task_name"),
-            platform=data.get("platform"),
-            error_type=data.get("error_type"),
-            error_message=data.get("error_message"),
+            id=str(data.get("id") or ""),
+            user_id=str(data.get("user_id") or ""),
+            task_name=str(data.get("task_name") or ""),
+            platform=str(data.get("platform") or ""),
+            error_type=str(data.get("error_type") or ""),
+            error_message=str(data.get("error_message") or ""),
             stack_trace=data.get("stack_trace"),
             screenshot=data.get("screenshot"),
             job_id=data.get("job_id"),
@@ -1166,6 +1183,114 @@ class FailureLog:
             if data.get("created_at")
             else datetime.now(timezone.utc),
         )
+
+
+class DBAutoApplyConfig(Base):
+    """Database model for auto-apply configuration."""
+
+    __tablename__ = "auto_apply_configs"
+
+    id: Mapped[str] = mapped_column(
+        String, primary_key=True, default=lambda: str(uuid.uuid4())
+    )
+    user_id: Mapped[str] = mapped_column(
+        String, ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    enabled: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
+    search_criteria: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    platforms: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    max_applications: Mapped[int] = mapped_column(Integer, default=5, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime, default=lambda: datetime.now(timezone.utc)
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime,
+        default=lambda: datetime.now(timezone.utc),
+        onupdate=lambda: datetime.now(timezone.utc),
+    )
+
+    user: Mapped["DBUser"] = relationship("DBUser", back_populates="auto_apply_configs")
+
+    __table_args__ = (
+        Index("idx_auto_apply_config_user", "user_id"),
+        Index("idx_auto_apply_config_enabled", "enabled"),
+    )
+
+
+class DBAutoApplyActivityLog(Base):
+    """Database model for auto-apply activity logs."""
+
+    __tablename__ = "auto_apply_activity_logs"
+
+    id: Mapped[str] = mapped_column(
+        String, primary_key=True, default=lambda: str(uuid.uuid4())
+    )
+    user_id: Mapped[str] = mapped_column(
+        String, ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    cycle_id: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
+    cycle_start: Mapped[datetime] = mapped_column(
+        DateTime, default=lambda: datetime.now(timezone.utc), nullable=False
+    )
+    cycle_end: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
+    cycle_status: Mapped[str] = mapped_column(String(50), default="pending")
+    jobs_searched: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
+    jobs_matched: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
+    jobs_applied: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
+    applications_successful: Mapped[int] = mapped_column(
+        Integer, default=0, nullable=False
+    )
+    applications_failed: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
+    errors: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    screenshots: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime, default=lambda: datetime.now(timezone.utc), nullable=False
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime,
+        default=lambda: datetime.now(timezone.utc),
+        onupdate=lambda: datetime.now(timezone.utc),
+        nullable=False,
+    )
+
+    user: Mapped["DBUser"] = relationship(
+        "DBUser", back_populates="auto_apply_activity_logs"
+    )
+
+    __table_args__ = (
+        Index("idx_auto_apply_activity_user", "user_id"),
+        Index("idx_auto_apply_activity_status", "cycle_status"),
+        Index("idx_auto_apply_activity_created", "created_at"),
+    )
+
+
+class DBAutoApplyJobQueue(Base):
+    """Database model for auto-apply job queue items."""
+
+    __tablename__ = "auto_apply_job_queue"
+
+    id: Mapped[str] = mapped_column(
+        String, primary_key=True, default=lambda: str(uuid.uuid4())
+    )
+    user_id: Mapped[str] = mapped_column(
+        String, ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    job_id: Mapped[str] = mapped_column(String(255), nullable=False)
+    platform: Mapped[str] = mapped_column(String(50), nullable=False)
+    status: Mapped[str] = mapped_column(String(50), default="queued")
+    queued_at: Mapped[datetime] = mapped_column(
+        DateTime, default=lambda: datetime.now(timezone.utc)
+    )
+    processed_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
+    error_message: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime, default=lambda: datetime.now(timezone.utc)
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime,
+        default=lambda: datetime.now(timezone.utc),
+        onupdate=lambda: datetime.now(timezone.utc),
+    )
 
 
 class DBRateLimit(Base):
