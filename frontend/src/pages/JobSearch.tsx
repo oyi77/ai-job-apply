@@ -34,6 +34,10 @@ const JobSearch: React.FC = () => {
   const [location, setLocation] = useState('');
   const [selectedJobType, setSelectedJobType] = useState<JobType | ''>('');
   const [selectedExperience, setSelectedExperience] = useState<ExperienceLevel | ''>('');
+  const [selectedDatePosted, setSelectedDatePosted] = useState<string>('');
+  const [salaryMin, setSalaryMin] = useState<number | undefined>(undefined);
+  const [salaryMax, setSalaryMax] = useState<number | undefined>(undefined);
+  const [remoteOnly, setRemoteOnly] = useState<boolean>(false);
   const [isSearching, setIsSearching] = useState(false);
   const [isJobDetailOpen, setIsJobDetailOpen] = useState(false);
   const [selectedJob, setSelectedJob] = useState<Job | null>(null);
@@ -47,12 +51,16 @@ const JobSearch: React.FC = () => {
   // Search jobs
   // Search jobs
   const { data: searchResults = { data: [] }, isLoading, error, refetch } = useQuery({
-    queryKey: ['job-search', searchQuery, location, selectedJobType, selectedExperience],
+    queryKey: ['job-search', searchQuery, location, selectedJobType, selectedExperience, selectedDatePosted, salaryMin, salaryMax, remoteOnly],
     queryFn: () => jobSearchService.searchJobs({
       query: searchQuery,
       location,
       job_type: selectedJobType || undefined,
       experience_level: selectedExperience || undefined,
+      date_posted: selectedDatePosted || undefined,
+      salary_min: salaryMin,
+      salary_max: salaryMax,
+      remote_only: remoteOnly || undefined,
       sort_by: sortBy,
       sort_order: sortOrder,
     }),
@@ -130,6 +138,13 @@ const JobSearch: React.FC = () => {
     { value: 'senior', label: 'Senior' },
     { value: 'lead', label: 'Lead' },
     { value: 'executive', label: 'Executive' },
+  ];
+
+  const datePostedOptions = [
+    { value: '', label: 'Any Time' },
+    { value: 'today', label: 'Today' },
+    { value: 'week', label: 'Past Week' },
+    { value: 'month', label: 'Past Month' },
   ];
 
   const sortOptions = [
@@ -212,7 +227,7 @@ const JobSearch: React.FC = () => {
             </div>
 
             {/* Filters */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
               <Select
                 name="job_type"
                 label="Job Type"
@@ -229,6 +244,45 @@ const JobSearch: React.FC = () => {
                 options={experienceOptions}
                 placeholder="Select experience level"
               />
+              <Select
+                name="date_posted"
+                label="Date Posted"
+                value={selectedDatePosted}
+                onChange={(value: string | number | (string | number)[]) => setSelectedDatePosted(value as string)}
+                options={datePostedOptions}
+                placeholder="Any time"
+              />
+              <div className="flex items-end">
+                <label className="flex items-center space-x-2 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={remoteOnly}
+                    onChange={(e) => setRemoteOnly(e.target.checked)}
+                    className="h-4 w-4 text-primary-600 focus:ring-primary-500 border-gray-300 rounded"
+                  />
+                  <span className="text-sm font-medium text-gray-700">Remote Only</span>
+                </label>
+              </div>
+            </div>
+
+            {/* Salary Range */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <Input
+                name="salary_min"
+                type="number"
+                label="Min Salary"
+                value={salaryMin !== undefined ? String(salaryMin) : ''}
+                onChange={(value: string | number | (string | number)[]) => setSalaryMin(value ? parseInt(String(value)) : undefined)}
+                placeholder="e.g., 50000"
+              />
+              <Input
+                name="salary_max"
+                type="number"
+                label="Max Salary"
+                value={salaryMax !== undefined ? String(salaryMax) : ''}
+                onChange={(value: string | number | (string | number)[]) => setSalaryMax(value ? parseInt(String(value)) : undefined)}
+                placeholder="e.g., 150000"
+              />
               <div className="flex items-end space-x-2">
                 <Select
                   name="sort_by"
@@ -237,6 +291,7 @@ const JobSearch: React.FC = () => {
                   onChange={(value) => setSortBy(value as 'relevance' | 'date' | 'salary')}
                   options={sortOptions.map(opt => ({ value: opt.value, label: opt.label }))}
                   placeholder="Sort by"
+                  className="flex-1"
                 />
                 <Button
                   variant="ghost"

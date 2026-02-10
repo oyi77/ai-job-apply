@@ -292,7 +292,7 @@ export const authService = {
 
   // Delete account
   deleteAccount: async (password: string): Promise<void> => {
-    await apiClient.delete('/api/v1/auth/account', {
+    await apiClient.delete('/api/v1/auth/me', {
       data: { password },
     });
     // Clear tokens after successful deletion
@@ -627,7 +627,7 @@ export const aiService = {
 
   // Prepare interview
   prepareInterview: async (jobDescription: string, resumeContent: string, company: string, jobTitle: string): Promise<any> => {
-    const response = await apiClient.post('/api/v1/ai/interview-prep', {
+    const response = await apiClient.post('/api/v1/interviews/prepare', {
       job_description: jobDescription,
       resume_content: resumeContent,
       company_name: company,
@@ -647,14 +647,21 @@ export const jobSearchService = {
     experience_level?: string;
     sort_by?: string;
     sort_order?: string;
+    date_posted?: string;  // today, week, month
+    salary_min?: number;
+    salary_max?: number;
+    remote_only?: boolean;
   }): Promise<{ data: Job[] }> => {
     // Convert to backend expected format
     const requestBody = {
       keywords: [params.query], // Backend expects keywords array
       location: params.location || "Remote",
       experience_level: params.experience_level || "entry",
-      job_type: params.job_type,
-      is_remote: params.location?.toLowerCase().includes('remote') || false,
+      job_type: params.job_type ? [params.job_type] : undefined,
+      is_remote: params.location?.toLowerCase().includes('remote') || params.remote_only || false,
+      date_posted: params.date_posted,  // today, week, month
+      salary_min: params.salary_min,
+      salary_max: params.salary_max,
       sort_by: params.sort_by || "relevance",
       sort_order: params.sort_order || "desc"
     };
