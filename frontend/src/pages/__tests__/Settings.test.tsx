@@ -34,6 +34,7 @@ vi.mock('../../services/api', () => ({
   },
   authService: {
     updateProfile: vi.fn(),
+    deleteAccount: vi.fn(),
   },
 }));
 
@@ -170,5 +171,19 @@ describe('Settings', () => {
     fireEvent.click(spanishOption);
 
     expect(mockChangeLanguage).toHaveBeenCalledWith('es');
+  });
+
+  it('opens delete account modal when clicking delete button', async () => {
+    const user = userEvent.setup();
+    render(<Settings />);
+
+    // Find and click delete account button
+    const deleteButton = screen.getByText('settings.data.buttonDelete');
+    await user.click(deleteButton);
+
+    // Verify modal opens with warning
+    expect(screen.getByText(/delete your account/i)).toBeInTheDocument();
+    expect(screen.getByText(/this action cannot be undone/i)).toBeInTheDocument();
+    expect(screen.getByPlaceholderText(/type delete to confirm/i)).toBeInTheDocument();
   });
 });
