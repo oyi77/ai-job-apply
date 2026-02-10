@@ -1,0 +1,49 @@
+linkedin:
+  first_name:
+    type: text
+    xpath: "//input[contains(@id, 'firstName')]"
+    default_value: ""
+  last_name:
+    type: text
+    xpath: "//input[contains(@id, 'lastName')]"
+    default_value: ""
+  email:
+    type: text
+    xpath: "//input[contains(@id, 'email')]"
+    default_value: ""
+  phone:
+    type: text
+    xpath: "//input[contains(@id, 'phoneNumber')]"
+    default_value: ""
+  resume:
+    type: file
+    xpath: "//input[@type='file']"
+    default_value: ""
+  cover_letter:
+    type: textarea
+    xpath: "//textarea[contains(@id, 'coverLetter')]"
+    ai_fallback: true
+    description: "Write a cover letter for this job"
+  expected_salary:
+    type: text
+    xpath: "//input[contains(@id, 'salary')]"
+    ai_fallback: true
+    description: "What is your expected salary?"
+
+indeed:
+  name:
+    type: text
+    xpath: "//input[@id='input-name']"
+  email:
+    type: text
+    xpath: "//input[@id='input-email']"
+  resume:
+    type: file
+    xpath: "//input[@type='file']"
+
+glassdoor:
+  full_name:
+    type: text
+    xpath: "//input[@name='fullName']"
+
+empty_platform: {}
