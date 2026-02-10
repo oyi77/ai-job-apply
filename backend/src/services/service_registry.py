@@ -1,6 +1,6 @@
 """Unified service registry for dependency injection in the AI Job Application Assistant."""
 
-from typing import Dict, Any, Optional
+from typing import Any, Dict, Optional
 from loguru import logger
 from abc import ABC, abstractmethod
 
