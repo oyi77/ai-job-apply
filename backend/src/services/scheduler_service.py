@@ -1,13 +1,10 @@
 """Scheduler service for automated job application reminders using APScheduler."""
 
-import asyncio
 from datetime import datetime, timedelta
-from typing import Optional, Dict, Any, List, Callable
+from typing import Optional, Dict, Any, List
 from dataclasses import dataclass
-from loguru import logger
 
 from src.utils.logger import get_logger
-from src.config import config
 
 
 @dataclass
@@ -50,9 +47,16 @@ class SchedulerService:
     async def initialize(self) -> bool:
         """Initialize the scheduler service."""
         try:
-            from apscheduler.schedulers.asyncio import AsyncIOScheduler
-            from apscheduler.triggers.interval import IntervalTrigger
-            from apscheduler.events import EVENT_JOB_EXECUTED, EVENT_JOB_ERROR
+            from apscheduler.schedulers.asyncio import (  # type: ignore[import-not-found]
+                AsyncIOScheduler,
+            )
+            from apscheduler.triggers.interval import (  # type: ignore[import-not-found]
+                IntervalTrigger,
+            )
+            from apscheduler.events import (  # type: ignore[import-not-found]
+                EVENT_JOB_EXECUTED,
+                EVENT_JOB_ERROR,
+            )
 
             self.logger.info("Initializing scheduler service...")
 
@@ -149,10 +153,14 @@ class SchedulerService:
             ID of the scheduled reminder job
         """
         try:
+            follow_up_days = self.config.follow_up_days
+            if metadata:
+                override_days = metadata.get("days_until_followup")
+                if isinstance(override_days, int) and override_days >= 0:
+                    follow_up_days = override_days
+
             # Calculate follow-up time
-            follow_up_time = application_date + timedelta(
-                days=self.config.follow_up_days
-            )
+            follow_up_time = application_date + timedelta(days=follow_up_days)
 
             # Create reminder job
             job_id = (
@@ -175,9 +183,18 @@ class SchedulerService:
             # Store reminder job
             self.reminder_jobs[job_id] = reminder_job
 
-            # Schedule with APScheduler if scheduler is running
-            if self.scheduler and self.scheduler.running:
-                from apscheduler.triggers.date import DateTrigger
+            now = (
+                datetime.now(follow_up_time.tzinfo)
+                if follow_up_time.tzinfo
+                else datetime.now()
+            )
+
+            if follow_up_time <= now:
+                await self._send_follow_up_reminder(job_id)
+            elif self.scheduler and self.scheduler.running:
+                from apscheduler.triggers.date import (  # type: ignore[import-not-found]
+                    DateTrigger,
+                )
 
                 self.scheduler.add_job(
                     self._send_follow_up_reminder,
@@ -222,10 +239,14 @@ class SchedulerService:
             ID of the scheduled reminder job
         """
         try:
+            check_days = self.config.stale_application_days
+            if metadata:
+                override_days = metadata.get("days_until_check")
+                if isinstance(override_days, int) and override_days >= 0:
+                    check_days = override_days
+
             # Calculate check time
-            check_time = last_update + timedelta(
-                days=self.config.stale_application_days
-            )
+            check_time = last_update + timedelta(days=check_days)
 
             # Create reminder job
             job_id = f"check_{application_id}_{datetime.now().strftime('%Y%m%d%H%M%S')}"
@@ -248,7 +269,9 @@ class SchedulerService:
 
             # Schedule with APScheduler if scheduler is running
             if self.scheduler and self.scheduler.running:
-                from apscheduler.triggers.date import DateTrigger
+                from apscheduler.triggers.date import (  # type: ignore[import-not-found]
+                    DateTrigger,
+                )
 
                 self.scheduler.add_job(
                     self._send_status_check_reminder,
@@ -293,8 +316,14 @@ class SchedulerService:
             ID of the scheduled reminder job
         """
         try:
-            # Schedule reminder for 2 days before interview
-            reminder_time = interview_date - timedelta(days=2)
+            days_before_interview = 2
+            if metadata:
+                override_days = metadata.get("days_before_interview")
+                if isinstance(override_days, int) and override_days >= 0:
+                    days_before_interview = override_days
+
+            # Schedule reminder for days before interview
+            reminder_time = interview_date - timedelta(days=days_before_interview)
 
             # Create reminder job
             job_id = (
@@ -319,7 +348,9 @@ class SchedulerService:
 
             # Schedule with APScheduler if scheduler is running
             if self.scheduler and self.scheduler.running:
-                from apscheduler.triggers.date import DateTrigger
+                from apscheduler.triggers.date import (  # type: ignore[import-not-found]
+                    DateTrigger,
+                )
 
                 self.scheduler.add_job(
                     self._send_interview_prep_reminder,
@@ -434,12 +465,16 @@ class SchedulerService:
             # Import notification service (lazy import to avoid circular dependency)
             from src.services.notification_service import notification_service
 
+            reminder_metadata = job.metadata or {}
+
             # Send email
             success = await notification_service.send_follow_up_reminder(
                 user_id=job.user_id,
-                job_title=job.metadata.get("job_title", "Unknown"),
-                company=job.metadata.get("company", "Unknown"),
-                application_date=job.metadata.get("application_date", ""),
+                job_title=reminder_metadata.get("job_title", "Unknown"),
+                company=reminder_metadata.get("company", "Unknown"),
+                application_date=reminder_metadata.get("application_date", ""),
+                user_email=reminder_metadata.get("user_email"),
+                user_name=reminder_metadata.get("user_name"),
             )
 
             if success:
@@ -462,12 +497,16 @@ class SchedulerService:
             # Import notification service
             from src.services.notification_service import notification_service
 
+            reminder_metadata = job.metadata or {}
+
             # Send email
             success = await notification_service.send_status_check_reminder(
                 user_id=job.user_id,
-                job_title=job.metadata.get("job_title", "Unknown"),
-                company=job.metadata.get("company", "Unknown"),
-                last_update=job.metadata.get("last_update", ""),
+                job_title=reminder_metadata.get("job_title", "Unknown"),
+                company=reminder_metadata.get("company", "Unknown"),
+                last_update=reminder_metadata.get("last_update", ""),
+                user_email=reminder_metadata.get("user_email"),
+                user_name=reminder_metadata.get("user_name"),
             )
 
             if success:
@@ -492,12 +531,16 @@ class SchedulerService:
             # Import notification service
             from src.services.notification_service import notification_service
 
+            reminder_metadata = job.metadata or {}
+
             # Send email
             success = await notification_service.send_interview_prep_reminder(
                 user_id=job.user_id,
-                job_title=job.metadata.get("job_title", "Unknown"),
-                company=job.metadata.get("company", "Unknown"),
-                interview_date=job.metadata.get("interview_date", ""),
+                job_title=reminder_metadata.get("job_title", "Unknown"),
+                company=reminder_metadata.get("company", "Unknown"),
+                interview_date=reminder_metadata.get("interview_date", ""),
+                user_email=reminder_metadata.get("user_email"),
+                user_name=reminder_metadata.get("user_name"),
             )
 
             if success:

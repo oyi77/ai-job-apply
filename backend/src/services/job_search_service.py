@@ -1308,7 +1308,75 @@ class JobSearchService(JobSearchService):
             )
             mock_jobs.append(job)
 
-        return mock_jobs
+        # Apply filters based on request parameters
+        filtered_jobs = []
+
+        for job in mock_jobs:
+            # Filter by date_posted
+            if request.date_posted:
+                if request.date_posted == "today" and job.posted_date not in ["Today"]:
+                    continue
+                elif request.date_posted == "week" and job.posted_date not in [
+                    "Today",
+                    "1 day ago",
+                    "2 days ago",
+                    "3 days ago",
+                    "1 week ago",
+                ]:
+                    continue
+                elif request.date_posted == "month":
+                    # For simplicity, keep all (mock data only has recent dates)
+                    pass
+
+            # Filter by salary range
+            if request.salary_min or request.salary_max:
+                # Parse salary range (format: "$XX,XXX - $XX,XXX")
+                salary_match = re.search(r"\$(\d{1,3}),?(\d{3})", job.salary)
+                if salary_match:
+                    salary_num = int(salary_match.group(1)) * 1000
+                    if request.salary_min and salary_num < request.salary_min:
+                        continue
+                    if request.salary_max and salary_num > request.salary_max:
+                        continue
+
+            # Filter by job type (check if title contains job type)
+            if request.job_type:
+                job_type_lower = [jt.lower() for jt in request.job_type]
+                title_lower = job.title.lower()
+                matched = False
+                for jt in job_type_lower:
+                    if jt in ["full_time", "fulltime", "full-time"] and any(
+                        t in title_lower
+                        for t in ["senior", "lead", "principal", "staff"]
+                    ):
+                        matched = True
+                        break
+                    elif (
+                        jt in ["part_time", "parttime", "part-time"]
+                        and "part-time" in title_lower
+                    ):
+                        matched = True
+                        break
+                    elif jt in ["contract", "internship"] and jt in title_lower:
+                        matched = True
+                        break
+                if not matched and request.job_type:
+                    continue
+
+            # Filter by remote_only
+            if request.remote_only:
+                if (
+                    "remote" not in job.location.lower()
+                    and "hybrid" not in job.location.lower()
+                ):
+                    continue
+
+            filtered_jobs.append(job)
+
+        # Sort and limit results
+        filtered_jobs = filtered_jobs[: request.results_wanted]
+
+        return filtered_jobs
 
     async def health_check(self) -> Dict[str, Any]:
         """Check service health."""
@@ -1317,6 +1385,7 @@ class JobSearchService(JobSearchService):
                 "status": "healthy",
                 "available": self._initialized,
                 "jobspy_available": self._jobspy_available,
+                "fallback_available": True,
                 "supported_platforms": len(self.supported_platforms),
             }
         except Exception as e:
