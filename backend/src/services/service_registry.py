@@ -124,6 +124,12 @@ class ServiceRegistry:
         await file_provider.initialize()
         self._instances["file_service"] = file_provider.get_service()
 
+        # Session manager (no dependencies)
+        session_manager_provider = SessionManagerProvider()
+        self.register_service("session_manager", session_manager_provider)
+        await session_manager_provider.initialize()
+        self._instances["session_manager"] = session_manager_provider.get_service()
+
         # AI service (no dependencies) - Use unified service with multiple providers
         try:
             from src.services.unified_ai_service import UnifiedAIService
@@ -219,9 +225,15 @@ class ServiceRegistry:
 
         # Auto Apply service (core of auto-apply functionality)
         try:
-            from src.services.auto_apply_service import AutoApplyService
+            from src.services.auto_apply_service import AutoApplyServiceProvider
 
-            auto_apply_provider = AutoApplyServiceProvider()
+            auto_apply_provider = AutoApplyServiceProvider(
+                job_search_service=self._instances.get("job_search_service"),
+                job_application_service=self._instances.get("job_application_service"),
+                ai_service=self._instances.get("ai_service"),
+                notification_service=self._instances.get("notification_service"),
+                session_manager=self._instances.get("session_manager"),
+            )
             self.register_service("auto_apply_service", auto_apply_provider)
             await auto_apply_provider.initialize()
             self._instances["auto_apply_service"] = auto_apply_provider.get_service()
@@ -358,6 +370,10 @@ class ServiceRegistry:
     async def get_resume_builder_service(self):
         """Get the resume builder service instance."""
         return await self.get_service("resume_builder_service")
+
+    async def get_session_manager(self):
+        """Get the session manager instance."""
+        return await self.get_service("session_manager")
 
     async def get_mailgun_provider(self):
         """Get the mailgun provider instance (may return None if not configured)."""
@@ -855,3 +871,23 @@ class PushServiceProvider(ServiceProvider):
 
     async def cleanup(self) -> None:
         pass
+
+
+class SessionManagerProvider(ServiceProvider):
+    """Provider for session manager service."""
+
+    def __init__(self):
+        self._logger = logger.bind(module="SessionManagerProvider")
+
+    def get_service(self):
+        return self._service
+
+    async def initialize(self) -> None:
+        from src.services.session_manager import SessionManager
+
+        self._service = SessionManager()
+        self._logger.info("SessionManager initialized successfully")
+
+    async def cleanup(self) -> None:
+        if hasattr(self._service, "cleanup"):
+            await self._service.cleanup()

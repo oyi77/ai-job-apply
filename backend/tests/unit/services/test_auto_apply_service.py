@@ -10,7 +10,7 @@ from pydantic import HttpUrl
 
 from src.models.automation import AutoApplyConfig, AutoApplyConfigCreate
 from src.models.job import Job, JobSearchResponse
-from src.services.auto_apply_service import AutoApplyService
+from src.services.auto_apply_service import AutoApplyService, AutoApplyServiceProvider
 from src.services.rate_limiter import RateLimitResult, RateLimiter
 
 pytest = importlib.import_module("pytest")

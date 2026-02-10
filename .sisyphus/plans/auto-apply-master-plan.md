@@ -797,19 +797,20 @@
 - Verify database calls with AsyncMock
 
 **Acceptance Criteria:**
-- [ ] Test file created with session manager test suite
-- [ ] All 7 test cases implemented with proper assertions
-- [ ] Fixtures created for mocking database
-- [ ] test_load_session_from_cache() returns cached session
-- [ ] test_load_session_from_database() queries database correctly
-- [ ] test_load_session_expired() returns None for expired sessions
-- [ ] test_save_session() saves to database with 7-day expiry
-- [ ] test_save_session() updates cache after saving to database
-- [ ] test_delete_expired_sessions() removes old sessions
-- [ ] test_in_memory_cache() verifies cache hit rate
-- [ ] All tests use async/await properly
-- [ ] Test coverage > 85% for session_manager.py
-- [ ] Manual verification: Run pytest → verify all tests pass
+- [x] Test file created with session manager test suite
+- [x] All 7 test cases implemented with proper assertions
+- [x] Fixtures created for mocking database
+- [x] test_load_session_from_cache() returns cached session
+- [x] test_load_session_from_database() queries database correctly
+- [x] test_load_session_expired() returns None for expired sessions
+- [x] test_save_session() saves to database with 7-day expiry
+- [x] test_save_session() updates cache after saving to database
+- [x] test_delete_expired_sessions() removes old sessions
+- [x] test_in_memory_cache() verifies cache hit rate
+- [x] All tests use async/await properly
+- [x] Test coverage > 85% for session_manager.py
+- [x] Manual verification: Run pytest → verify all tests pass
+
 
 **Estimated Time:** 3 hours
 

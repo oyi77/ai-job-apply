@@ -23,18 +23,35 @@ class SessionManager:
     - 7-day default session expiry
     """
 
-    def __init__(self) -> None:
-        """Initialize session manager with empty cache."""
+    def __init__(
+        self,
+        session_repository: Optional[SessionCookieRepository] = None,
+        user_id: Optional[str] = None,
+        cache_expiry_seconds: int = 3600,
+    ) -> None:
+        """Initialize session manager with optional repository and user context.
+
+        Args:
+            session_repository: Optional repository for database operations
+            user_id: Optional user ID for context-aware operations
+            cache_expiry_seconds: Cache expiry time in seconds (default: 1 hour)
+        """
         self.logger = get_logger(__name__)
         # Cache structure: {(user_id, platform): {"cookies": dict, "expires_at": datetime}}
-        self._cache: dict[tuple[str, str], dict[str, object]] = {}
+        self._cache: dict[tuple[str, str], dict[str, dict | datetime]] = {}
         self._repository_class = SessionCookieRepository
+        self.session_repo = session_repository
+        self.user_id = user_id
+        self.cache_expiry_seconds = cache_expiry_seconds
 
     @asynccontextmanager
     async def _get_session_repo(self):  # type: ignore[no-untyped-def]
         """Context manager for database session and repository."""
-        async with database_config.get_session() as session:
-            yield session, self._repository_class(session)
+        if self.session_repo:
+            yield None, self.session_repo
+        else:
+            async with database_config.get_session() as session:
+                yield session, self._repository_class(session)
 
     def _get_cache_key(self, user_id: str, platform: str) -> tuple[str, str]:
         """Generate cache key from user_id and platform."""
@@ -69,9 +86,12 @@ class SessionManager:
         # Check cache first
         if cache_key in self._cache:
             cached_data = self._cache[cache_key]
-            if not self._is_expired(cached_data["expires_at"]):
+            expires_at = cached_data.get("expires_at")
+            if isinstance(expires_at, datetime) and not self._is_expired(expires_at):
                 self.logger.debug(f"Session cache hit for user {user_id} on {platform}")
-                return cached_data["cookies"]
+                cookies = cached_data.get("cookies")
+                if isinstance(cookies, dict):
+                    return cookies
             else:
                 # Remove expired entry from cache
                 del self._cache[cache_key]
