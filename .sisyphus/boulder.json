@@ -1,8 +1,10 @@
 {
-  "active_plan": "C:\\Users\\Snap-PC-Dev-026\\ai-job-apply\\.sisyphus\\plans\\fix-critical-issues.md",
-  "started_at": "2026-02-03T04:42:53.937Z",
+  "active_plan": ".sisyphus/plans/auto-apply-master-plan.md",
+  "started_at": "2026-02-05T20:57:09.319Z",
   "session_ids": [
-    "ses_3de90adc4ffe7cz9OxMOmibZgp"
+    "ses_3d067ce59ffeZ0cW1L8DE2Rq2p",
+    "ses_3d02aa2f1ffeZ0lSYvV135dCPD",
+    "ses_3d02aa2f1ffeZ0lSYvV135dCPD-ATLAS",
   ],
-  "plan_name": "fix-critical-issues"
+  "plan_name": "auto-apply-master-plan"
 }
