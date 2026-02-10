@@ -231,3 +231,41 @@ The session_cookies table is now properly implemented with:
 - Rollback capability
 
 Task 1.2 is complete and production-ready.
+[Auto-Apply E2E Status Update]
+- Found auto-apply test specs:
+  - frontend/tests/e2e/auto-apply.spec.ts
+  - tests/e2e/auto-apply.spec.ts
+- Current plan indicates Phase 2 tasks 2.1..2.9; repository shows the spec file exists and contains at least two test.describe blocks named 'Auto Apply E2E Tests'. The rest of the test cases appear to be scaffolded in plan but may not all be implemented yet in code.
+- BaseURL mismatch note:
+  - Plan expects baseURL http://localhost:3000 (per Task 2.1 description)
+  - Playwright config currently uses FRONTEND_URL for baseURL, and frontend dev server runs on port 5173 per README (http://localhost:5173) and in config references FRONTEND_URL.
+  - Recommendation: align plan's baseURL with the actual dev server (5173) or adjust Playwright config to point at 3000. A consistent choice is to align to 5173 since the server runs there in this codebase.
+- Recommended commands to verify locally:
+  - npx playwright test frontend/tests/e2e/auto-apply.spec.ts -c frontend/playwright.config.ts
+  - npx playwright test tests/e2e/auto-apply.spec.ts -c frontend/playwright.config.ts
+  - If running all E2E tests is desired:
+    - npx playwright test -c frontend/playwright.config.ts
+
+Next steps for you:
+- Run the two commands above to confirm current test status (pass/fail for existing specs).
+- Report results back so we can update the issue notes and the plan accordingly.
+- [ ] Unchecked plan item: Unit tests for all endpoints (config, start, stop, rate-limits, activity, queue)
+- [ ] Current status: partial coverage: integration tests exist for /config (GET, POST), /start, /stop, /activity with limit; missing: /rate-limits, /queue, /retry-queued, /skip-queued
+- [ ] Found tests:
+  - backend/tests/integration/test_auto_apply_endpoints.py:
+    - test_get_config
+    - test_post_config
+    - test_start_auto_apply
+    - test_stop_auto_apply
+    - test_get_activity
+    - test_get_activity_with_limit
+    - test_endpoints_require_auth
+  - backend/tests/integration/test_auto_apply_activity.py:
+    - test_run_cycle_creates_activity_log
+- [ ] Endpoints implemented in backend/src/api/v1/auto_apply.py:
+  - POST /config, GET /config, POST /start, POST /stop, GET /activity, GET /activity?limit=, POST /rate-limits, GET /queue, POST /retry-queued, POST /skip-queued
+- [ ] Verification commands:
+  - pytest backend/tests/integration/test_auto_apply_endpoints.py
+  - pytest backend/tests/integration/test_auto_apply_activity.py
+  - pytest backend/tests/integration/test_auto_apply_endpoints.py -k test_get_config -q
+- [ ] Next steps: implement unit tests for rate-limits, queue, retry-queued, skip-queued endpoints using similar mocking pattern as existing tests.

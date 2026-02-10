@@ -289,3 +289,50 @@ class SessionCookieRepository:
 - Task 1.6: Implement form filler service using these templates
 - Task 1.7: Add XPath validation and testing
 
+---
+
+# Task: LinkedIn hourly rate limit integration test - Learnings
+
+## What Was Done
+1. **Added integration test**: `backend/tests/integration/test_rate_limiter_linkedin.py` validates LinkedIn 5/hour limit and retry_after.
+2. **Fixed auto-apply service import error**: replaced undefined CoreAutoApplyService usage to keep test collection working.
+3. **Added missing auto-apply DB models**: defined DBAutoApplyConfig, DBAutoApplyActivityLog, DBAutoApplyJobQueue in `backend/src/database/models.py` to satisfy integration test imports.
+
+## Notes
+- Rate limiter uses in-memory cache only; test seeds cache to ensure deterministic hourly limit behavior without sleeps.
+
+---
+
+# Task: Auto-apply API unit tests - Learnings
+
+## What Was Done
+1. **Isolated router tests**: built a FastAPI test app and included the auto-apply router directly.
+2. **Stubbed service registry import**: injected a lightweight `src.services.service_registry` module in `sys.modules` to avoid SQLAlchemy model redefinition during test collection.
+3. **Mocked auto-apply service**: patched `get_auto_apply_service` with `create=True` to keep router calls hermetic.
+
+## Notes
+- Avoid importing `create_app()` in these unit tests to prevent database model initialization side effects.
+
+---
+
+# Task: Auto-apply activity integration test - Learnings
+
+## What Was Done
+1. **Added in-memory DB integration test**: `backend/tests/integration/test_auto_apply_activity.py` runs `run_cycle()` against a per-test SQLite memory DB.
+2. **Patched session factory**: mocked `database_config.get_session()` to reuse the test AsyncSession and keep DB writes observable.
+3. **Aligned activity log schema**: updated auto-apply activity log model fields to match repository mappings (cycle_start, counts, timestamps).
+4. **Avoided nested transactions**: `run_cycle()` now commits after config lookup before writing activity logs.
+5. **Router inclusion in tests**: auto-apply router is added directly in the endpoint integration fixture to avoid 404s.
+
+---
+
+# Task: LinkedIn daily rate limit integration test - Learnings
+
+## What Was Done
+1. **Added daily limit integration test**: `backend/tests/integration/test_rate_limiter_linkedin.py` asserts the 51st LinkedIn application is blocked.
+2. **Verified reset boundary**: test checks `retry_after` is aligned to next-day UTC midnight.
+3. **Stabilized typing in DB fixture**: asserted non-None engine before begin() calls to keep LSP clean.
+
+## Notes
+- Daily limit is evaluated before minimum-threshold checks; seed cache with `hourly_count` below the hourly limit and `daily_count` at 50 to avoid hourly blocking.
+- Retry boundary is computed as `(now + 1 day).replace(hour=0, minute=0, second=0, microsecond=0)` in `RateLimiter.can_apply`.
