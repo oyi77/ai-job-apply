@@ -12,6 +12,13 @@ router = APIRouter(prefix="/scheduler", tags=["Job Application Reminders"])
 logger = get_logger(__name__)
 
 
+def _get_user_value(current_user: Any, key: str) -> Optional[Any]:
+    """Safely read user values from profile or dict."""
+    if isinstance(current_user, dict):
+        return current_user.get(key)
+    return getattr(current_user, key, None)
+
+
 class FollowUpReminderRequest(BaseModel):
     """Request to schedule follow-up reminder."""
 
@@ -85,13 +92,14 @@ async def schedule_follow_up_reminder(
 
         reminder_id = await scheduler_service.schedule_follow_up(
             application_id=request.application_id,
-            user_id=current_user["id"],
+            user_id=_get_user_value(current_user, "id"),
             application_date=request.application_date,
             job_title=request.job_title,
             company=request.company,
             metadata={
-                "user_email": current_user.get("email"),
-                "user_name": current_user.get("name"),
+                "user_email": _get_user_value(current_user, "email"),
+                "user_name": _get_user_value(current_user, "name"),
+                "days_until_followup": request.days_until_followup,
             },
         )
 
@@ -129,13 +137,14 @@ async def schedule_status_check_reminder(
 
         reminder_id = await scheduler_service.schedule_status_check(
             application_id=request.application_id,
-            user_id=current_user["id"],
+            user_id=_get_user_value(current_user, "id"),
             last_update=request.last_update,
             job_title=request.job_title,
             company=request.company,
             metadata={
-                "user_email": current_user.get("email"),
-                "user_name": current_user.get("name"),
+                "user_email": _get_user_value(current_user, "email"),
+                "user_name": _get_user_value(current_user, "name"),
+                "days_until_check": request.days_until_check,
             },
         )
 
@@ -173,13 +182,14 @@ async def schedule_interview_prep_reminder(
 
         reminder_id = await scheduler_service.schedule_interview_prep(
             application_id=request.application_id,
-            user_id=current_user["id"],
+            user_id=_get_user_value(current_user, "id"),
             interview_date=request.interview_date,
             job_title=request.job_title,
             company=request.company,
             metadata={
-                "user_email": current_user.get("email"),
-                "user_name": current_user.get("name"),
+                "user_email": _get_user_value(current_user, "email"),
+                "user_name": _get_user_value(current_user, "name"),
+                "days_before_interview": request.days_before_interview,
             },
         )
 
@@ -236,7 +246,9 @@ async def get_pending_reminders(
 
         scheduler_service = await service_registry.get_scheduler_service()
 
-        reminders = await scheduler_service.get_pending_reminders(current_user["id"])
+        reminders = await scheduler_service.get_pending_reminders(
+            _get_user_value(current_user, "id")
+        )
 
         # Convert to dict format
         reminder_list = []

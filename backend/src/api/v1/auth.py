@@ -275,16 +275,34 @@ async def update_profile(
 
 
 @router.delete("/me", status_code=status.HTTP_204_NO_CONTENT)
-async def delete_account(current_user: UserProfile = Depends(get_current_user)):
+async def delete_account(
+    password_data: dict = Body(...),
+    current_user: UserProfile = Depends(get_current_user),
+):
     """
     Delete current user account.
 
+    Requires password confirmation for security.
+
     Args:
+        password_data: Request body containing password confirmation
         current_user: Current authenticated user
+
+    Request body (JSON):
+        {
+            "password": "user_current_password"
+        }
     """
+    password = password_data.get("password")
+    if not password:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Password confirmation required",
+        )
+
     try:
         auth_service = await service_registry.get_auth_service()
-        success = await auth_service.delete_user(current_user.id)
+        success = await auth_service.delete_user(current_user.id, password)
 
         if success:
             logger.info(f"User account deleted: {current_user.id}")
