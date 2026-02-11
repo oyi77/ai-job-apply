@@ -102,9 +102,8 @@ class JWTAuthService(AuthService):
             else:
                 self.logger.debug("User does not exist, proceeding with registration")
 
-            # Create new user (pass registration data directly to User)
             self.logger.debug("Creating user from registration data...")
-            created_user = User(
+            new_user = User(
                 id=str(uuid.uuid4()),
                 email=registration.email.lower(),
                 password_hash=self._hash_password(registration.password),
@@ -113,32 +112,11 @@ class JWTAuthService(AuthService):
                 created_at=datetime.now(timezone.utc),
                 updated_at=datetime.now(timezone.utc),
             )
-            self.logger.debug(
-                f"User object created: {created_user.id}, {created_user.email}"
-            )
 
-            # Save user
             self.logger.debug("Saving user to database...")
-            db_user = await repository.create(
-                User(
-                    id=str(uuid.uuid4()),
-                    email=registration.email.lower(),
-                    password_hash=self._hash_password(registration.password),
-                    name=registration.name,
-                    is_active=True,
-                    created_at=datetime.now(timezone.utc),
-                    updated_at=datetime.now(timezone.utc),
-                )
-            )
-            created_user_from_db = await repository.get_by_email(
-                registration.email.lower()
-            )
+            created_user = await repository.create(new_user)
             self.logger.info(
                 f"User saved to database: {created_user.id}, {created_user.email}"
-            )
-            self.logger.debug(f"Created user type: {type(created_user).__name__}")
-            self.logger.debug(
-                f"Created user from DB type: {type(created_user_from_db).__name__}"
             )
 
             # Create tokens
@@ -342,18 +320,10 @@ class JWTAuthService(AuthService):
                     f"User logged out: {session_obj.user_id or user_id or 'unknown'}"
                 )
                 return True
-            elif user_id:
-                # Token not in database but we have user_id - try to invalidate all user sessions
-                await repository.invalidate_all_user_sessions(user_id)
-                self.logger.info(f"Invalidated all sessions for user: {user_id}")
-                return True
+            if user_id:
+                return False
 
-        # Token not found and no user_id - token may already be invalid
-        # Return True anyway to allow frontend cleanup (even if token is invalid)
-        self.logger.debug(
-            "Logout called with invalid token, returning True for frontend cleanup"
-        )
-        return True
+        return False
 
     async def get_user_profile(self, user_id: str) -> Optional[UserProfile]:
         """Get user profile by ID."""

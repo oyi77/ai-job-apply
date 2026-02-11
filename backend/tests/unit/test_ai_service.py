@@ -238,7 +238,7 @@ class TestGeminiAIService:
             resume_id="test-id",
             target_role="Data Scientist",
             job_description="Machine learning position requiring Python and SQL",
-            current_resume_content="Software engineer with Python experience",
+            resume_content="Software engineer with Python experience",
         )
 
         prompt = ai_service._build_resume_optimization_prompt(request)

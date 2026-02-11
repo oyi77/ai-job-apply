@@ -102,6 +102,7 @@ def create_app() -> FastAPI:
         from src.api.v1.analytics import router as analytics_router
         from src.api.v1.ai_config import router as ai_config_router
         from src.api.v1.automation import router as automation_router
+        from src.api.v1.auto_apply import router as auto_apply_router
         from src.api.v1.scheduler import router as scheduler_router
         from src.api.v1.resume_builder import router as resume_builder_router
 
@@ -135,6 +136,9 @@ def create_app() -> FastAPI:
         )
         app.include_router(
             automation_router, prefix="/api/v1/automation", tags=["automation"]
+        )
+        app.include_router(
+            auto_apply_router, prefix="/api/v1/auto-apply", tags=["auto-apply"]
         )
         app.include_router(
             scheduler_router, prefix="/api/v1/scheduler", tags=["scheduler"]

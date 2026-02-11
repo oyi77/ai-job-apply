@@ -491,7 +491,11 @@ class AnalyticsService:
             )
 
             for app in applications:
-                company = app.company or "Unknown"
+                company = getattr(app, "company", None)
+                if not isinstance(company, str) or not company:
+                    company = getattr(app, "company_name", None)
+                if not isinstance(company, str) or not company:
+                    company = "Unknown"
                 company_stats[company]["total"] += 1
 
                 if app.status in [

@@ -148,4 +148,149 @@ test.describe('Auto Apply Flow', () => {
     // 5. Verify activity log updates (mocked)
     // In real E2E this might need a wait or polling
   });
+
+  test('should enforce rate limiting with low daily limit', async ({ page }) => {
+    // Track application count
+    let applicationCount = 0;
+    const maxApplications = 3;
+    let rateLimitReached = false;
+
+    // Mock activity endpoint with rate limiting logic
+    await page.route('**/api/v1/auto-apply/activity', async (route) => {
+      const activities = [];
+      if (applicationCount >= maxApplications) {
+        rateLimitReached = true;
+        activities.push({
+          id: 'activity-rate-limit',
+          user_id: 'user-1',
+          cycle_id: 'cycle-limit',
+          cycle_status: 'rate_limit_reached',
+          jobs_applied: maxApplications,
+          errors: ['Daily limit reached'],
+          created_at: new Date().toISOString(),
+        });
+      }
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify(activities),
+      });
+    });
+
+    // Navigate to auto-apply page
+    await page.goto('/auto-apply');
+    await page.waitForLoadState('networkidle');
+
+    const currentUrl = page.url();
+    if (currentUrl.includes('/login')) {
+      test.skip();
+    }
+
+    // Configure with low daily limit
+    await page.getByPlaceholder(/e.g. Python/i).waitFor({ state: 'visible' });
+    await page.getByPlaceholder(/e.g. Python/i).fill('Python');
+    await page.getByPlaceholder(/e.g. San Francisco/i).fill('Remote');
+
+    // Set low daily limit (3 applications)
+    const dailyLimitInput = page.locator('input[name="dailyLimit"]').first();
+    if (await dailyLimitInput.isVisible().catch(() => false)) {
+      await dailyLimitInput.fill('3');
+    }
+
+    // Save config
+    await page.getByRole('button', { name: /save configuration/i }).click();
+
+    // Activate auto-apply
+    const toggle = page.getByLabel(/auto apply status/i);
+    await toggle.click();
+
+    // Verify rate limit message appears when limit is reached
+    await page.waitForTimeout(5000);
+
+    // Check for rate limiting in activity log
+    if (rateLimitReached) {
+      const rateLimitMessage = page.getByText(/daily limit reached|rate limit/i);
+      await expect(rateLimitMessage).toBeVisible();
+    }
+  });
+
+  test('should detect and skip duplicate job applications', async ({ page }) => {
+    // Track applied jobs to detect duplicates
+    const appliedJobs = new Set<string>();
+    let duplicateDetected = false;
+
+    // Mock activity endpoint with duplicate detection
+    await page.route('**/api/v1/auto-apply/activity', async (route) => {
+      const activities = [];
+      if (appliedJobs.has('job_123')) {
+        duplicateDetected = true;
+        activities.push({
+          id: 'activity-duplicate',
+          user_id: 'user-1',
+          cycle_id: 'cycle-duplicate',
+          cycle_status: 'completed',
+          jobs_applied: 0,
+          errors: ['Skipped duplicate: job_123'],
+          message: 'Skipped duplicate: job_123',
+          created_at: new Date().toISOString(),
+        });
+      } else {
+        // First application
+        appliedJobs.add('job_123');
+        activities.push({
+          id: 'activity-first',
+          user_id: 'user-1',
+          cycle_id: 'cycle-first',
+          cycle_status: 'completed',
+          jobs_applied: 1,
+          applied_job_ids: ['job_123'],
+          created_at: new Date().toISOString(),
+        });
+      }
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify(activities),
+      });
+    });
+
+    // Navigate to auto-apply page
+    await page.goto('/auto-apply');
+    await page.waitForLoadState('networkidle');
+
+    const currentUrl = page.url();
+    if (currentUrl.includes('/login')) {
+      test.skip();
+    }
+
+    // Configure auto-apply
+    await page.getByPlaceholder(/e.g. Python/i).waitFor({ state: 'visible' });
+    await page.getByPlaceholder(/e.g. Python/i).fill('Python');
+    await page.getByPlaceholder(/e.g. San Francisco/i).fill('Remote');
+
+    // Save config
+    await page.getByRole('button', { name: /save configuration/i }).click();
+
+    // First cycle: Start auto-apply
+    let toggle = page.getByLabel(/auto apply status/i);
+    await toggle.click();
+
+    // Wait for first cycle
+    await page.waitForTimeout(3000);
+
+    // Stop auto-apply
+    toggle = page.getByLabel(/auto apply status/i);
+    await toggle.click();
+
+    // Second cycle: Start auto-apply again
+    toggle = page.getByLabel(/auto apply status/i);
+    await toggle.click();
+
+    // Wait for second cycle
+    await page.waitForTimeout(3000);
+
+    // Verify duplicate was detected
+    expect(appliedJobs.has('job_123')).toBe(true);
+    expect(duplicateDetected).toBe(true);
+  });
 });

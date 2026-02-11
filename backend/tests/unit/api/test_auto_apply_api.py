@@ -76,12 +76,15 @@ def mock_auto_apply_service(mock_current_user: UserProfile) -> AsyncMock:
     )
 
     service.create_or_update_config = AsyncMock(return_value=config)
+    service.get_config = AsyncMock(return_value=config)
     service.toggle_auto_apply = AsyncMock(return_value=True)
     service.update_rate_limits = AsyncMock(return_value=None)
     service.get_activity_log = AsyncMock(return_value=[activity])
     service.get_external_site_queue = AsyncMock(
         return_value=[{"job_id": "job-123", "platform": "linkedin"}]
     )
+    service.retry_queued_application = AsyncMock(return_value=None)
+    service.skip_queued_application = AsyncMock(return_value=None)
 
     return service
 
@@ -191,6 +194,24 @@ class TestAutoApplyConfig:
 
             assert response.status_code == 400
             assert response.json()["detail"] == "Invalid config"
+
+    @pytest.mark.asyncio
+    async def test_get_config_success(
+        self, client_authenticated: TestClient, mock_auto_apply_service: AsyncMock
+    ) -> None:
+        """GET /config returns current configuration."""
+        with patch.object(
+            service_registry,
+            "get_auto_apply_service",
+            new_callable=AsyncMock,
+            return_value=mock_auto_apply_service,
+            create=True,
+        ):
+            response = client_authenticated.get("/api/v1/auto-apply/config")
+
+            assert response.status_code == 200
+            data = response.json()
+            assert data["user_id"] == "test-user-123"
 
 
 class TestAutoApplyStartStop:
@@ -329,6 +350,53 @@ class TestAutoApplyActivityQueue:
                 "test-user-123", limit=3
             )
 
+    @pytest.mark.asyncio
+    async def test_retry_queued_application(
+        self, client_authenticated: TestClient, mock_auto_apply_service: AsyncMock
+    ) -> None:
+        """POST /retry-queued triggers retry for job."""
+        with patch.object(
+            service_registry,
+            "get_auto_apply_service",
+            new_callable=AsyncMock,
+            return_value=mock_auto_apply_service,
+            create=True,
+        ):
+            response = client_authenticated.post(
+                "/api/v1/auto-apply/retry-queued", params={"job_id": "job-123"}
+            )
+
+            assert response.status_code == 200
+            assert response.json()["message"] == "Application job-123 queued for retry"
+            mock_auto_apply_service.retry_queued_application.assert_called_with(
+                "test-user-123", "job-123"
+            )
+
+    @pytest.mark.asyncio
+    async def test_skip_queued_application(
+        self, client_authenticated: TestClient, mock_auto_apply_service: AsyncMock
+    ) -> None:
+        """POST /skip-queued skips job with reason."""
+        with patch.object(
+            service_registry,
+            "get_auto_apply_service",
+            new_callable=AsyncMock,
+            return_value=mock_auto_apply_service,
+            create=True,
+        ):
+            response = client_authenticated.post(
+                "/api/v1/auto-apply/skip-queued",
+                params={"job_id": "job-123", "reason": "duplicate"},
+            )
+
+            assert response.status_code == 200
+            assert (
+                response.json()["message"] == "Application job-123 skipped: duplicate"
+            )
+            mock_auto_apply_service.skip_queued_application.assert_called_with(
+                "test-user-123", "job-123", "duplicate"
+            )
+
 
 class TestAutoApplyAuthentication:
     """Test cases for auth requirements on auto-apply endpoints."""
@@ -338,11 +406,18 @@ class TestAutoApplyAuthentication:
         ("method", "url", "params"),
         [
             ("post", "/api/v1/auto-apply/config", None),
+            ("get", "/api/v1/auto-apply/config", None),
             ("post", "/api/v1/auto-apply/start", None),
             ("post", "/api/v1/auto-apply/stop", None),
             ("post", "/api/v1/auto-apply/rate-limits", {"platform": "linkedin"}),
             ("get", "/api/v1/auto-apply/activity", None),
             ("get", "/api/v1/auto-apply/queue", None),
+            ("post", "/api/v1/auto-apply/retry-queued", {"job_id": "job-123"}),
+            (
+                "post",
+                "/api/v1/auto-apply/skip-queued",
+                {"job_id": "job-123", "reason": "duplicate"},
+            ),
         ],
     )
     async def test_requires_authentication(

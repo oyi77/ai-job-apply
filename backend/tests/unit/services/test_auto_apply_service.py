@@ -848,3 +848,103 @@ def test_to_config_model_none_raises() -> None:
     service = AutoApplyService()
     with pytest.raises(ValueError):
         service._to_config_model(None)
+
+
+@pytest.mark.asyncio
+async def test_get_config_returns_model_when_found(mock_session: AsyncMock) -> None:
+    db_config = create_db_config(
+        "user-30",
+        search_criteria=json.dumps({"keywords": ["go"], "locations": ["NYC"]}),
+    )
+    with patch("src.services.auto_apply_service.AutoApplyConfigRepository") as repo_cls:
+        repo = repo_cls.return_value
+        repo.get_by_user_id = AsyncMock(return_value=db_config)
+        service = AutoApplyService(db_session=mock_session)
+
+        result = await service.get_config("user-30")
+
+        assert result is not None
+        assert isinstance(result, AutoApplyConfig)
+        assert result.user_id == "user-30"
+
+
+def test_normalize_search_response_unknown_type() -> None:
+    service = AutoApplyService()
+    total, jobs_by_platform = service._normalize_search_response("not a list or obj")
+    assert total == 0
+    assert jobs_by_platform == {}
+
+
+def test_is_external_job_dict_not_external() -> None:
+    service = AutoApplyService()
+    # Dict with no external_application, same apply_url and url
+    assert service._is_external_job({"external_application": False}) is False
+    assert service._is_external_job({}) is False
+    assert (
+        service._is_external_job(
+            {
+                "external_application": False,
+                "apply_url": "https://example.com",
+                "url": "https://example.com",
+            }
+        )
+        is False
+    )
+
+
+@pytest.mark.asyncio
+async def test_run_cycle_breaks_at_applied_limit(mock_session: AsyncMock) -> None:
+    """Test that the inner loop breaks when jobs_applied >= applied_limit (line 330)."""
+    config = create_db_config(
+        "user-31",
+        search_criteria=json.dumps({"keywords": ["python"], "locations": ["remote"]}),
+        max_applications=1,
+    )
+    job1 = create_job("job-31a")
+    job2 = create_job("job-31b")
+    response = JobSearchResponse(jobs={"linkedin": [job1, job2]}, total_jobs=2)
+
+    job_search_service = AsyncMock()
+    job_search_service.search_jobs = AsyncMock(return_value=response)
+    job_application_service = AsyncMock()
+    job_application_service.apply_to_job = AsyncMock(return_value={"success": True})
+    rate_limiter = AsyncMock()
+    rate_limiter.can_apply = AsyncMock(return_value=RateLimitResult(allowed=True))
+    rate_limiter.record_application = AsyncMock()
+    failure_logger = AsyncMock()
+
+    with (
+        patch(
+            "src.services.auto_apply_service.AutoApplyConfigRepository"
+        ) as config_cls,
+        patch(
+            "src.services.auto_apply_service.AutoApplyActivityLogRepository"
+        ) as activity_cls,
+        patch(
+            "src.services.auto_apply_service.AutoApplyJobQueueRepository"
+        ) as queue_cls,
+        patch("src.services.auto_apply_service.RateLimitRepository") as rate_cls,
+    ):
+        config_repo = config_cls.return_value
+        activity_repo = activity_cls.return_value
+        rate_repo = rate_cls.return_value
+        config_repo.get_active_configs = AsyncMock(return_value=[config])
+        activity_repo.create = AsyncMock(return_value=MagicMock(id="log-31"))
+        activity_repo.update_activity = AsyncMock()
+        queue_cls.return_value.add_to_queue = AsyncMock()
+        rate_repo.get_or_create = AsyncMock()
+        rate_repo.update_count = AsyncMock(return_value=True)
+
+        service = build_service(
+            mock_session,
+            job_search_service,
+            job_application_service,
+            rate_limiter,
+            failure_logger,
+        )
+        await service.run_cycle()
+
+        # Only 1 application should be made (limit=1), so apply called once
+        assert job_application_service.apply_to_job.call_count == 1
+        update_kwargs = activity_repo.update_activity.call_args.kwargs
+        assert update_kwargs["jobs_applied"] == 1

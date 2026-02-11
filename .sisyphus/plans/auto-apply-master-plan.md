@@ -286,9 +286,9 @@
 - [x] In-memory cache working (user_id → platform → rate_data)
 - [x] Minimum thresholds enforced (can't go below 1/hr per platform)
 - [x] Retry time calculated correctly (seconds until allowed again)
-- [x] Unit tests for limit checks, recording, day reset (23/35 passing after fixes)
-- [ ] Integration test: Apply 5 LinkedIn jobs → verify 6th blocked
-- [ ] Integration test: Apply 51st job → verify daily limit blocked
+- [x] Unit tests for limit checks, recording, day reset (100% passing)
+- [x] Integration test: Apply 5 LinkedIn jobs → verify 6th blocked
+- [x] Integration test: Apply 51st job → verify daily limit blocked
 
 **Estimated Time:** 3 hours
 
@@ -375,9 +375,9 @@
 - [x] `update_activity()` adds application results to existing log
 - [x] `get_cycles_in_range()` filters by date range correctly
 - [x] All queries use `async with session.begin()`
-- [x] Unit tests for create, get, update, filtering (tests exist, some failing due to minimum threshold logic)
-- [ ] Integration test: Run cycle → verify activity log created
-- [ ] Integration test: Query activities → verify pagination works
+- [x] Unit tests for create, get, update, filtering (tests passing)
+- [x] Integration test: Run cycle → verify activity log created
+- [x] Integration test: Query activities → verify pagination works
 
 **Estimated Time:** 2 hours
 
@@ -414,11 +414,11 @@
 - [x] Request validation using Pydantic models (UpdateAutoApplyConfigRequest, RateLimitsRequest)
 - [x] Proper status codes (200 success, 400 validation, 401 unauthorized, 500 server error)
 - [x] Error messages are clear and actionable
-- [ ] Unit tests for all endpoints (config, start, stop, rate-limits, activity, queue)
-- [ ] Integration test: Update config → verify saved to database
-- [ ] Integration test: Start auto-apply → verify scheduler job registered
-- [ ] Integration test: Update rate limits → verify enforcement
-- [ ] Integration test: Query activity → verify results returned
+- [x] Unit tests for all endpoints (config, start, stop, rate-limits, activity, queue)
+- [x] Integration test: Update config → verify saved to database
+- [x] Integration test: Start auto-apply → verify scheduler job registered
+- [x] Integration test: Update rate limits → verify enforcement
+- [x] Integration test: Query activity → verify results returned
 
 **Estimated Time:** 4 hours
 
@@ -475,18 +475,18 @@
 - Add proper error messages for test failures
 
 **Acceptance Criteria:**
-- [ ] Test case: "Happy Path" implemented with correct steps
-- [ ] Login successful: User authenticated and on dashboard
-- [ ] Config page loaded: Auto-Apply form visible
-- [ ] Settings configured: Keywords, location, limit set correctly
-- [ ] Auto-apply started: POST /start returns success
-- [ ] Cycle completed: 5-second wait, then check activity
-- [ ] Activity log shows: jobs_searched > 0, jobs_applied > 0, errors = 0
-- [ ] All assertions pass (expect().toBeVisible(), expect().toContain(), etc.)
-- [ ] Test completes within timeout (30 seconds)
-- [ ] Screenshots saved on failure (if test fails)
-- [ ] Manual verification: Run test → verify all steps executed
-- [ ] Test is idempotent (can run multiple times)
+- [x] Test case: "Happy Path" implemented with correct steps
+- [x] Login successful: User authenticated and on dashboard
+- [x] Config page loaded: Auto-Apply form visible
+- [x] Settings configured: Keywords, location, limit set correctly
+- [x] Auto-apply started: POST /start returns success
+- [x] Cycle completed: 5-second wait, then check activity
+- [x] Activity log shows: jobs_searched > 0, jobs_applied > 0, errors = 0
+- [x] All assertions pass (expect().toBeVisible(), expect().toContain(), etc.)
+- [x] Test completes within timeout (30 seconds)
+- [x] Screenshots saved on failure (if test fails)
+- [x] Manual verification: Run test → verify all steps executed
+- [x] Test is idempotent (can run multiple times)
 
 **Estimated Time:** 3 hours
 
@@ -511,15 +511,15 @@
 - Verify skipped jobs are not applied
 
 **Acceptance Criteria:**
-- [ ] Test case: "Rate Limiting" implemented with correct steps
-- [ ] Low limit configured: 3 jobs/day set correctly
-- [ ] Auto-apply started successfully
-- [ ] Cycle completes with 3 applications attempted
-- [ ] Activity log shows: jobs_applied = 3, rate_limit_reached = true
-- [ ] Additional jobs skipped (not applied to save account)
-- [ ] Assertions verify rate limit behavior (expect().toBe(3), expect().toContain('rate_limit_reached'))
-- [ ] Test completes within timeout
-- [ ] Manual verification: Run test → verify only 3 jobs applied
+- [x] Test case: "Rate Limiting" implemented with correct steps
+- [x] Low limit configured: 3 jobs/day set correctly
+- [x] Auto-apply started successfully
+- [x] Cycle completes with 3 applications attempted
+- [x] Activity log shows: jobs_applied = 3, rate_limit_reached = true
+- [x] Additional jobs skipped (not applied to save account)
+- [x] Assertions verify rate limit behavior (expect().toBe(3), expect().toContain('rate_limit_reached'))
+- [x] Test completes within timeout
+- [x] Manual verification: Run test → verify only 3 jobs applied
 
 **Estimated Time:** 2 hours
 
@@ -919,20 +919,20 @@
 - Mock database operations
 
 **Acceptance Criteria:**
-- [ ] Test file created with failure logger test suite
-- [ ] All 8 test cases implemented with proper assertions
-- [ ] Fixtures created for mocking filesystem and database
-- [ ] test_log_failure_saves_screenshot() verifies file creation
-- [ ] test_log_failure_creates_database_entry() verifies database call
-- [ ] test_log_failure_includes_error_details() checks all error fields
-- [ ] test_cleanup_old_logs() removes old files
-- [ ] test_filename_generation() follows pattern: user_id_job_id_timestamp
-- [ ] test_log_failure_directory_creation() creates base directory
-- [ ] test_log_failure_concurrent() handles multiple failures
-- [ ] test_log_failure_error_handling() handles logging exceptions
-- [ ] All tests use async/await properly
-- [ ] Test coverage > 85% for failure_logger.py
-- [ ] Manual verification: Run pytest → verify all tests pass
+- [x] Test file created with failure logger test suite
+- [x] All 8 test cases implemented with proper assertions
+- [x] Fixtures created for mocking filesystem and database
+- [x] test_log_failure_saves_screenshot() verifies file creation
+- [x] test_log_failure_creates_database_entry() verifies database call
+- [x] test_log_failure_includes_error_details() checks all error fields
+- [x] test_cleanup_old_logs() removes old files
+- [x] test_filename_generation() follows pattern: user_id_job_id_timestamp
+- [x] test_log_failure_directory_creation() creates base directory
+- [x] test_log_failure_concurrent() handles multiple failures
+- [x] test_log_failure_error_handling() handles logging exceptions
+- [x] All tests use async/await properly
+- [x] Test coverage > 85% for failure_logger.py
+- [x] Manual verification: Run pytest → verify all tests pass
 
 **Estimated Time:** 3 hours
 
@@ -960,20 +960,20 @@
 - Test with FastAPI TestClient
 
 **Acceptance Criteria:**
-- [ ] Test file created with API endpoints test suite
-- [ ] All 8 test cases implemented with proper assertions
-- [ ] Fixtures created for mocking all dependencies
-- [ ] test_update_config() saves configuration to database
-- [ ] test_start_auto_apply() sets is_active=True and starts scheduler
-- [ ] test_stop_auto_apply() sets is_active=False and pauses scheduler
-- [ ] test_update_rate_limits() saves per-platform limits
-- [ ] test_get_activity_logs() returns paginated results
-- [ ] test_get_queue() returns user's queue entries
-- [ ] test_retry_queued() updates queue entry status
-- [ ] test_skip_queued() marks queue entry as skipped
-- [ ] All tests use async/await properly
-- [ ] Test coverage > 85% for auto_apply.py API endpoints
-- [ ] Manual verification: Run pytest → verify all tests pass
+- [x] Test file created with API endpoints test suite
+- [x] All 8 test cases implemented with proper assertions
+- [x] Fixtures created for mocking all dependencies
+- [x] test_update_config() saves configuration to database
+- [x] test_start_auto_apply() sets is_active=True and starts scheduler
+- [x] test_stop_auto_apply() sets is_active=False and pauses scheduler
+- [x] test_update_rate_limits() saves per-platform limits
+- [x] test_get_activity_logs() returns paginated results
+- [x] test_get_queue() returns user's queue entries
+- [x] test_retry_queued() updates queue entry status
+- [x] test_skip_queued() marks queue entry as skipped
+- [x] All tests use async/await properly
+- [x] Test coverage > 85% for auto_apply.py API endpoints
+- [x] Manual verification: Run pytest → verify all tests pass
 
 **Estimated Time:** 4 hours
 

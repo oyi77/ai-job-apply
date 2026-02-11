@@ -375,6 +375,10 @@ class ServiceRegistry:
         """Get the session manager instance."""
         return await self.get_service("session_manager")
 
+    async def get_auto_apply_service(self):
+        """Get the auto-apply service instance."""
+        return await self.get_service("auto_apply_service")
+
     async def get_mailgun_provider(self):
         """Get the mailgun provider instance (may return None if not configured)."""
         try:

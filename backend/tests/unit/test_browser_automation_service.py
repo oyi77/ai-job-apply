@@ -19,11 +19,14 @@ from src.services.browser_automation_service import (
     BrowserManager,
     FormFieldDetector,
     BrowserAutomationService,
-    # PlatformHandler, LinkedInHandler, IndeedHandler, GlassdoorHandler - Not yet implemented
+    LinkedInHandler,
+    IndeedHandler,
+    GlassdoorHandler,
 )
 from src.models.application import (
     ApplicationUpdateRequest,  # Fixed: was ApplicationCreateRequest
-    # AutomationConfig - Not defined in models
+    ApplicationCreateRequest,
+    AutomationConfig,
 )
 
 

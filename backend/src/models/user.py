@@ -129,8 +129,8 @@ class User(BaseModel):
     account_locked_until: Optional[datetime] = None
     password_reset_token: Optional[str] = None
     password_reset_token_expires: Optional[datetime] = None
-    created_at: datetime
-    updated_at: datetime
+    created_at: datetime = Field(default_factory=datetime.utcnow)
+    updated_at: datetime = Field(default_factory=datetime.utcnow)
 
     # Internal fields (not exposed to client)
     password_hash: Optional[str] = Field(default=None, exclude=True)
