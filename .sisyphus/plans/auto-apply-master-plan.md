@@ -544,14 +544,14 @@
 - Verify no duplicate application created in second cycle
 
 **Acceptance Criteria:**
-- [ ] Test case: "Duplicate Detection" implemented with correct steps
-- [ ] First cycle: Job "job_123" applied successfully
-- [ ] Second cycle: Job "job_123" detected as duplicate
-- [ ] Activity log contains: "Skipped duplicate: job_123"
-- [ ] Database verification: Only one application record exists for job_123
-- [ ] Assertions verify duplicate behavior (expect().not.toBeVisible(), expect().toContain('Skipped duplicate'))
-- [ ] Test completes within timeout
-- [ ] Manual verification: Run test → verify only one application in database
+ - [x] Test case: "Duplicate Detection" implemented with correct steps
+ - [x] First cycle: Job "job_123" applied successfully
+ - [x] Second cycle: Job "job_123" detected as duplicate
+ - [x] Activity log contains: "Skipped duplicate: job_123"
+ - [x] Database verification: Only one application record exists for job_123
+ - [x] Assertions verify duplicate behavior (expect().not.toBeVisible(), expect().toContain('Skipped duplicate'))
+ - [x] Test completes within timeout
+ - [x] Manual verification: Run test → verify only one application in database
 
 **Estimated Time:** 2 hours
 
@@ -577,16 +577,16 @@
 - Verify attachment file paths are correct
 
 **Acceptance Criteria:**
-- [ ] Test case: "Email Application" implemented with correct steps
-- [ ] Email-only job created in database
-- [ ] Auto-apply configured with email-only filter
-- [ ] Cycle completes and email sent successfully
-- [ ] Email captured by mock service (verify via test endpoint)
-- [ ] Attachments verified: resume.pdf and cover_letter.pdf present
-- [ ] Email body contains cover letter content
-- [ ] Assertions verify email sending (expect().toContain('Subject'), expect().toContain('Attachments:'))
-- [ ] Test completes within timeout
-- [ ] Manual verification: Run test → verify email with attachments
+ - [x] Test case: "Email Application" implemented with correct steps
+ - [x] Email-only job created in database
+ - [x] Auto-apply configured with email-only filter
+ - [x] Cycle completes and email sent successfully
+ - [x] Email captured by mock service (verify via test endpoint)
+ - [x] Attachments verified: resume.pdf and cover_letter.pdf present
+ - [x] Email body contains cover letter content
+ - [x] Assertions verify email sending (expect().toContain('Subject'), expect().toContain('Attachments:'))
+ - [x] Test completes within timeout
+ - [x] Manual verification: Run test → verify email with attachments
 
 **Estimated Time:** 3 hours
 
@@ -611,16 +611,16 @@
 - Mock external site detection (simulate redirect)
 
 **Acceptance Criteria:**
-- [ ] Test case: "External Site Queue" implemented with correct steps
-- [ ] External job created with external URL in database
-- [ ] Auto-apply configured to handle external sites
-- [ ] Cycle completes and external job detected
-- [ ] Job queued correctly: status = "pending_review"
-- [ ] Platform = "external" in queue entry
-- [ ] User notification sent (verify via test endpoint)
-- [ ] Assertions verify queue behavior (expect().toContain('pending_review'), expect().toContain('external'))
-- [ ] Test completes within timeout
-- [ ] Manual verification: Run test → verify job in queue
+ - [x] Test case: "External Site Queue" implemented with correct steps
+ - [x] External job created with external URL in database
+ - [x] Auto-apply configured to handle external sites
+ - [x] Cycle completes and external job detected
+ - [x] Job queued correctly: status = "pending_review"
+ - [x] Platform = "external" in queue entry
+ - [x] User notification sent (verify via test endpoint)
+ - [x] Assertions verify queue behavior (expect().toContain('pending_review'), expect().toContain('external'))
+ - [x] Test completes within timeout
+ - [x] Manual verification: Run test → verify job in queue
 
 **Estimated Time:** 3 hours
 
@@ -648,17 +648,17 @@
 - Use separate browser contexts or simulate parallel execution
 
 **Acceptance Criteria:**
-- [ ] Test case: "Per-User Scheduling" implemented with correct steps
-- [ ] User1 configured independently: 5 jobs/day, Python keywords
-- [ ] User2 configured independently: 3 jobs/day, React keywords
-- [ ] Both users can start auto-apply simultaneously
-- [ ] Cycles complete independently (no cross-waiting)
-- [ ] User1 activity: 5 applications applied (matches daily limit)
-- [ ] User2 activity: 3 applications applied (matches daily limit)
-- [ ] Rate limits are per-user (user1 rate tracking != user2)
-- [ ] Assertions verify independent behavior (expect().toBe(5), expect().toBe(3))
-- [ ] Test completes within timeout
-- [ ] Manual verification: Run test → verify independent execution
+ - [x] Test case: "Per-User Scheduling" implemented with correct steps
+ - [x] User1 configured independently: 5 jobs/day, Python keywords
+ - [x] User2 configured independently: 3 jobs/day, React keywords
+ - [x] Both users can start auto-apply simultaneously
+ - [x] Cycles complete independently (no cross-waiting)
+ - [x] User1 activity: 5 applications applied (matches daily limit)
+ - [x] User2 activity: 3 applications applied (matches daily limit)
+ - [x] Rate limits are per-user (user1 rate tracking != user2)
+ - [x] Assertions verify independent behavior (expect().toBe(5), expect().toBe(3))
+ - [x] Test completes within timeout
+ - [x] Manual verification: Run test → verify independent execution
 
 **Estimated Time:** 4 hours
 
@@ -684,17 +684,17 @@
 - Access screenshot files via test endpoint or filesystem
 
 **Acceptance Criteria:**
-- [ ] Test case: "Failure Handling" implemented with correct steps
-- [ ] Failing job created in database (mock failure scenario)
-- [ ] Auto-apply configured to search for job
-- [ ] Cycle completes with failure
-- [ ] Activity log shows: applications_failed > 0, error_type = "NetworkTimeout"
-- [ ] Screenshot captured: file exists at logs/auto_apply_failures/
-- [ ] Filename pattern: {user_id}_{job_id}_{timestamp}.png
-- [ ] Error details logged: error_type, error_message present
-- [ ] Assertions verify failure behavior (expect().toContain('failed'), expect().toContain('NetworkTimeout'))
-- [ ] Test completes within timeout
-- [ ] Manual verification: Run test → verify screenshot file created
+ - [x] Test case: "Failure Handling" implemented with correct steps
+ - [x] Failing job created in database (mock failure scenario)
+ - [x] Auto-apply configured to search for job
+ - [x] Cycle completes with failure
+ - [x] Activity log shows: applications_failed > 0, error_type = "NetworkTimeout"
+ - [x] Screenshot captured: file exists at logs/auto_apply_failures/
+ - [x] Filename pattern: {user_id}_{job_id}_{timestamp}.png
+ - [x] Error details logged: error_type, error_message present
+ - [x] Assertions verify failure behavior (expect().toContain('failed'), expect().toContain('NetworkTimeout'))
+ - [x] Test completes within timeout
+ - [x] Manual verification: Run test → verify screenshot file created
 
 **Estimated Time:** 3 hours
 
@@ -716,15 +716,15 @@
 - Review test results and identify failing tests
 
 **Acceptance Criteria:**
-- [ ] All 8 E2E test cases executed
-- [ ] Test results summary generated
-- [ ] Test coverage metrics available
-- [ ] All tests pass (0 failures) or failures are documented
-- [ ] Test execution time recorded
-- [ ] HTML report generated (can view in browser)
-- [ ] Flaky tests identified (if any)
-- [ ] Manual verification: Review test report → verify all scenarios tested
-- [ ] E2E tests run in < 5 minutes total
+ - [x] All 8 E2E test cases executed
+ - [x] Test results summary generated
+ - [x] Test coverage metrics available
+ - [x] All tests pass (0 failures) or failures are documented
+ - [x] Test execution time recorded
+ - [x] HTML report generated (can view in browser)
+ - [x] Flaky tests identified (if any)
+ - [x] Manual verification: Review test report → verify all scenarios tested
+ - [x] E2E tests run in < 5 minutes total
 
 **Estimated Time:** 2 hours
 
@@ -1260,4 +1260,3 @@ This will:
 - [x] Task 2.11: Failure Handling Test
 - [x] Task 2.12: Clean State Test
 - [x] Task 2.13: All E2E tests passing
-
